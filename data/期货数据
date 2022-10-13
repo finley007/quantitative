@@ -1,0 +1,28 @@
+期货数据
+
+描述：
+1. tick数据，500ms采样一次
+2. 按合约命名
+   IF：合约数，起止时间，记录数
+   文件大小总和 
+      IF: du -hs  8.6g
+      IH: du -hs  5.9g
+      IC: du -hs  8.8g
+
+schema:
+datetime - 采样时间
+CFFEX.IC2212.last_price - 现价
+CFFEX.IC2212.highest - 最高价
+CFFEX.IC2212.lowest - 最低价
+CFFEX.IC2212.bid_price1 - 卖价
+CFFEX.IC2212.bid_volume1 - 卖量
+CFFEX.IC2212.ask_price1 - 买价
+CFFEX.IC2212.ask_volume1 - 买量
+CFFEX.IC2212.volume - 成交量
+CFFEX.IC2212.amount - 成交额
+CFFEX.IC2212.open_interest - 未平仓合约
+
+算法：
+数据填充算法：
+   目的：tick数据对于一些成交量小的合约可能会存在一段时间都没有交易记录的情况，为了使数据连续，需要填充这部分数据
+   算法：创建一个新列：delta_time，用下一个datetime减去当前datetime，过滤出所有delta_time大于0.5的计算填充的数据

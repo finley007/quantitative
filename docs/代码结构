@@ -1,0 +1,16 @@
+code
+    - common
+      公用功能
+        - config
+          配置加载类
+        - constants
+          常数定义
+        - io
+          文件目录操作
+    - data
+      数据处理
+        - analysis
+          用于分析原始数据，包括：期货tick数据，股票日数据
+          方法：
+        - process
+          用于数据处理

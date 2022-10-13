@@ -1,0 +1,78 @@
+股票数据
+
+描述：
+1. 3s采样一次
+2. 以天为单位
+文件数量 find ./ -type f | wc -l  4758
+文件大小总和 du -hs  7.2g
+一年 365*5/7
+
+schema:
+代码          tscode
+交易所代码     exchange_tscode
+自然日        date
+时间          time
+成交价        price
+成交量        volume
+成交额        amount
+成交笔数      transaction_number
+IOPV(先忽略)  iopv
+成交标志      transaction_flag
+BS标志        bs_flag 
+当日累计成交量  daily_accumulated_volume
+当日成交额     daily_amount
+最高价        high
+最低价        low
+开盘价        open
+前收盘        close
+申卖价1       bid_price1
+申卖价2       bid_price2
+申卖价3       bid_price3
+申卖价4       bid_price4
+申卖价5       bid_price5
+申卖价6       bid_price6
+申卖价7       bid_price7
+申卖价8       bid_price8
+申卖价9       bid_price9
+申卖价10      bid_price10
+申卖量1       bid_volume1
+申卖量2       bid_volume2
+申卖量3       bid_volume3
+申卖量4       bid_volume4
+申卖量5       bid_volume5
+申卖量6       bid_volume6
+申卖量7       bid_volume7
+申卖量8       bid_volume8
+申卖量9       bid_volume9
+申卖量10      bid_volume10
+申买价1       ask_price1
+申买价2       ask_price2
+申买价3       ask_price3
+申买价4       ask_price4
+申买价5       ask_price5
+申买价6       ask_price6
+申买价7       ask_price7
+申买价8       ask_price8
+申买价9       ask_price9
+申买价10      ask_price10
+申买量1       ask_volume1
+申买量2       ask_volume2
+申买量3       ask_volume3
+申买量4       ask_volume4
+申买量5       ask_volume5
+申买量6       ask_volume6
+申买量7       ask_volume7
+申买量8       ask_volume8
+申买量9       ask_volume9
+申买量10      ask_volume10
+加权平均叫卖价 weighted_average_bid_price
+加权平均叫买价 weighted_average_ask_price
+叫卖总量      total_bid_volume
+叫买总量      total_ask_volume
+不加权指数    unwighted_index
+品种总数(先忽略)      total_varieties
+上涨品种数(先忽略)    total_increase_varieties
+下跌品种数(先忽略)    total_falling_varieties
+持平品种数(先忽略)    total_equal_varieties
+
+算法：
