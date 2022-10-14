@@ -222,6 +222,43 @@ class TickDataEnrich(DataProcessor):
         return datetime.strftime(next_time, "%Y-%m-%d %H:%M:%S.%f000")
 
 
+class IndexAbstactExtractor(DataProcessor):
+    """提取股指成分股摘要：
+
+    Parameters
+    ----------
+    data : Dict
+        待处理数据.
+        time -> list[]
+
+    Returns : Dict
+    -------
+        starttime - endtime -> list[]
+
+    """
+    @timing
+    def process(self, data):
+        start_time = ''
+        end_time = ''
+        stock_list = ''
+        index_abstract = {}
+        for time in list(data.keys()):
+            cur_stock_list = ''.join(sorted(data[time]))
+            if (start_time == ''):
+                start_time = time.strftime('%Y-%m-%d')
+            if (stock_list == ''):
+                stock_list = cur_stock_list
+            elif (stock_list == cur_stock_list):
+                end_date = time.strftime('%Y-%m-%d')
+            else:
+                index_abstract[start_time + '_' + end_date] = [stock.split('.')[0] for stock in data[time]]
+                start_time = ''
+                stock_list = ''
+        return index_abstract
+
+
+
+
 if __name__ == '__main__':
     #期货tick数据测试
     # product = 'IF'
@@ -231,8 +268,19 @@ if __name__ == '__main__':
     # content = DataCleaner().process(content)
     # TickDataEnrich().process(content)
     #股票tick数据测试
-    tscode = 'sh688800'
-    content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
-    content = FutureTickDataColumnTransform().process(content)
-    content = StockDataCleaner().process(content)
-    print(content)
+    # tscode = 'sh688800'
+    # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
+    # content = FutureTickDataColumnTransform().process(content)
+    # content = StockDataCleaner().process(content)
+    # print(content)
+    #测试期指摘要处理类
+    data = pd.read_pickle('E:\\data\\config\\50_stocks.pkl')
+    print(IndexAbstactExtractor().process(data))
+    pd.to_pickle(data, 'E:\\data\\config\\50_stocks_abstract.pkl')
+    data = pd.read_pickle('E:\\data\\config\\300_stocks.pkl')
+    print(IndexAbstactExtractor().process(data))
+    pd.to_pickle(data, 'E:\\data\\config\\300_stocks_abstract.pkl')
+    data = pd.read_pickle('E:\\data\\config\\500_stocks.pkl')
+    print(IndexAbstactExtractor().process(data))
+    pd.to_pickle(data, 'E:\\data\\config\\500_stocks_abstract.pkl')
+
