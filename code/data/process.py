@@ -245,15 +245,15 @@ class IndexAbstactExtractor(DataProcessor):
         for time in list(data.keys()):
             cur_stock_list = ''.join(sorted(data[time]))
             if (start_time == ''):
-                start_time = time.strftime('%Y-%m-%d')
+                start_time = time.strftime('%Y%m%d')
             if (stock_list == ''):
                 stock_list = cur_stock_list
             elif (stock_list == cur_stock_list):
-                end_date = time.strftime('%Y-%m-%d')
+                end_date = time.strftime('%Y%m%d')
             else:
                 index_abstract[start_time + '_' + end_date] = [stock.split('.')[0] for stock in data[time]]
-                start_time = ''
-                stock_list = ''
+                start_time = time.strftime('%Y%m%d')
+                stock_list = cur_stock_list
         return index_abstract
 
 
@@ -274,13 +274,34 @@ if __name__ == '__main__':
     # content = StockDataCleaner().process(content)
     # print(content)
     #测试期指摘要处理类
-    data = pd.read_pickle('E:\\data\\config\\50_stocks.pkl')
-    print(IndexAbstactExtractor().process(data))
-    pd.to_pickle(data, 'E:\\data\\config\\50_stocks_abstract.pkl')
-    data = pd.read_pickle('E:\\data\\config\\300_stocks.pkl')
-    print(IndexAbstactExtractor().process(data))
-    pd.to_pickle(data, 'E:\\data\\config\\300_stocks_abstract.pkl')
-    data = pd.read_pickle('E:\\data\\config\\500_stocks.pkl')
-    print(IndexAbstactExtractor().process(data))
-    pd.to_pickle(data, 'E:\\data\\config\\500_stocks_abstract.pkl')
+    # data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks.pkl')
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
+    # data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/300_stocks.pkl')
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
+    # data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/500_stocks.pkl')
+    # print(data)
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+    data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
+    list50 = data50['20170103_20170609']
+    print(list50)
+    print(len(list50))
+    data300 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
+    list300 = data300['20170103_20170213']
+    print(list300)
+    print(len(list300))
+    data500 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+    list500 = data500['20170103_20170117']
+    print(list500)
+    print(len(list500))
+    print([item for item in list50 if item in list300])
+    print(len([item for item in list50 if item in list300]))
+    print([item for item in list300 if item in list500])
+    print(len([item for item in list300 if item in list500]))
+    print(len([item for item in list500 if item in list50]))
 
