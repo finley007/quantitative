@@ -22,13 +22,11 @@ def filter_stock_data(year, month):
     month : 月
 
     """
-    root_path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/'
+    root_path = 'D:\\'
     file_prefix = 'stk_tick10_w_'
-    stocks_abstract_50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
-    stocks_abstract_300 = pd.read_pickle(
-        '/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
-    stocks_abstract_500 = pd.read_pickle(
-        '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+    stocks_abstract_50 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\50_stocks_abstract.pkl')
+    stocks_abstract_300 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\300_stocks_abstract.pkl')
+    stocks_abstract_500 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\500_stocks_abstract.pkl')
     month_folder_path = root_path + file_prefix + year + '/' + file_prefix + year + month
     date_list = list_files_in_path(month_folder_path)
     date_list = sorted(date_list)
