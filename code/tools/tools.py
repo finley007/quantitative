@@ -39,14 +39,15 @@ def filter_stock_data(year, month):
         stocks_500 = get_index_stock_list(date, stocks_abstract_500)
         stock_file_list = list_files_in_path(month_folder_path + '/' + date)
         for stock_file in stock_file_list:
-            if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(stock_file) in stocks_300 or extract_tsccode(
-                    stock_file) in stocks_500:
-                print('Stock %s is in index' % extract_tsccode(stock_file))
-                data = pd.read_csv(month_folder_path + '/' + date + '/' + stock_file, encoding='gbk')
-                save_compress(data, month_folder_path + '/' + date + '/' + extract_tsccode(stock_file) + '.pkl')
-            else:
-                print('Stock %s is not in index' % extract_tsccode(stock_file))
-            os.remove(month_folder_path + '/' + date + '/' + stock_file)
+            if os.path.getsize(month_folder_path + '/' + date + '/' + stock_file) > 0:
+                if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(stock_file) in stocks_300 or extract_tsccode(
+                        stock_file) in stocks_500:
+                    print('Stock %s is in index' % extract_tsccode(stock_file))
+                    data = pd.read_csv(month_folder_path + '/' + date + '/' + stock_file, encoding='gbk')
+                    save_compress(data, month_folder_path + '/' + date + '/' + extract_tsccode(stock_file) + '.pkl')
+                else:
+                    print('Stock %s is not in index' % extract_tsccode(stock_file))
+                os.remove(month_folder_path + '/' + date + '/' + stock_file)
 
 
 def in_date_range(date, str_date_range):
@@ -83,4 +84,4 @@ if __name__ == '__main__':
     # 测试正则
     # print(re.match('[0-9]{8}','20220102'))
     # 测试filter_stock_data函数
-    filter_stock_data('2017', '01')
+    filter_stock_data('2017', '02')
