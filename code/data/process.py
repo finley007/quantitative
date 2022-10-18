@@ -259,6 +259,11 @@ class IndexAbstactExtractor(DataProcessor):
                 stock_list = cur_stock_list
         return index_abstract
 
+    @timing
+    def append(self, data, list, start_date, end_date):
+        data[start_date + '_' + end_date] = list
+        return data
+
 
 
 
@@ -277,19 +282,19 @@ if __name__ == '__main__':
     # content = StockDataCleaner().process(content)
     # print(content)
     #测试期指摘要处理类
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
+    data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/300_stocks.pkl')
     data = IndexAbstactExtractor().process(data)
     print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
-    data = IndexAbstactExtractor().process(data)
-    print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
-    print(data)
-    data = IndexAbstactExtractor().process(data)
-    print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
+    pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
+    # print(data)
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
     # data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
     # list50 = data50['20170103_20170609']
     # print(list50)
@@ -307,4 +312,25 @@ if __name__ == '__main__':
     # print([item for item in list300 if item in list500])
     # print(len([item for item in list300 if item in list500]))
     # print(len([item for item in list500 if item in list50]))
+    # 期货摘要追加
+    start_date = '20220613'
+    end_date = '20221231'
+    # data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
+    # file = open('/Users/finley/Projects/stock-index-future/data/config/sz50')
+    # data = file.read()
+    # IndexAbstactExtractor().append(data50, data.split('\n'), start_date, end_date)
+    # print(data50)
+    # pd.to_pickle(data50, '/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
+    data300 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
+    file = open('/Users/finley/Projects/stock-index-future/data/config/hs300')
+    data = file.read()
+    IndexAbstactExtractor().append(data300, data.split('\n'), start_date, end_date)
+    print(data300)
+    pd.to_pickle(data300, '/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
+    data500 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+    file = open('/Users/finley/Projects/stock-index-future/data/config/zz500')
+    data = file.read()
+    IndexAbstactExtractor().append(data500, data.split('\n'), start_date, end_date)
+    print(data500)
+    pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
 
