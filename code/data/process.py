@@ -9,7 +9,7 @@ import pandas as pd
 
 from common import constants
 from common.aop import timing
-from common.io import read_decompress
+from common.io import read_decompress, save_compress
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,7 +50,7 @@ class DataCleaner(DataProcessor):
         data = data.dropna(inplace=False)
         return data
 
-class StockDataCleaner(DataCleaner):
+class StockTickDataCleaner(DataCleaner):
     """股票数据清洗：
     删除不需要的列
     删除9：15之前的数据
@@ -154,7 +154,7 @@ class StockTickDataColumnTransform(DataProcessor):
         data.columns = self._columns
         return data
 
-class StockTickDataColumnTransform(DataProcessor):
+class FutureTickDataColumnTransform(DataProcessor):
     """更改Tick数据的列名，去掉合约信息：
     CFFEX.IF2212.last_price,CFFEX.IF2212.highest,CFFEX.IF2212.lowest,CFFEX.IF2212.bid_price1,CFFEX.IF2212.bid_volume1,CFFEX.IF2212.ask_price1,CFFEX.IF2212.ask_volume1,CFFEX.IF2212.volume,CFFEX.IF2212.amount,CFFEX.IF2212.open_interest
 
@@ -176,7 +176,7 @@ class StockTickDataColumnTransform(DataProcessor):
         data = data.rename(columns=column_map)
         return data
 
-class TickDataEnrich(DataProcessor):
+class FutureTickDataEnricher(DataProcessor):
     """Tick填充：
 
     Parameters
@@ -273,17 +273,18 @@ if __name__ == '__main__':
     # product = 'IF'
     # instrument = 'IF2212'
     # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + FutureTickerHandler().build(instrument))
-    # content = TickDataColumnTransform(product, instrument).process(content)
+    # content = FutureTickDataColumnTransform(product, instrument).process(content)
     # content = DataCleaner().process(content)
-    # TickDataEnrich().process(content)
+    # FutureTickDataEnricher().process(content)
     #股票tick数据测试
     # From CSV
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
     # From pkl
-    content = read_decompress('/Users/finley/Projects/stock-index-future/data/000001.pkl')
+    content = read_decompress('E:\\data\\000001.pkl')
     content = StockTickDataColumnTransform().process(content)
-    content = StockDataCleaner().process(content)
+    content = StockTickDataCleaner().process(content)
+    save_compress(content, 'E:\\data\\000001_1.pkl')
     print(content)
     #测试期指摘要处理类
     # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')

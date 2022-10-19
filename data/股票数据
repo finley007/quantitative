@@ -92,4 +92,9 @@ BS标志        bs_flag
 ['600549']
 1
 
+数据清洗：
+1. original -> organised
+2. StockTickDataColumnTransform -> StockTickDataCleaner
+
+
 

@@ -22,7 +22,8 @@ def filter_stock_data(year, month):
     month : 月
 
     """
-    root_path = 'D:\\'
+    root_path = 'E:\\data\\original\\stock\\'
+    # root_path = 'D:\\'
     file_prefix = 'stk_tick10_w_'
     stocks_abstract_50 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\50_stocks_abstract.pkl')
     stocks_abstract_300 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\300_stocks_abstract.pkl')
@@ -84,4 +85,5 @@ if __name__ == '__main__':
     # 测试正则
     # print(re.match('[0-9]{8}','20220102'))
     # 测试filter_stock_data函数
-    filter_stock_data('2017', '02')
+    for month in ['06']:
+        filter_stock_data('2017', month)
