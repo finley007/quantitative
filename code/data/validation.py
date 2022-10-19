@@ -49,7 +49,7 @@ class Validator(metaclass=ABCMeta):
         """
         pass
 
-class StockFilterValidator(Validator):
+class StockValidator(Validator):
     """股票过滤数据比较验证
 
     Parameters
@@ -112,6 +112,6 @@ if __name__ == '__main__':
             data_pkl = read_decompress(month_folder_path + '/' + date + '/pkl/' +  stock + '.pkl')
         except Exception as e:
             continue
-        if StockFilterValidator().compare_validate(data_pkl, data_csv):
+        if StockValidator().compare_validate(data_pkl, data_csv):
             print('Validation pass for stock %s' % stock)
 
