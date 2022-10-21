@@ -4,8 +4,10 @@ import os
 import re
 
 from common.aop import timing
-from common.io import list_files_in_path, save_compress
+from common.io import list_files_in_path, save_compress, read_decompress
 import pandas as pd
+
+from data.validation import StockFilterCompressValidator
 
 
 @timing
@@ -50,6 +52,23 @@ def filter_stock_data(year, month):
                     print('Stock %s is not in index' % extract_tsccode(stock_file))
                 os.remove(month_folder_path + '/' + date + '/' + stock_file)
 
+@timing
+def compare_compress_file_by_date(month_folder_path, date):
+    stock_file_list = list_files_in_path(month_folder_path + '/' + date)
+    for stock_file in stock_file_list:
+        stock = extract_tsccode(stock_file)
+        if not re.match('[0-9]{6}', stock):
+            continue
+        print('Validate for stock %s' % stock)
+        data_csv = pd.read_csv(month_folder_path + '/' + date + '/' + stock_file, encoding='gbk')
+        try:
+            data_pkl = read_decompress(month_folder_path + '/' + date + '/pkl/' + stock + '.pkl')
+        except Exception as e:
+            continue
+        if StockFilterCompressValidator().compare_validate(data_pkl, data_csv):
+            print('Validation pass for stock %s' % stock)
+
+
 
 def in_date_range(date, str_date_range):
     """查询当前日期是不是在给定的日期区间，闭区间
@@ -80,10 +99,18 @@ if __name__ == '__main__':
     # print(in_date_range('20110103','20110101_20220607'))
     # print(in_date_range('20110607','20110101_20220607'))
     # print(in_date_range('20101231','20110101_20220607'))
+
     # 测试extract_tsccode函数
     # print(extract_tsccode('sz300603_20170126.csv'))
+
     # 测试正则
     # print(re.match('[0-9]{8}','20220102'))
+
     # 测试filter_stock_data函数
-    for month in ['06']:
-        filter_stock_data('2017', month)
+    # for month in ['06']:
+    #     filter_stock_data('2017', month)
+
+    # 比较压缩数据
+    month_folder_path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/'
+    date = '20170103'
+    compare_compress_file_by_date(month_folder_path, date)

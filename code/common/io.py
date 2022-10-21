@@ -2,12 +2,8 @@
 # -*- coding:utf8 -*-
 import gzip
 import os
-import sys
-parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
-sys.path.insert(0,parentdir) 
-import common.constants as constants
 import _pickle as cPickle
-import pandas as pd
+
 
 def list_files_in_path(path):
     """列出给定目录下的所有文件
@@ -22,6 +18,7 @@ def list_files_in_path(path):
 
     """
     return list(map(lambda x: x, list(set(os.listdir(path)))))
+
 
 def read_decompress(path):
     """读取并解压
@@ -39,8 +36,9 @@ def read_decompress(path):
         raw_data = file_object.read()
     return cPickle.loads(raw_data)
 
+
 def save_compress(data, path):
-    """读取并解压
+    """压缩并保存
 
     Parameters
     ----------
@@ -54,9 +52,33 @@ def save_compress(data, path):
     with gzip.open(path, 'wb', compresslevel=1) as file_object:
         file_object.write(serialized)
 
+
+class FileWriter:
+
+    def __init__(self, path):
+        self.path = path
+        self.file = open(self.path, mode='w')
+
+    def open_file(self):
+        self.file = open(self.path, mode='w')
+
+    def close_file(self):
+        if self.file is not None:
+            self.file.close
+
+    def write_file(self, content):
+        self.file.write(content)
+
+    def write_file_line(self, content):
+        self.file.write(content + '\n')
+
+
 if __name__ == '__main__':
     # print(list_files_in_path(constants.DATA_PATH + 'future/tick/IF/'))
-    data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.csv')
-    save_compress(data, '/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.pkl')
-
-    
+    # data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.csv')
+    # save_compress(data, '/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.pkl')
+    # write_file('/Users/finley/Projects/stock-index-future/data/test','\n'.join(['a','b']))
+    file_writer = FileWriter('/Users/finley/Projects/stock-index-future/data/test')
+    file_writer.write_file_line("aa")
+    file_writer.write_file_line("bb")
+    file_writer.close_file()
