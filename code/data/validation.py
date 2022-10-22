@@ -4,12 +4,14 @@ import re
 from abc import ABCMeta, abstractmethod
 import hashlib
 
+import numpy
 import pandas as pd
 
 from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.io import FileWriter
+from data.process import FutureTickDataColumnTransform
 
 
 class ValidationResult:
@@ -49,6 +51,8 @@ class CompareResult(ValidationResult):
     def __init__(self, file_name):
         self.file_name = file_name
         self.path = ''
+        self.target_count = 0
+        self.compare_count = 0
         self.same_count = 0
         self.diff_count = 0
         self.only_in_target_count = 0
@@ -62,6 +66,8 @@ class CompareResult(ValidationResult):
             self.path = path
         file_writer = FileWriter(self.path)
         file_writer.write_file_line('--------{0}分析结果'.format(self.file_name))
+        file_writer.write_file_line('--------目标数据集记录数{0}'.format(self.target_count))
+        file_writer.write_file_line('--------对比数据集记录数{0}'.format(self.compare_count))
         file_writer.write_file_line('--------只包含在目标文件中的记录数{0},列表：'.format(self.only_in_target_count))
         self.only_in_target_list.sort()
         file_writer.write_file_line(str(self.only_in_target_list))
@@ -70,7 +76,8 @@ class CompareResult(ValidationResult):
         file_writer.write_file_line(str(self.only_in_compare_list))
         file_writer.write_file_line('--------比较结果相同的记录数{0}'.format(self.same_count))
         file_writer.write_file_line('--------比较结果不同的记录数{0},明细列表'.format(self.diff_count))
-        file_writer.write_file_line('\n'.join(self.diff_details))
+        for diff in self.diff_details:
+            file_writer.write_file_line(diff)
 
 
 
@@ -252,15 +259,20 @@ class FutureTickDataValidator(Validator):
         compare_result.only_in_compare_list = only_in_compare
         #compare_data比target_data少很多数据，遍历
         union_set = list(set(compare_data_list) & set(target_data_list))
-        compare_result.diff_details = []
-        compare_data['abstract'] = compare_data.apply(lambda item: '|'.join([item['datetime'],self.float_format(item['current']),self.float_format(item['a1_p']),self.float_format(item['b1_p']),self.float_format(item['a1_v']),self.float_format(item['b1_v']),self.float_format(item['volume'])]), axis =1)
-        target_data['abstract'] = target_data.apply(lambda item: '|'.join([item['datetime'],self.float_format(item['CFFEX.IC1701.last_price']),self.float_format(item['CFFEX.IC1701.ask_price1']),self.float_format(item['CFFEX.IC1701.bid_price1']),self.float_format(item['CFFEX.IC1701.ask_volume1']),self.float_format(item['CFFEX.IC1701.bid_volume1']),self.float_format(item['CFFEX.IC1701.volume'])]), axis =1)
         same_count = 0
         diff_count = 0
         diff_details = []
+        print(target_data)
         for dt in union_set:
-            compare_abstract = compare_data[compare_data['datetime'] == dt]['abstract'].tolist()[0]
-            target_abstract = target_data[target_data['datetime'] == dt]['abstract'].tolist()[0]
+            try:
+                current_compare_value_list = compare_data[compare_data['datetime'] == dt][['datetime','current','a1_p','b1_p','a1_v','b1_v','volume']].iloc[0].tolist()
+                compare_abstract = '|'.join(list(map(lambda item: self.format(item), current_compare_value_list)))
+                current_target_value_list  = target_data[target_data['datetime'] == dt][['datetime','last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
+                target_abstract = '|'.join(list(map(lambda item: self.format(item), current_target_value_list)))
+            except Exception as e:
+                diff_count = diff_count + 1
+                diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
+                continue
             if compare_abstract == target_abstract:
                 same_count = same_count + 1
             else:
@@ -268,7 +280,10 @@ class FutureTickDataValidator(Validator):
                 diff_details.append(compare_abstract + ' <> ' + target_abstract)
         compare_result.same_count = same_count
         compare_result.diff_count = diff_count
+        compare_result.target_count = len(target_data)
+        compare_result.compare_count = len(compare_data)
         compare_result.path = TEMP_PATH + '/' + file_name + '_compare_result'
+        compare_result.diff_details = diff_details
         compare_result.print()
         return True
 
@@ -300,8 +315,13 @@ class FutureTickDataValidator(Validator):
         return date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
                + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000'
 
-    def float_format(self, num=0):
-        return str(round(num,2))
+    def format(num=0):
+        if isinstance(num, float):
+            return str(num)
+        elif isinstance(num, numpy.int64):
+            return str(num) + '.0'
+        else:
+            return num
 
     def date_alignment(self, date):
         #分秒对齐
@@ -313,9 +333,10 @@ class FutureTickDataValidator(Validator):
 
 
 if __name__ == '__main__':
-    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/CFFEX.IC1701.csv')
-    compare_data = pd.DataFrame(pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC1701.CCFX-ticks.pkl'))
+    target_data = pd.read_csv('E:\\data\\original\\future\IC\\CFFEX.IC1703.csv')
+    target_data = FutureTickDataColumnTransform('IC','IC1703').process(target_data)
+    compare_data = pd.DataFrame(pd.read_pickle('D:\\ic2017-2021\\IC1703.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1701')
+    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1703')
 
 

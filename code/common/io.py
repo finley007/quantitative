@@ -4,6 +4,8 @@ import gzip
 import os
 import _pickle as cPickle
 
+from common.constants import TEMP_PATH
+
 
 def list_files_in_path(path):
     """列出给定目录下的所有文件
@@ -78,7 +80,7 @@ if __name__ == '__main__':
     # data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.csv')
     # save_compress(data, '/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.pkl')
     # write_file('/Users/finley/Projects/stock-index-future/data/test','\n'.join(['a','b']))
-    file_writer = FileWriter('/Users/finley/Projects/stock-index-future/data/test')
+    file_writer = FileWriter(TEMP_PATH + '/test.txt')
     file_writer.write_file_line("aa")
     file_writer.write_file_line("bb")
     file_writer.close_file()
