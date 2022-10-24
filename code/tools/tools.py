@@ -4,10 +4,12 @@ import os
 import re
 
 from common.aop import timing
+from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH
 from common.io import list_files_in_path, save_compress, read_decompress
 import pandas as pd
 
-from data.validation import StockFilterCompressValidator
+from data.process import FutureTickDataColumnTransform
+from data.validation import StockFilterCompressValidator, FutureTickDataValidator
 
 
 @timing
@@ -69,6 +71,20 @@ def compare_compress_file_by_date(month_folder_path, date):
             print('Validation pass for stock %s' % stock)
 
 
+@timing
+def compare_future_tick_data():
+    product_list = ['IC','IF','IH']
+    for product in product_list:
+        future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + '/')
+        for future_file in future_file_list:
+            if future_file.contains(TICK_FILE_PREFIX):
+                instrument = future_file.split('.')[1]
+                target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
+                target_data = FutureTickDataColumnTransform(product, instrument).process(target_data)
+                compare_data = pd.DataFrame(pd.read_pickle(FUTURE_TICK_COMPARE_DATA_PATH + product + '/' + instrument + '.CCFX-ticks.pkl'))
+                compare_data = FutureTickDataValidator().convert(target_data, compare_data)
+                FutureTickDataValidator().compare_validate(target_data, compare_data, instrument)
+
 
 def in_date_range(date, str_date_range):
     """查询当前日期是不是在给定的日期区间，闭区间
@@ -111,6 +127,10 @@ if __name__ == '__main__':
     #     filter_stock_data('2017', month)
 
     # 比较压缩数据
-    month_folder_path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/'
-    date = '20170103'
-    compare_compress_file_by_date(month_folder_path, date)
+    # month_folder_path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/'
+    # date = '20170103'
+    # compare_compress_file_by_date(month_folder_path, date)
+
+    # 期指tick数据比较
+    compare_future_tick_data()
+

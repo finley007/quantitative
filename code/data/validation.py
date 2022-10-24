@@ -8,7 +8,7 @@ import numpy
 import pandas as pd
 
 from common.aop import timing
-from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH
+from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.io import FileWriter
 from data.process import FutureTickDataColumnTransform
@@ -276,13 +276,23 @@ class FutureTickDataValidator(Validator):
             if compare_abstract == target_abstract:
                 same_count = same_count + 1
             else:
-                diff_count = diff_count + 1
-                diff_details.append(compare_abstract + ' <> ' + target_abstract)
+                if dt[20:] == '000000000':
+                    temp_list = target_data[target_data['datetime'] == dt[0:20] + '500000000'][['datetime','last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
+                    temp_list[0] = dt
+                    temp_abstract = '|'.join(list(map(lambda item: self.format(item), temp_list)))
+                    if compare_abstract == temp_abstract:
+                        same_count = same_count + 1
+                    else:
+                        diff_count = diff_count + 1
+                        diff_details.append(compare_abstract + ' <> ' + target_abstract)
+                else:
+                    diff_count = diff_count + 1
+                    diff_details.append(compare_abstract + ' <> ' + target_abstract)
         compare_result.same_count = same_count
         compare_result.diff_count = diff_count
         compare_result.target_count = len(target_data)
         compare_result.compare_count = len(compare_data)
-        compare_result.path = TEMP_PATH + '/' + file_name + '_compare_result'
+        compare_result.path = FUTURE_TICK_REPORT_DATA_PATH + '/' + file_name + '_compare_result'
         compare_result.diff_details = diff_details
         compare_result.print()
         return True
@@ -333,10 +343,10 @@ class FutureTickDataValidator(Validator):
 
 
 if __name__ == '__main__':
-    target_data = pd.read_csv('E:\\data\\original\\future\IC\\CFFEX.IC1703.csv')
-    target_data = FutureTickDataColumnTransform('IC','IC1703').process(target_data)
-    compare_data = pd.DataFrame(pd.read_pickle('D:\\ic2017-2021\\IC1703.CCFX-ticks.pkl'))
+    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/CFFEX.IC1701.csv')
+    target_data = FutureTickDataColumnTransform('IC','IC1701').process(target_data)
+    compare_data = pd.DataFrame(pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC1701.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1703')
+    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1701')
 
 
