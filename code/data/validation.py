@@ -248,7 +248,9 @@ class FutureTickDataValidator(Validator):
         print('Before filter: %s' % len(target_data))
         target_data = target_data[(target_data['datetime'] >= start_time) & (target_data['datetime'] <= end_time)]
         print('After filter: %s' % len(target_data))
-        #比较数据集个数
+        #获取目标数据集事件驱动列表
+        target_data['delta_volume'] = target_data['volume'] - target_data['volume'].shift(1)
+        target_data = target_data[target_data['delta_volume'] > 0]
         target_data_list = target_data['datetime'].tolist()
         compare_data_list = compare_data['datetime'].tolist()
         only_in_target = list(set(target_data_list).difference(set(compare_data_list)))
@@ -262,7 +264,6 @@ class FutureTickDataValidator(Validator):
         same_count = 0
         diff_count = 0
         diff_details = []
-        print(target_data)
         for dt in union_set:
             try:
                 current_compare_value_list = compare_data[compare_data['datetime'] == dt][['datetime','current','a1_p','b1_p','a1_v','b1_v','volume']].iloc[0].tolist()
