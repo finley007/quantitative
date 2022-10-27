@@ -255,6 +255,10 @@ class FutureTickDataValidator(Validator):
         compare_data_list = compare_data['datetime'].tolist()
         only_in_target = list(set(target_data_list).difference(set(compare_data_list)))
         only_in_compare = list(set(compare_data_list).difference(set(target_data_list)))
+        to_be_corrected_compare = list(filter(lambda dt: self.get_pair_tick_time(dt) in only_in_target, only_in_compare))
+        to_be_corrected_target = list(map(lambda dt: self.get_pair_tick_time(dt), to_be_corrected_compare))
+        only_in_target = list(set(only_in_target) - set(to_be_corrected_target))
+        only_in_compare = list(set(only_in_compare) - set(to_be_corrected_compare))
         compare_result.only_in_target_count = len(only_in_target)
         compare_result.only_in_target_list = only_in_target
         compare_result.only_in_compare_count = len(only_in_compare)
@@ -266,9 +270,9 @@ class FutureTickDataValidator(Validator):
         diff_details = []
         for dt in union_set:
             try:
-                current_compare_value_list = compare_data[compare_data['datetime'] == dt][['datetime','current','a1_p','b1_p','a1_v','b1_v','volume']].iloc[0].tolist()
+                current_compare_value_list = compare_data[compare_data['datetime'] == dt][['current','a1_p','b1_p','a1_v','b1_v','volume']].iloc[0].tolist()
                 compare_abstract = '|'.join(list(map(lambda item: self.format(item), current_compare_value_list)))
-                current_target_value_list  = target_data[target_data['datetime'] == dt][['datetime','last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
+                current_target_value_list = target_data[target_data['datetime'] == dt][['last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
                 target_abstract = '|'.join(list(map(lambda item: self.format(item), current_target_value_list)))
             except Exception as e:
                 diff_count = diff_count + 1
@@ -277,18 +281,26 @@ class FutureTickDataValidator(Validator):
             if compare_abstract == target_abstract:
                 same_count = same_count + 1
             else:
-                if dt[20:] == '000000000':
-                    temp_list = target_data[target_data['datetime'] == dt[0:20] + '500000000'][['datetime','last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
-                    temp_list[0] = dt
-                    temp_abstract = '|'.join(list(map(lambda item: self.format(item), temp_list)))
-                    if compare_abstract == temp_abstract:
-                        same_count = same_count + 1
-                    else:
-                        diff_count = diff_count + 1
-                        diff_details.append(compare_abstract + ' <> ' + target_abstract)
-                else:
-                    diff_count = diff_count + 1
-                    diff_details.append(compare_abstract + ' <> ' + target_abstract)
+                diff_count = diff_count + 1
+                diff_details.append(dt + ':' + compare_abstract + ' <> ' + target_abstract)
+        for dt in to_be_corrected_target:
+            try:
+                current_compare_value_list = compare_data[compare_data['datetime'] == self.get_pair_tick_time(dt)][
+                    ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']].iloc[0].tolist()
+                compare_abstract = '|'.join(list(map(lambda item: self.format(item), current_compare_value_list)))
+                current_target_value_list = target_data[target_data['datetime'] == dt][
+                    ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1',
+                     'volume']].iloc[0].tolist()
+                target_abstract = '|'.join(list(map(lambda item: self.format(item), current_target_value_list)))
+            except Exception as e:
+                diff_count = diff_count + 1
+                diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
+                continue
+            if compare_abstract == target_abstract:
+                same_count = same_count + 1
+            else:
+                diff_count = diff_count + 1
+                diff_details.append(dt + ':' + compare_abstract + ' <> ' + target_abstract)
         compare_result.same_count = same_count
         compare_result.diff_count = diff_count
         compare_result.target_count = len(target_data)
@@ -323,8 +335,8 @@ class FutureTickDataValidator(Validator):
 
     def date_format(self, date):
         #20170103092900.0 -> 2017-01-03 09:29:00.000000000
-        return date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
-               + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000'
+        return self.date_alignment(date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
+               + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000')
 
     def format(num=0):
         if isinstance(num, float):
@@ -333,6 +345,20 @@ class FutureTickDataValidator(Validator):
             return str(num) + '.0'
         else:
             return num
+    def get_pair_tick_time(datetime):
+        """根据原始tick时间找到成对的tick时间：
+        因为0.5秒一个tick，对其之后成对的应该是2017-03-17 09:30:16.500000000  <-> 2017-03-17 09:30:16.000000000
+
+        Parameters
+        ----------
+        datetime : string 原始时间.
+        """
+        if datetime[20:] == '000000000':
+            return datetime[0:20] + '500000000'
+        elif datetime[20:] == '500000000':
+            return datetime[0:20] + '000000000'
+        else:
+            return datetime
 
     def date_alignment(self, date):
         #分秒对齐
@@ -344,10 +370,10 @@ class FutureTickDataValidator(Validator):
 
 
 if __name__ == '__main__':
-    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/CFFEX.IC1701.csv')
-    target_data = FutureTickDataColumnTransform('IC','IC1701').process(target_data)
-    compare_data = pd.DataFrame(pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC1701.CCFX-ticks.pkl'))
+    target_data = pd.read_csv('D:\\liuli\\data\\original\\future\\IC\\CFFEX.IC1909.csv')
+    target_data = FutureTickDataColumnTransform('IC','IC1909').process(target_data)
+    compare_data = pd.DataFrame(pd.read_pickle('D:\\ic2017-2021\\IC1909.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1701')
+    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1909')
 
 

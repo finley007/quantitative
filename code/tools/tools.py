@@ -2,6 +2,7 @@
 # -*- coding:utf8 -*-
 import os
 import re
+import time
 
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH
@@ -10,6 +11,7 @@ import pandas as pd
 
 from data.process import FutureTickDataColumnTransform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator
+from framework.concurrent import ProcessRunner
 
 
 @timing
@@ -72,18 +74,27 @@ def compare_compress_file_by_date(month_folder_path, date):
 
 
 @timing
-def compare_future_tick_data():
+def compare_future_tick_data(exclude_instument=[]):
     product_list = ['IC','IF','IH']
+    runner = ProcessRunner(5)
     for product in product_list:
         future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + '/')
+        future_file_list.sort()
         for future_file in future_file_list:
-            if future_file.contains(TICK_FILE_PREFIX):
+            if TICK_FILE_PREFIX in future_file:
                 instrument = future_file.split('.')[1]
-                target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
-                target_data = FutureTickDataColumnTransform(product, instrument).process(target_data)
-                compare_data = pd.DataFrame(pd.read_pickle(FUTURE_TICK_COMPARE_DATA_PATH + product + '/' + instrument + '.CCFX-ticks.pkl'))
-                compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-                FutureTickDataValidator().compare_validate(target_data, compare_data, instrument)
+                if instrument in exclude_instument:
+                    continue
+                runner.execute(do_compare, args=(future_file, instrument, product))
+        time.sleep(10000)
+
+def do_compare(future_file, instrument, product):
+    target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
+    target_data = FutureTickDataColumnTransform(product, instrument).process(target_data)
+    compare_data = pd.DataFrame(
+        pd.read_pickle(FUTURE_TICK_COMPARE_DATA_PATH + product + '/' + instrument + '.CCFX-ticks.pkl'))
+    compare_data = FutureTickDataValidator().convert(target_data, compare_data)
+    FutureTickDataValidator().compare_validate(target_data, compare_data, instrument)
 
 
 def in_date_range(date, str_date_range):
@@ -132,5 +143,5 @@ if __name__ == '__main__':
     # compare_compress_file_by_date(month_folder_path, date)
 
     # 期指tick数据比较
-    compare_future_tick_data()
+    compare_future_tick_data(['IC1701','IC1702','IC1703','IC1704','IC1705','IC1706','IC1707','IC1708','IC1709','IC1710','IC1711','IC1712','IC1801','IC1802','IC1803','IC1804','IC1805','IC1806','IC1807','IC1808','IC1809','IC1810','IC1811','IC1812','IC1901','IC1902','IC1903','IC1904','IC1905','IC1906','IC1907','IC1908'])
 
