@@ -21,6 +21,21 @@ def list_files_in_path(path):
     """
     return list(map(lambda x: x, list(set(os.listdir(path)))))
 
+def build_path(*folders):
+    """构造全路径
+
+    Parameters
+    ----------
+    folders : 给定的全路径的各级目录
+
+    Returns
+    -------
+    string : 全路径
+
+    """
+    if len(folders) > 0:
+        return "/".join(folders)
+
 
 def read_decompress(path):
     """读取并解压
@@ -80,7 +95,8 @@ if __name__ == '__main__':
     # data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.csv')
     # save_compress(data, '/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.pkl')
     # write_file('/Users/finley/Projects/stock-index-future/data/test','\n'.join(['a','b']))
-    file_writer = FileWriter(TEMP_PATH + '/test.txt')
-    file_writer.write_file_line("aa")
-    file_writer.write_file_line("bb")
-    file_writer.close_file()
+    # file_writer = FileWriter(TEMP_PATH + '/test.txt')
+    # file_writer.write_file_line("aa")
+    # file_writer.write_file_line("bb")
+    # file_writer.close_file()
+    print(build_path('a','b'))

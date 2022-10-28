@@ -5,12 +5,14 @@ import re
 import time
 
 from common.aop import timing
-from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH
-from common.io import list_files_in_path, save_compress, read_decompress
+from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
+    STOCK_TICK_DATA_PATH, RESULT_FAIL
+from common.io import list_files_in_path, save_compress, read_decompress, build_path
 import pandas as pd
 
-from data.process import FutureTickDataColumnTransform
-from data.validation import StockFilterCompressValidator, FutureTickDataValidator
+from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
+from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, \
+    ValidationResult
 from framework.concurrent import ProcessRunner
 
 
@@ -75,6 +77,14 @@ def compare_compress_file_by_date(month_folder_path, date):
 
 @timing
 def compare_future_tick_data(exclude_instument=[]):
+    """遍历比较股指tick数据质量：
+    股指tick数据目录结构
+    product
+        - instrument
+    Parameters
+    ----------
+    exclude_instument : list 排除的合约.
+    """
     product_list = ['IC','IF','IH']
     runner = ProcessRunner(5)
     for product in product_list:
@@ -95,6 +105,39 @@ def do_compare(future_file, instrument, product):
         pd.read_pickle(FUTURE_TICK_COMPARE_DATA_PATH + product + '/' + instrument + '.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
     FutureTickDataValidator().compare_validate(target_data, compare_data, instrument)
+
+
+@timing
+def validate_stock_tick_data(filter=[]):
+    """遍历验证股票tick数据质量：
+    股票tick数据目录结构
+    year
+        - month
+            - day
+                - stock
+    Parameters
+    ----------
+    exclude_instument : list 排除的合约.
+    """
+    year_list = ['2017','2018','2019','2020','2021','2022']
+    folder_prefix = 'stk_tick10_w_'
+    runner = ProcessRunner(5)
+    error_list = []
+    for year in year_list:
+        root_path = STOCK_TICK_DATA_PATH + folder_prefix + year
+        month_folder_list = list_files_in_path(build_path(root_path))
+        month_folder_list.sort()
+        for month_folder in month_folder_list:
+            date_folder_list = list_files_in_path(build_path(root_path, month_folder))
+            for date_folder in date_folder_list:
+                stock_file_list = list_files_in_path(build_path(root_path, month_folder, date_folder))
+                for stock_file in stock_file_list:
+                    data = read_decompress(build_path(root_path, month_folder, date_folder, stock_file))
+                    data = StockTickDataColumnTransform().process(data)
+                    if not StockTickDataValidator().validate(data):
+                        error = ValidationResult(RESULT_FAIL, [year + month_folder + date_folder + '-' + stock_file + ' validation failed'])
+                        error_list.append(error)
+
 
 
 def in_date_range(date, str_date_range):
