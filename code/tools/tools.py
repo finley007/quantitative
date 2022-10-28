@@ -74,10 +74,12 @@ def compare_compress_file_by_date(month_folder_path, date):
 
 
 @timing
-def compare_future_tick_data(exclude_instument=[]):
+def compare_future_tick_data(exclude_product=[], exclude_instument=[]):
     product_list = ['IC','IF','IH']
-    runner = ProcessRunner(5)
+    runner = ProcessRunner(10)
     for product in product_list:
+        if product in exclude_product:
+            continue
         future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + '/')
         future_file_list.sort()
         for future_file in future_file_list:
@@ -86,7 +88,7 @@ def compare_future_tick_data(exclude_instument=[]):
                 if instrument in exclude_instument:
                     continue
                 runner.execute(do_compare, args=(future_file, instrument, product))
-        time.sleep(10000)
+    time.sleep(100000)
 
 def do_compare(future_file, instrument, product):
     target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
@@ -143,5 +145,5 @@ if __name__ == '__main__':
     # compare_compress_file_by_date(month_folder_path, date)
 
     # 期指tick数据比较
-    compare_future_tick_data(['IC1701','IC1702','IC1703','IC1704','IC1705','IC1706','IC1707','IC1708','IC1709','IC1710','IC1711','IC1712','IC1801','IC1802','IC1803','IC1804','IC1805','IC1806','IC1807','IC1808','IC1809','IC1810','IC1811','IC1812','IC1901','IC1902','IC1903','IC1904','IC1905','IC1906','IC1907','IC1908'])
+    compare_future_tick_data(['IC'], ['IF1701','IF1702','IF1703','IF1704','IF1705','IF1706','IF1707','IF1708','IF1709','IF1710','IF1711','IF1712','IF1801','IF1802','IF1803','IF1804','IF1805','IF1806','IF1807','IF1808','IF1809','IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1905','IF1910'])
 
