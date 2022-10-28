@@ -92,6 +92,9 @@ BS标志        bs_flag
 ['600549']
 1
 
+数据验证：
+成交量递增验证：按时间排序获取一个list，按成交量排序再取一个list，做签名比较
+
 数据清洗：
 1. original -> organised
 2. StockTickDataColumnTransform -> StockTickDataCleaner

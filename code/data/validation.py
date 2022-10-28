@@ -6,12 +6,13 @@ import hashlib
 
 import numpy
 import pandas as pd
+from dask import delayed
 
 from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH
 from common.exception.exception import ValidationFailed, InvalidStatus
-from common.io import FileWriter
-from data.process import FutureTickDataColumnTransform
+from common.io import FileWriter, read_decompress
+from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
 
 
 class ValidationResult:
@@ -31,11 +32,12 @@ class ValidationResult:
         if self.result == RESULT_SUCCESS:
             return 'The validation result is {0}'.format(RESULT_SUCCESS)
         elif self.result == RESULT_FAIL:
-            return 'The validation result is {0} and error details: \n {1}'.format(RESULT_SUCCESS, '\n'.join(self.error_details))
+            return 'The validation result is {0} and error details: \n {1}'.format(RESULT_SUCCESS,
+                                                                                   '\n'.join(self.error_details))
         else:
             raise InvalidStatus('Invalid validation status {0}'.format(self.result))
 
-    
+
 class CompareResult(ValidationResult):
     """比较结果类
 
@@ -61,7 +63,7 @@ class CompareResult(ValidationResult):
         self.only_in_compare_list = []
         self.diff_details = []
 
-    def print(self, path = ''):
+    def print(self, path=''):
         if path != '':
             self.path = path
         file_writer = FileWriter(self.path)
@@ -80,9 +82,7 @@ class CompareResult(ValidationResult):
             file_writer.write_file_line(diff)
 
 
-
-    
-#和金字塔数据源比对
+# 和金字塔数据源比对
 class Validator(metaclass=ABCMeta):
     """数据验证接口
 
@@ -134,6 +134,7 @@ class Validator(metaclass=ABCMeta):
         """
         pass
 
+
 class StockFilterCompressValidator(Validator):
     """股票过滤压缩数据比较验证
 
@@ -162,8 +163,10 @@ class StockFilterCompressValidator(Validator):
         """
         if (len(target_data) != len(compare_data)):
             raise ValidationFailed('Different data length')
-        target_sign_list = [hashlib.md5('|'.join(item).encode('gbk')).hexdigest() for item in [str(item) for item in target_data.values.tolist()]]
-        compare_sign_list = [hashlib.md5('|'.join(item).encode('gbk')).hexdigest() for item in [str(item) for item in target_data.values.tolist()]]
+        target_sign_list = [hashlib.md5('|'.join(item).encode('gbk')).hexdigest() for item in
+                            [str(item) for item in target_data.values.tolist()]]
+        compare_sign_list = [hashlib.md5('|'.join(item).encode('gbk')).hexdigest() for item in
+                             [str(item) for item in target_data.values.tolist()]]
         diff = list(set(target_sign_list).difference(set(compare_sign_list)))
         diff.extend(list(set(compare_sign_list).difference(set(target_sign_list))))
         if diff:
@@ -191,7 +194,16 @@ class StockTickDataValidator(Validator):
             待处理数据.
 
         """
-        print(data)
+        time_sorted_list = data.sort_values(by='time')['daily_accumulated_volume'].to_list()
+        time_sorted_abstract = hashlib.md5(
+            '|'.join(list(map(lambda item: str(item), time_sorted_list))).encode('gbk')).hexdigest()
+        volume_sorted_list = data.sort_values(by='daily_accumulated_volume')['daily_accumulated_volume'].to_list()
+        volume_sorted_abstract = hashlib.md5(
+            '|'.join(list(map(lambda item: str(item), volume_sorted_list))).encode('gbk')).hexdigest()
+        if time_sorted_abstract == volume_sorted_abstract:
+            return True
+        else:
+            return False
 
     @classmethod
     def compare_validate(self, target_data, compare_data):
@@ -204,8 +216,22 @@ class StockTickDataValidator(Validator):
         compare_data : DataFrame
             对比数据.
         """
-        #Todo
+        # Todo
         return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        """数据转换，将compare_data转换成target_data结构
+
+        Parameters
+        ----------
+        target_data : DataFrame
+            待验证数据.
+        compare_data : DataFrame
+            对比数据.
+        """
+        pass
+
 
 class FutureTickDataValidator(Validator):
     """期货tick数据验证
@@ -226,7 +252,7 @@ class FutureTickDataValidator(Validator):
             待处理数据.
 
         """
-        print(data)
+        return True
 
     @classmethod
     @timing
@@ -242,20 +268,22 @@ class FutureTickDataValidator(Validator):
             对比数据.
         """
         compare_result = CompareResult(file_name)
-        #按compare_data裁剪
+        # 按compare_data裁剪
         start_time = compare_data.loc[1]['datetime']
         end_time = compare_data.tail(1)['datetime'].tolist()[0]
         print('Before filter: %s' % len(target_data))
         target_data = target_data[(target_data['datetime'] >= start_time) & (target_data['datetime'] <= end_time)]
         print('After filter: %s' % len(target_data))
-        #获取目标数据集事件驱动列表
+        # 获取目标数据集事件驱动列表
         target_data['delta_volume'] = target_data['volume'] - target_data['volume'].shift(1)
         target_data = target_data[target_data['delta_volume'] > 0]
         target_data_list = target_data['datetime'].tolist()
         compare_data_list = compare_data['datetime'].tolist()
         only_in_target = list(set(target_data_list).difference(set(compare_data_list)))
         only_in_compare = list(set(compare_data_list).difference(set(target_data_list)))
-        to_be_corrected_compare = list(filter(lambda dt: self.get_pair_tick_time(dt) in only_in_target, only_in_compare))
+        # 处理比较数据的对齐问题
+        to_be_corrected_compare = list(
+            filter(lambda dt: self.get_pair_tick_time(dt) in only_in_target, only_in_compare))
         to_be_corrected_target = list(map(lambda dt: self.get_pair_tick_time(dt), to_be_corrected_compare))
         only_in_target = list(set(only_in_target) - set(to_be_corrected_target))
         only_in_compare = list(set(only_in_compare) - set(to_be_corrected_compare))
@@ -263,17 +291,15 @@ class FutureTickDataValidator(Validator):
         compare_result.only_in_target_list = only_in_target
         compare_result.only_in_compare_count = len(only_in_compare)
         compare_result.only_in_compare_list = only_in_compare
-        #compare_data比target_data少很多数据，遍历
+        # compare_data比target_data少很多数据，遍历
         union_set = list(set(compare_data_list) & set(target_data_list))
         same_count = 0
         diff_count = 0
         diff_details = []
         for dt in union_set:
             try:
-                current_compare_value_list = compare_data[compare_data['datetime'] == dt][['current','a1_p','b1_p','a1_v','b1_v','volume']].iloc[0].tolist()
-                compare_abstract = '|'.join(list(map(lambda item: self.format(item), current_compare_value_list)))
-                current_target_value_list = target_data[target_data['datetime'] == dt][['last_price','ask_price1','bid_price1','ask_volume1','bid_volume1','volume']].iloc[0].tolist()
-                target_abstract = '|'.join(list(map(lambda item: self.format(item), current_target_value_list)))
+                compare_abstract = self.create_abstract(compare_data, dt, ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
+                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
             except Exception as e:
                 diff_count = diff_count + 1
                 diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
@@ -283,15 +309,12 @@ class FutureTickDataValidator(Validator):
             else:
                 diff_count = diff_count + 1
                 diff_details.append(dt + ':' + compare_abstract + ' <> ' + target_abstract)
+        # 处理比较数据的对齐问题
         for dt in to_be_corrected_target:
             try:
-                current_compare_value_list = compare_data[compare_data['datetime'] == self.get_pair_tick_time(dt)][
-                    ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']].iloc[0].tolist()
-                compare_abstract = '|'.join(list(map(lambda item: self.format(item), current_compare_value_list)))
-                current_target_value_list = target_data[target_data['datetime'] == dt][
-                    ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1',
-                     'volume']].iloc[0].tolist()
-                target_abstract = '|'.join(list(map(lambda item: self.format(item), current_target_value_list)))
+                compare_abstract = self.create_abstract(compare_data, self.get_pair_tick_time(dt),
+                                                        ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
+                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
             except Exception as e:
                 diff_count = diff_count + 1
                 diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
@@ -309,6 +332,14 @@ class FutureTickDataValidator(Validator):
         compare_result.diff_details = diff_details
         compare_result.print()
         return True
+
+    @classmethod
+    @delayed
+    def create_abstract(cls, data, dt, column_list):
+        value_list = data[data['datetime'] == dt][
+            column_list].iloc[0].tolist()
+        abstract = '|'.join(list(map(lambda item: cls.format(item), value_list)))
+        return abstract
 
     def convert(self, target_data, compare_data):
         """字段映射：
@@ -334,9 +365,9 @@ class FutureTickDataValidator(Validator):
         return compare_data
 
     def date_format(self, date):
-        #20170103092900.0 -> 2017-01-03 09:29:00.000000000
+        # 20170103092900.0 -> 2017-01-03 09:29:00.000000000
         return self.date_alignment(date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
-               + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000')
+                                   + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000')
 
     def format(num=0):
         if isinstance(num, float):
@@ -345,6 +376,7 @@ class FutureTickDataValidator(Validator):
             return str(num) + '.0'
         else:
             return num
+
     def get_pair_tick_time(datetime):
         """根据原始tick时间找到成对的tick时间：
         因为0.5秒一个tick，对其之后成对的应该是2017-03-17 09:30:16.500000000  <-> 2017-03-17 09:30:16.000000000
@@ -361,19 +393,23 @@ class FutureTickDataValidator(Validator):
             return datetime
 
     def date_alignment(self, date):
-        #分秒对齐
+        # 分秒对齐
         subsec = 0
         if int(date.split('.')[1][0]) > 4:
             subsec = 5
         return date.split('.')[0] + '.' + str(subsec) + '00000000'
 
 
-
 if __name__ == '__main__':
-    target_data = pd.read_csv('D:\\liuli\\data\\original\\future\\IC\\CFFEX.IC1909.csv')
-    target_data = FutureTickDataColumnTransform('IC','IC1909').process(target_data)
-    compare_data = pd.DataFrame(pd.read_pickle('D:\\ic2017-2021\\IC1909.CCFX-ticks.pkl'))
+    # 测试股指tick数据比较验证
+    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC/CFFEX.IC1701.csv')
+    target_data = FutureTickDataColumnTransform('IC', 'IC1701').process(target_data)
+    compare_data = pd.DataFrame(
+        pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC1701.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1909')
-
-
+    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1701')
+    # 测试股票tick数据验证
+    # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/20170103/pkl/600220.pkl'
+    # data = read_decompress(path)
+    # data = StockTickDataColumnTransform().process(data)
+    # print(StockTickDataValidator().validate(data))
