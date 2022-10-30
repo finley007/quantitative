@@ -3,6 +3,7 @@
 import os
 
 from common.config import Config
+import psutil
 
 config = Config()
 
@@ -25,3 +26,4 @@ TRANSACTION_START_TIME = '09:15:00'
 RESULT_SUCCESS = 'success'
 RESULT_FAIL = 'fail'
 
+CPU_CORE_NUMBER = psutil.cpu_count()
