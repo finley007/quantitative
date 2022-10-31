@@ -298,8 +298,10 @@ class FutureTickDataValidator(Validator):
         diff_details = []
         for dt in union_set:
             try:
-                compare_abstract = self.create_abstract(compare_data, dt, ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
-                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
+                # compare_abstract = self.create_abstract(compare_data, dt, ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
+                compare_abstract = self.create_abstract(compare_data, dt, ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume'])
+                # target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
+                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume'])
             except Exception as e:
                 diff_count = diff_count + 1
                 diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
@@ -313,8 +315,10 @@ class FutureTickDataValidator(Validator):
         for dt in to_be_corrected_target:
             try:
                 compare_abstract = self.create_abstract(compare_data, self.get_pair_tick_time(dt),
-                                                        ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
-                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
+                                                        # ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
+                                                        ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume'])
+                # target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
+                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume'])
             except Exception as e:
                 diff_count = diff_count + 1
                 diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
@@ -334,7 +338,7 @@ class FutureTickDataValidator(Validator):
         return True
 
     @classmethod
-    @delayed
+    # @delayed
     def create_abstract(cls, data, dt, column_list):
         value_list = data[data['datetime'] == dt][
             column_list].iloc[0].tolist()
@@ -402,12 +406,13 @@ class FutureTickDataValidator(Validator):
 
 if __name__ == '__main__':
     # 测试股指tick数据比较验证
-    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC/CFFEX.IC1701.csv')
-    target_data = FutureTickDataColumnTransform('IC', 'IC1701').process(target_data)
+    # target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC/CFFEX.IC1701.csv')
+    target_data = pd.read_csv('E:\\data\\original\\future\\tick\\IH\\CFFEX.IH2208.csv')
+    target_data = FutureTickDataColumnTransform('IC', 'IH2208').process(target_data)
     compare_data = pd.DataFrame(
-        pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IC1701.CCFX-ticks.pkl'))
+        pd.read_pickle('E:\\data\\compare\\future\\tick\\IH\\IH2208.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IC1701')
+    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IH2208')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/20170103/pkl/600220.pkl'
     # data = read_decompress(path)
