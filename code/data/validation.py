@@ -3,6 +3,7 @@
 import re
 from abc import ABCMeta, abstractmethod
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy
 import pandas as pd
@@ -296,25 +297,32 @@ class FutureTickDataValidator(Validator):
         same_count = 0
         diff_count = 0
         diff_details = []
-        for dt in union_set:
-            try:
-                compare_abstract = self.create_abstract(compare_data, dt, ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
-                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
-            except Exception as e:
-                diff_count = diff_count + 1
-                diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
-                continue
-            if compare_abstract == target_abstract:
-                same_count = same_count + 1
-            else:
-                diff_count = diff_count + 1
-                diff_details.append(dt + ':' + compare_abstract + ' <> ' + target_abstract)
+        # 39712
+        page = 200
+        index = 0
+        tasks = []
+        while index * page <= len(union_set):
+            start_index = index * page
+            end_index = (index + 1) * page if (index + 1) * page < len(union_set) else len(union_set)
+            index_ = union_set[start_index: end_index]
+            executor = ThreadPoolExecutor(max_workers=10)
+            task = executor.submit(self.do_compare, compare_data, index_, target_data)
+            tasks.append(task)
+            index = index + 1
+        for task in tasks:
+            print(task.result())
+            same_count = same_count + task.result()['same_count']
+            diff_count = diff_count + task.result()['diff_count']
+            if len(task.result()['diff_details']) > 0:
+                diff_details.extend(task.result()['diff_details'])
         # 处理比较数据的对齐问题
         for dt in to_be_corrected_target:
             try:
                 compare_abstract = self.create_abstract(compare_data, self.get_pair_tick_time(dt),
                                                         ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
-                target_abstract = self.create_abstract(target_data, dt, ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1', 'bid_volume1', 'volume']).compute()
+                target_abstract = self.create_abstract(target_data, dt,
+                                                       ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1',
+                                                        'bid_volume1', 'volume']).compute()
             except Exception as e:
                 diff_count = diff_count + 1
                 diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
@@ -332,6 +340,31 @@ class FutureTickDataValidator(Validator):
         compare_result.diff_details = diff_details
         compare_result.print()
         return True
+
+    @classmethod
+    def do_compare(cls, compare_data, index_, target_data):
+        diff_count = 0
+        same_count = 0
+        diff_details = []
+        for dt in index_:
+            try:
+                compare_abstract = cls.create_abstract(compare_data, dt,
+                                                       ['current', 'a1_p', 'b1_p', 'a1_v', 'b1_v', 'volume']).compute()
+                target_abstract = cls.create_abstract(target_data, dt,
+                                                      ['last_price', 'ask_price1', 'bid_price1', 'ask_volume1',
+                                                       'bid_volume1', 'volume']).compute()
+            except Exception as e:
+                diff_count = diff_count + 1
+                diff_details.append('Invalid data for {0} and error: {1}'.format(dt, e))
+                continue
+            if compare_abstract == target_abstract:
+                same_count = same_count + 1
+            else:
+                diff_count = diff_count + 1
+                diff_details.append(dt + ':' + compare_abstract + ' <> ' + target_abstract)
+        return {'diff_count': diff_count,
+                'same_count': same_count,
+                'diff_details': diff_details}
 
     @classmethod
     @delayed
