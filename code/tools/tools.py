@@ -189,5 +189,5 @@ if __name__ == '__main__':
     # compare_compress_file_by_date(month_folder_path, date)
 
     # 期指tick数据比较
-    compare_future_tick_data(['IC'], ['IF1701','IF1702','IF1703','IF1704','IF1705','IF1706','IF1707','IF1708','IF1709','IF1710','IF1711','IF1712','IF1801','IF1802','IF1803','IF1804','IF1805','IF1806','IF1807','IF1808','IF1809','IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1905','IF1910'])
+    compare_future_tick_data(['IC'], ['IF1701','IF1702','IF1703','IF1704','IF1705','IF1706','IF1707','IF1708','IF1709','IF1710','IF1711','IF1712','IF1801','IF1802','IF1803','IF1804','IF1805','IF1806','IF1807','IF1808','IF1809','IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1905','IF1910','IF1907','IF1908','IF1911','IF2001','IF2002'])
 
