@@ -4,6 +4,7 @@ import os
 import re
 import time
 
+from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, RESULT_FAIL
@@ -49,7 +50,8 @@ def filter_stock_data(year, month):
         stock_file_list = list_files_in_path(month_folder_path + '/' + date)
         for stock_file in stock_file_list:
             if os.path.getsize(month_folder_path + '/' + date + '/' + stock_file) > 0:
-                if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(stock_file) in stocks_300 or extract_tsccode(
+                if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(
+                        stock_file) in stocks_300 or extract_tsccode(
                         stock_file) in stocks_500:
                     print('Stock %s is in index' % extract_tsccode(stock_file))
                     data = pd.read_csv(month_folder_path + '/' + date + '/' + stock_file, encoding='gbk')
@@ -57,6 +59,7 @@ def filter_stock_data(year, month):
                 else:
                     print('Stock %s is not in index' % extract_tsccode(stock_file))
                 os.remove(month_folder_path + '/' + date + '/' + stock_file)
+
 
 @timing
 def compare_compress_file_by_date(month_folder_path, date):
@@ -76,7 +79,7 @@ def compare_compress_file_by_date(month_folder_path, date):
 
 
 @timing
-def compare_future_tick_data(exclude_product=[], exclude_instument=[]):
+def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_instrument=[]):
     """遍历比较股指tick数据质量：
     股指tick数据目录结构
     product
@@ -86,20 +89,27 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[]):
     exclude_product : list 排除的产品.
     exclude_instument : list 排除的合约.
     """
-    product_list = ['IC','IF','IH']
+    product_list = ['IC', 'IF', 'IH']
     runner = ProcessRunner(10)
-    for product in product_list:
-        if product in exclude_product:
-            continue
-        future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + '/')
-        future_file_list.sort()
-        for future_file in future_file_list:
-            if TICK_FILE_PREFIX in future_file:
-                instrument = future_file.split('.')[1]
-                if instrument in exclude_instument:
-                    continue
-                runner.execute(do_compare, args=(future_file, instrument, product))
+    if len(include_instrument) > 0:
+        for instrument in include_instrument:
+            product = instrument[0:2]
+            future_file = constants.TICK_FILE_PREFIX + '.' + instrument + '.csv'
+            runner.execute(do_compare, args=(future_file, instrument, product))
+    else:
+        for product in product_list:
+            if product in exclude_product:
+                continue
+            future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + os.path)
+            future_file_list.sort()
+            for future_file in future_file_list:
+                if TICK_FILE_PREFIX in future_file:
+                    instrument = future_file.split('.')[1]
+                    if instrument in exclude_instument:
+                        continue
+                    runner.execute(do_compare, args=(future_file, instrument, product))
     time.sleep(100000)
+
 
 def do_compare(future_file, instrument, product):
     target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
@@ -122,7 +132,7 @@ def validate_stock_tick_data(filter=[]):
     ----------
     exclude_instument : list 排除的合约.
     """
-    year_list = ['2017','2018','2019','2020','2021','2022']
+    year_list = ['2017', '2018', '2019', '2020', '2021', '2022']
     folder_prefix = 'stk_tick10_w_'
     runner = ProcessRunner(5)
     error_list = []
@@ -138,9 +148,9 @@ def validate_stock_tick_data(filter=[]):
                     data = read_decompress(build_path(root_path, month_folder, date_folder, stock_file))
                     data = StockTickDataColumnTransform().process(data)
                     if not StockTickDataValidator().validate(data):
-                        error = ValidationResult(RESULT_FAIL, [year + month_folder + date_folder + '-' + stock_file + ' validation failed'])
+                        error = ValidationResult(RESULT_FAIL, [
+                            year + month_folder + date_folder + '-' + stock_file + ' validation failed'])
                         error_list.append(error)
-
 
 
 def in_date_range(date, str_date_range):
@@ -189,5 +199,8 @@ if __name__ == '__main__':
     # compare_compress_file_by_date(month_folder_path, date)
 
     # 期指tick数据比较
-    compare_future_tick_data(['IC'], ['IF1701','IF1702','IF1703','IF1704','IF1705','IF1706','IF1707','IF1708','IF1709','IF1710','IF1711','IF1712','IF1801','IF1802','IF1803','IF1804','IF1805','IF1806','IF1807','IF1808','IF1809','IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1905','IF1910','IF1907','IF1908','IF1911','IF2001','IF2002'])
-
+    compare_future_tick_data(['IC'],
+                             ['IF1701', 'IF1702', 'IF1703', 'IF1704', 'IF1705', 'IF1706', 'IF1707', 'IF1708', 'IF1709',
+                              'IF1710', 'IF1711', 'IF1712', 'IF1801', 'IF1802', 'IF1803', 'IF1804', 'IF1805', 'IF1806',
+                              'IF1807', 'IF1808', 'IF1809', 'IF1810', 'IF1811', 'IF1812', 'IF1901', 'IF1902', 'IF1903',
+                              'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
