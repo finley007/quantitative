@@ -11,6 +11,8 @@ from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TIC
 from common.io import list_files_in_path, save_compress, read_decompress, build_path
 import pandas as pd
 
+from common.persistence import dbutils
+from common.persistence.po import StockValidationResult
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, \
     ValidationResult
@@ -109,6 +111,25 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
                         continue
                     runner.execute(do_compare, args=(future_file, instrument, product))
     time.sleep(100000)
+
+@time
+def validate_stock_tick_data(validate_code):
+    session = dbutils.create_session()
+    checked_list = session.execute('select date || tscode from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
+    checked_set = set(map(lambda item : item[0], checked_list))
+    date_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path)
+    for date in date_folder_list:
+        stock_file_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path + date + os.path)
+        for stock in stock_file_list:
+            if date + stock.split('.')[0] not in checked_set:
+                data = read_decompress(STOCK_TICK_DATA_PATH + os.path + date + os.path + stock)
+                validation_result = StockTickDataValidator().validate(data)
+                stock_validation_result = StockValidationResult(validate_code, validation_result)
+                session.add(stock_validation_result)
+                session.commit()
+            else:
+                print("{0} {1} has been handled".format(date, stock))
+
 
 
 def do_compare(future_file, instrument, product):

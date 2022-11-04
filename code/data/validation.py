@@ -36,6 +36,23 @@ class ValidationResult:
         else:
             raise InvalidStatus('Invalid validation status {0}'.format(self.result))
 
+class StockValidationResult(ValidationResult):
+
+    def __init__(self, result, error_details, tscode, date):
+        self.result = result
+        self.error_details = error_details
+        self.tscode = tscode
+        self.date = date
+
+    def __str__(self):
+        if self.result == RESULT_SUCCESS:
+            return 'The validation result for stock: {0} date: {1} is {2}'.format(self.tscode, self.date, RESULT_SUCCESS)
+        elif self.result == RESULT_FAIL:
+            return 'The validation result for stock: {0} date: {1} is {2} and error details: \n {3}'.format(self.tscode, self.date, RESULT_FAIL,
+                                                                                   '\n'.join(self.error_details))
+        else:
+            raise InvalidStatus('Invalid validation status {0} for stock: {1} date: {2}'.format(self.result, self.tscode, self.date))
+
 
 class CompareResult(ValidationResult):
     """比较结果类
@@ -186,23 +203,30 @@ class StockTickDataValidator(Validator):
     @classmethod
     def validate(self, data):
         """数据验证接口
-        1. 检查成交量是否递增
+        1. 检查tick是否完整
+        2. 检查成交量是否递增
         Parameters
         ----------
         data : DataFrame
             待处理数据.
 
         """
+        tscode = data.iloc[1]['tscode']
+        date = data.iloc[1]['date']
+        result = StockValidationResult(RESULT_SUCCESS, [], tscode, date)
+        if len(data) < 4800:
+            result.result = RESULT_FAIL
+            result.error_details.append('The data is incomplete and length: {0}'.format(str(len(data))))
         time_sorted_list = data.sort_values(by='time')['daily_accumulated_volume'].to_list()
         time_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), time_sorted_list))).encode('gbk')).hexdigest()
         volume_sorted_list = data.sort_values(by='daily_accumulated_volume')['daily_accumulated_volume'].to_list()
         volume_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), volume_sorted_list))).encode('gbk')).hexdigest()
-        if time_sorted_abstract == volume_sorted_abstract:
-            return True
-        else:
-            return False
+        if time_sorted_abstract != volume_sorted_abstract:
+            result.result = RESULT_FAIL
+            result.error_details.append('The volume has reverse order')
+        return result
 
     @classmethod
     def compare_validate(self, target_data, compare_data):
@@ -412,17 +436,17 @@ class FutureTickDataValidator(Validator):
 
 if __name__ == '__main__':
     # 测试股指tick数据比较验证
-    target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF1705.csv')
-    # target_data = pd.read_csv('E:\\data\\original\\future\\tick\\IH\\CFFEX.IH2208.csv')
-    target_data = FutureTickDataColumnTransform('IF', 'IF1705').process(target_data)
-    # compare_data = pd.DataFrame(pd.read_pickle('E:\\data\\compare\\future\\tick\\IH\\IH2208.CCFX-ticks.pkl'))
-    compare_data = pd.DataFrame(
-        pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF1705.CCFX-ticks.pkl'))
-    compare_data = FutureTickDataValidator().convert(target_data, compare_data)
-    FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
+    # target_data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF1705.csv')
+    # # target_data = pd.read_csv('E:\\data\\original\\future\\tick\\IH\\CFFEX.IH2208.csv')
+    # target_data = FutureTickDataColumnTransform('IF', 'IF1705').process(target_data)
+    # # compare_data = pd.DataFrame(pd.read_pickle('E:\\data\\compare\\future\\tick\\IH\\IH2208.CCFX-ticks.pkl'))
+    # compare_data = pd.DataFrame(
+    #     pd.read_pickle('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF1705.CCFX-ticks.pkl'))
+    # compare_data = FutureTickDataValidator().convert(target_data, compare_data)
+    # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
-    # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/20170103/pkl/600220.pkl'
-    # data = read_decompress(path)
-    # data = StockTickDataColumnTransform().process(data)
-    # print(StockTickDataValidator().validate(data))
+    path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/20170103/pkl/600220.pkl'
+    data = read_decompress(path)
+    data = StockTickDataColumnTransform().process(data)
+    print(StockTickDataValidator().validate(data))
 
