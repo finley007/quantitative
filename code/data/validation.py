@@ -211,8 +211,9 @@ class StockTickDataValidator(Validator):
             待处理数据.
 
         """
-        tscode = data.iloc[1]['tscode']
-        date = data.iloc[1]['date']
+        print(len(data))
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
         result = StockValidationResult(RESULT_SUCCESS, [], tscode, date)
         if len(data) < 4800:
             result.result = RESULT_FAIL

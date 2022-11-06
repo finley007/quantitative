@@ -1,2 +1,0 @@
-def dbutils():
-    return None

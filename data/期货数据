@@ -85,6 +85,15 @@ CFFEX.IC2212.open_interest - 未平仓合约
 282632                13859  
 282633                13859  
 这种情形会影响ret的计算，因为ret都是用shift按index等间距计算而不是按时间，因此会多计算几个因子。处理方法将14:59:59.5之后的数据去最新的一条作为15:00:00时刻的数据
+数据聚合算法：
+1. 以合约和天联合，对应数据库一条记录，用于控制断点续传
+2. 每天以9:15开始给一个start_time, end_time=start_time + 3s, 生成一个新列：current_price用下一条记录的last_price
+   o c h l都必须以成交为基础，所以应该先求volume的差值。下面分成三种情况：
+   a. 如果当前区间不包含任何记录，取上一个记录的current_price作为当前区间的o c h l
+   b. 如果当前区间包含一条记录，该记录和起始时刻对齐，取这唯一一条记录的current_price作为o c h l,如果没有和起始位置对齐，取当前的last_price作为o，当前的current_price作为c，h和l比较两者之间
+   c. 如果有多条记录o类似于b，c取最后一条的current_price，h，l比较得到
+   生成一个临时文件到temp
+3. 按合约拼装临时文件，如何处理交接的部分？生成ret
    
 
 问题：

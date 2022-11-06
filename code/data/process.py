@@ -6,6 +6,7 @@ import sys
 from abc import abstractmethod, ABCMeta
 from datetime import datetime, timedelta, time
 import pandas as pd
+from pandas import DataFrame
 
 from common import constants
 from common.aop import timing
@@ -219,8 +220,6 @@ class FutureTickDataEnricher(DataProcessor):
 
     @timing
     def process(self, data):
-
-        data = data.iloc[1:20]
         miss_data = pd.DataFrame(columns=data.columns.tolist())
         dt = data['datetime'].to_frame('str_datetime')  # 转成一个dataframe
         dt['datetime'] = dt.apply(lambda dt: datetime.strptime(dt['str_datetime'][0:21], "%Y-%m-%d %H:%M:%S.%f"), axis=1)
@@ -262,6 +261,45 @@ class FutureTickDataEnricher(DataProcessor):
             cur_time = cur_time + timedelta(hours=1.5)
         return datetime.strftime(next_time, "%Y-%m-%d %H:%M:%S.%f000")
 
+# class FutureTickDataProcessorPhase1(DataProcessor):
+#     """Tick处理，3秒为一个时间间隔对齐，生成临时文件
+#
+#     Parameters
+#     ----------
+#     data : DataFrame
+#         待处理数据.
+#     """
+#
+#     _columns = ['datetime', ]
+#
+#     @timing
+#     def process(self, data):
+#         miss_data = pd.DataFrame(columns=data.columns.tolist())
+#         dt = data['datetime'].to_frame('str_datetime')  # 转成一个dataframe
+#         dt['datetime'] = dt.apply(lambda dt: datetime.strptime(dt['str_datetime'][0:21], "%Y-%m-%d %H:%M:%S.%f"), axis=1)
+#         dt['date'] = dt.apply(lambda dt: dt['str_datetime'][0:10], axis=1)
+#         date_list = dt.drop_duplicates(subset = 'date')['date'].tolist()
+#         for date in date_list:
+#             print(date)
+#             temp_data = dt[dt['date'] == date]
+#             temp_data['delta_time'] = temp_data.shift(-1)['datetime'] - temp_data['datetime']
+#             temp_data['delta_time_sec'] = temp_data.apply(
+#                 lambda item: self.handle_off_time(item), axis=1)
+#             temp_data = temp_data[temp_data['delta_time_sec'] > constants.TICK_SAMPLE_INTERVAL]
+#             for index, row_data in temp_data.iterrows():
+#                 delta_time_sec = row_data[4]
+#                 print(delta_time_sec)
+#                 step = constants.TICK_SAMPLE_INTERVAL
+#                 item = data.loc[index]
+#                 str_cur_time = item['datetime']
+#                 while step < delta_time_sec:
+#                     item['datetime'] = self.time_advance(str_cur_time, step)
+#                     miss_data = miss_data.append(item)
+#                     step = step + constants.TICK_SAMPLE_INTERVAL
+#         data = data.append(miss_data)
+#         data = data.sort_values(by=['datetime'])
+#         data = data.reset_index(drop=True)
+#         return data
 
 class IndexAbstactExtractor(DataProcessor):
     """提取股指成分股摘要：
@@ -309,14 +347,19 @@ if __name__ == '__main__':
     product = 'IC'
     instrument = 'IC1701'
     content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + '/' + FutureTickerHandler().build(instrument))
-    content = content.
     content = FutureTickDataColumnTransform(product, instrument).process(content)
     content = DataCleaner().process(content)
     content['date'] = content['datetime'].apply(lambda item: item[0:10])
     print(len(content.drop_duplicates(subset='date')))
+    content = content[
+        content['datetime'].str.contains('2016-11-21') | content['datetime'].str.contains('2016-11-22') | content[
+            'datetime'].str.contains('2016-11-23')]
+    print(len(content))
+    content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701.csv')
     content = FutureTickDataEnricher().process(content)
     print(len(content))
-    save_compress(content, '/Users/finley/Projects/stock-index-future/data/temp')
+    content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
+
     # 股票tick数据测试
     # From CSV
     # tscode = 'sh688800'

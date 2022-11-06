@@ -110,6 +110,22 @@ BS标志        bs_flag
 
 问题：
 1. organised数据格式？
+2. 股票数据缺失 sh603868_20170111.csv
+2897
+# data['hour']=data['time'].str[0:2]
+# data['min']=data['time'].str[3:5]
+# print(data.groupby('hour')['time'].count())
+# print(data[(data['hour'] == '09') & (data['min'] == '31')])
+hour
+08      1
+09    474
+10    798
+11    361
+12      2
+13    576
+14    682
+15      3
+
 
 
 

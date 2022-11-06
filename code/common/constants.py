@@ -15,6 +15,7 @@ FUTURE_TICK_REPORT_DATA_PATH = config.get('common', 'data_path') + '/report/futu
 STOCK_TICK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/tick/'
 STOCK_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + '/temp/stock/tick/'
 TEMP_PATH = config.get('common', 'data_path') + '/temp/'
+CONFIG_PATH = config.get('common', 'data_path') + '/config/'
 
 DB_CONNECTION = config.get('common', 'db_connection')
 

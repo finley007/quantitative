@@ -4,18 +4,17 @@ import os
 import re
 import time
 
+import pandas as pd
+
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, RESULT_FAIL
-from common.io import list_files_in_path, save_compress, read_decompress, build_path
-import pandas as pd
-
-from common.persistence import dbutils
+    STOCK_TICK_DATA_PATH, CONFIG_PATH
+from common.io import list_files_in_path, save_compress, read_decompress
+from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
-from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, \
-    ValidationResult
+from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
 
@@ -33,13 +32,12 @@ def filter_stock_data(year, month):
     month : 月
 
     """
-    root_path = 'E:\\data\\original\\stock\\'
-    # root_path = 'D:\\'
+    root_path = STOCK_TICK_DATA_PATH
     file_prefix = 'stk_tick10_w_'
-    stocks_abstract_50 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\50_stocks_abstract.pkl')
-    stocks_abstract_300 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\300_stocks_abstract.pkl')
-    stocks_abstract_500 = pd.read_pickle('D:\\liuli\\workspace\\quantitative\\data\\config\\500_stocks_abstract.pkl')
-    month_folder_path = root_path + file_prefix + year + '/' + file_prefix + year + month
+    stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
+    stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
+    stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
+    month_folder_path = root_path + file_prefix + year + os.path.sep + file_prefix + year + month
     date_list = list_files_in_path(month_folder_path)
     date_list = sorted(date_list)
     for date in date_list:
@@ -49,18 +47,18 @@ def filter_stock_data(year, month):
         stocks_50 = get_index_stock_list(date, stocks_abstract_50)
         stocks_300 = get_index_stock_list(date, stocks_abstract_300)
         stocks_500 = get_index_stock_list(date, stocks_abstract_500)
-        stock_file_list = list_files_in_path(month_folder_path + '/' + date)
+        stock_file_list = list_files_in_path(month_folder_path + os.path.sep + date)
         for stock_file in stock_file_list:
-            if os.path.getsize(month_folder_path + '/' + date + '/' + stock_file) > 0:
+            if os.path.getsize(month_folder_path + os.path.sep + date + os.path.sep + stock_file) > 0:
                 if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(
                         stock_file) in stocks_300 or extract_tsccode(
                         stock_file) in stocks_500:
                     print('Stock %s is in index' % extract_tsccode(stock_file))
-                    data = pd.read_csv(month_folder_path + '/' + date + '/' + stock_file, encoding='gbk')
-                    save_compress(data, month_folder_path + '/' + date + '/' + extract_tsccode(stock_file) + '.pkl')
+                    data = pd.read_csv(month_folder_path + os.path.sep + date + os.path.sep + stock_file, encoding='gbk')
+                    save_compress(data, month_folder_path + os.path.sep + date + os.path.sep + extract_tsccode(stock_file) + '.pkl')
                 else:
                     print('Stock %s is not in index' % extract_tsccode(stock_file))
-                os.remove(month_folder_path + '/' + date + '/' + stock_file)
+                os.remove(month_folder_path + os.path.sep + date + os.path.sep + stock_file)
 
 
 @timing
@@ -112,23 +110,67 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
                     runner.execute(do_compare, args=(future_file, instrument, product))
     time.sleep(100000)
 
-@time
+# @time
 def validate_stock_tick_data(validate_code):
-    session = dbutils.create_session()
+    file_prefix = 'stk_tick10_w_'
+    session = create_session()
     checked_list = session.execute('select date || tscode from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
-    date_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path)
-    for date in date_folder_list:
-        stock_file_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path + date + os.path)
-        for stock in stock_file_list:
-            if date + stock.split('.')[0] not in checked_set:
-                data = read_decompress(STOCK_TICK_DATA_PATH + os.path + date + os.path + stock)
-                validation_result = StockTickDataValidator().validate(data)
-                stock_validation_result = StockValidationResult(validate_code, validation_result)
-                session.add(stock_validation_result)
-                session.commit()
-            else:
-                print("{0} {1} has been handled".format(date, stock))
+    year_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep)
+    for year_folder in year_folder_list:
+        if not re.search('[0-9]{4}', year_folder):
+            continue
+        month_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        for month_folder in month_folder_list:
+            if not re.search('[0-9]{6}', month_folder):
+                continue
+            date_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+            for date in date_folder_list:
+                if not re.search('[0-9]{8}', date):
+                    continue
+                stock_file_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+                for stock in stock_file_list:
+                    if date + stock.split('.')[0] not in checked_set:
+                        data = read_decompress(STOCK_TICK_DATA_PATH  + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
+                        print(date + ':' + stock)
+                        data = StockTickDataColumnTransform().process(data)
+                        validation_result = StockTickDataValidator().validate(data)
+                        stock_validation_result = StockValidationResult(validate_code, validation_result)
+                        session.add(stock_validation_result)
+                        session.commit()
+                    else:
+                        print("{0} {1} has been handled".format(date, stock))
+# @timing
+# def validate_stock_tick_data(filter=[]):
+#     """遍历验证股票tick数据质量：
+#     股票tick数据目录结构
+#     year
+#         - month
+#             - day
+#                 - stock
+#     Parameters
+#     ----------
+#     exclude_instument : list 排除的合约.
+#     """
+#     year_list = ['2017', '2018', '2019', '2020', '2021', '2022']
+#     folder_prefix = 'stk_tick10_w_'
+#     runner = ProcessRunner(5)
+#     error_list = []
+#     for year in year_list:
+#         root_path = STOCK_TICK_DATA_PATH + folder_prefix + year
+#         month_folder_list = list_files_in_path(build_path(root_path))
+#         month_folder_list.sort()
+#         for month_folder in month_folder_list:
+#             date_folder_list = list_files_in_path(build_path(root_path, month_folder))
+#             for date_folder in date_folder_list:
+#                 stock_file_list = list_files_in_path(build_path(root_path, month_folder, date_folder))
+#                 for stock_file in stock_file_list:
+#                     data = read_decompress(build_path(root_path, month_folder, date_folder, stock_file))
+#                     data = StockTickDataColumnTransform().process(data)
+#                     if not StockTickDataValidator().validate(data):
+#                         error = ValidationResult(RESULT_FAIL, [
+#                             year + month_folder + date_folder + '-' + stock_file + ' validation failed'])
+#                         error_list.append(error)
 
 
 
@@ -139,39 +181,6 @@ def do_compare(future_file, instrument, product):
         pd.read_pickle(FUTURE_TICK_COMPARE_DATA_PATH + product + '/' + instrument + '.CCFX-ticks.pkl'))
     compare_data = FutureTickDataValidator().convert(target_data, compare_data)
     FutureTickDataValidator().compare_validate(target_data, compare_data, instrument)
-
-
-@timing
-def validate_stock_tick_data(filter=[]):
-    """遍历验证股票tick数据质量：
-    股票tick数据目录结构
-    year
-        - month
-            - day
-                - stock
-    Parameters
-    ----------
-    exclude_instument : list 排除的合约.
-    """
-    year_list = ['2017', '2018', '2019', '2020', '2021', '2022']
-    folder_prefix = 'stk_tick10_w_'
-    runner = ProcessRunner(5)
-    error_list = []
-    for year in year_list:
-        root_path = STOCK_TICK_DATA_PATH + folder_prefix + year
-        month_folder_list = list_files_in_path(build_path(root_path))
-        month_folder_list.sort()
-        for month_folder in month_folder_list:
-            date_folder_list = list_files_in_path(build_path(root_path, month_folder))
-            for date_folder in date_folder_list:
-                stock_file_list = list_files_in_path(build_path(root_path, month_folder, date_folder))
-                for stock_file in stock_file_list:
-                    data = read_decompress(build_path(root_path, month_folder, date_folder, stock_file))
-                    data = StockTickDataColumnTransform().process(data)
-                    if not StockTickDataValidator().validate(data):
-                        error = ValidationResult(RESULT_FAIL, [
-                            year + month_folder + date_folder + '-' + stock_file + ' validation failed'])
-                        error_list.append(error)
 
 
 def in_date_range(date, str_date_range):
@@ -211,7 +220,7 @@ if __name__ == '__main__':
     # print(re.match('[0-9]{8}','20220102'))
 
     # 测试filter_stock_data函数
-    # for month in ['06']:
+    # for month in ['01']:
     #     filter_stock_data('2017', month)
 
     # 比较压缩数据
@@ -220,8 +229,11 @@ if __name__ == '__main__':
     # compare_compress_file_by_date(month_folder_path, date)
 
     # 期指tick数据比较
-    compare_future_tick_data(['IC'],
-                             ['IF1701', 'IF1702', 'IF1703', 'IF1704', 'IF1705', 'IF1706', 'IF1707', 'IF1708', 'IF1709',
-                              'IF1710', 'IF1711', 'IF1712', 'IF1801', 'IF1802', 'IF1803', 'IF1804', 'IF1805', 'IF1806',
-                              'IF1807', 'IF1808', 'IF1809', 'IF1810', 'IF1811', 'IF1812', 'IF1901', 'IF1902', 'IF1903',
-                              'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
+    # compare_future_tick_data(['IC'],
+    #                          ['IF1701', 'IF1702', 'IF1703', 'IF1704', 'IF1705', 'IF1706', 'IF1707', 'IF1708', 'IF1709',
+    #                           'IF1710', 'IF1711', 'IF1712', 'IF1801', 'IF1802', 'IF1803', 'IF1804', 'IF1805', 'IF1806',
+    #                           'IF1807', 'IF1808', 'IF1809', 'IF1810', 'IF1811', 'IF1812', 'IF1901', 'IF1902', 'IF1903',
+    #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
+
+    # 检查stock 数据
+    validate_stock_tick_data('20221104-finley')

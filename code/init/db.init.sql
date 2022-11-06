@@ -24,3 +24,15 @@ result  int comment '0-成功，1-失败',
 err_msg  VARCHAR(1024),
 PRIMARY KEY(id)
 );
+
+-- 期货数据处理结果表
+CREATE TABLE IF NOT EXISTS future_process_record
+(
+id VARCHAR(32),
+process_code VARCHAR(32),
+instrument  VARCHAR(10),
+date    VARCHAR(10),
+status  int comment '0-已生成，1-已归并',
+err_msg  VARCHAR(1024),
+PRIMARY KEY(id)
+);
