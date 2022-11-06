@@ -74,6 +74,8 @@ class StockTickDataCleaner(DataCleaner):
         super().process(data)
         data = data.drop(columns=self._ignore_columns)
         data = data.drop(data.index[data['time'] < constants.TRANSACTION_START_TIME])
+        # 去除000028.SZ               28  2017-01-05         0::.0    0.0       0
+        data = data.drop(data.index[data['time'] == '0::.0'])
         return data
 
 
