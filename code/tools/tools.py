@@ -13,7 +13,7 @@ from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TIC
 from common.io import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult
-from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
+from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
@@ -112,7 +112,7 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
 
 # @time
 def validate_stock_tick_data(validate_code):
-    file_prefix = 'stk_tick10_w_'
+    data_length_threshold = 100
     session = create_session()
     checked_list = session.execute('select date || tscode from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
@@ -134,12 +134,15 @@ def validate_stock_tick_data(validate_code):
                         data = read_decompress(STOCK_TICK_DATA_PATH  + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
                         print(date + ':' + stock)
                         data = StockTickDataColumnTransform().process(data)
-                        validation_result = StockTickDataValidator().validate(data)
-                        stock_validation_result = StockValidationResult(validate_code, validation_result)
-                        session.add(stock_validation_result)
-                        session.commit()
+                        data = StockTickDataCleaner().process(data)
+                        if len(data) > data_length_threshold:
+                            validation_result = StockTickDataValidator().validate(data)
+                            stock_validation_result = StockValidationResult(validate_code, validation_result)
+                            session.add(stock_validation_result)
+                            session.commit()
                     else:
                         print("{0} {1} has been handled".format(date, stock))
+
 # @timing
 # def validate_stock_tick_data(filter=[]):
 #     """遍历验证股票tick数据质量：
