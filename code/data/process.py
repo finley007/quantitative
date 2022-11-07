@@ -12,6 +12,7 @@ from common import constants
 from common.aop import timing
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.io import read_decompress, save_compress
+from common.timeutils import time_advance
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -241,7 +242,7 @@ class FutureTickDataEnricher(DataProcessor):
                 item = data.loc[index]
                 str_cur_time = item['datetime']
                 while step < delta_time_sec:
-                    item['datetime'] = self.time_advance(str_cur_time, step)
+                    item['datetime'] = time_advance(str_cur_time, step)
                     miss_data = miss_data.append(item)
                     step = step + constants.TICK_SAMPLE_INTERVAL
         data = data.append(miss_data)
@@ -256,52 +257,56 @@ class FutureTickDataEnricher(DataProcessor):
         else:
             return seconds
 
-    def time_advance(self, str_cur_time, step):
-        cur_time = datetime.strptime(str_cur_time[0:21], "%Y-%m-%d %H:%M:%S.%f")
-        next_time = cur_time + timedelta(seconds=step)
-        if next_time.time() > time.fromisoformat(OFF_TIME_IN_MORNING):  # 处理中午停盘的时间
-            cur_time = cur_time + timedelta(hours=1.5)
-        return datetime.strftime(next_time, "%Y-%m-%d %H:%M:%S.%f000")
 
-# class FutureTickDataProcessorPhase1(DataProcessor):
-#     """Tick处理，3秒为一个时间间隔对齐，生成临时文件
-#
-#     Parameters
-#     ----------
-#     data : DataFrame
-#         待处理数据.
-#     """
-#
-#     _columns = ['datetime', ]
-#
-#     @timing
-#     def process(self, data):
-#         miss_data = pd.DataFrame(columns=data.columns.tolist())
-#         dt = data['datetime'].to_frame('str_datetime')  # 转成一个dataframe
-#         dt['datetime'] = dt.apply(lambda dt: datetime.strptime(dt['str_datetime'][0:21], "%Y-%m-%d %H:%M:%S.%f"), axis=1)
-#         dt['date'] = dt.apply(lambda dt: dt['str_datetime'][0:10], axis=1)
-#         date_list = dt.drop_duplicates(subset = 'date')['date'].tolist()
-#         for date in date_list:
-#             print(date)
-#             temp_data = dt[dt['date'] == date]
-#             temp_data['delta_time'] = temp_data.shift(-1)['datetime'] - temp_data['datetime']
-#             temp_data['delta_time_sec'] = temp_data.apply(
-#                 lambda item: self.handle_off_time(item), axis=1)
-#             temp_data = temp_data[temp_data['delta_time_sec'] > constants.TICK_SAMPLE_INTERVAL]
-#             for index, row_data in temp_data.iterrows():
-#                 delta_time_sec = row_data[4]
-#                 print(delta_time_sec)
-#                 step = constants.TICK_SAMPLE_INTERVAL
-#                 item = data.loc[index]
-#                 str_cur_time = item['datetime']
-#                 while step < delta_time_sec:
-#                     item['datetime'] = self.time_advance(str_cur_time, step)
-#                     miss_data = miss_data.append(item)
-#                     step = step + constants.TICK_SAMPLE_INTERVAL
-#         data = data.append(miss_data)
-#         data = data.sort_values(by=['datetime'])
-#         data = data.reset_index(drop=True)
-#         return data
+class FutureTickDataProcessorPhase1(DataProcessor):
+    """Tick处理，3秒为一个时间间隔对齐，生成临时文件
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+    """
+
+    _columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest']
+
+    @timing
+    def process(self, data):
+        print(data)
+        date = data.iloc[1]['date']
+        data['delta_volume'] = data['volume'] - data['volume'].shift(1)
+        data['cur_price'] = data['last_price'].shift(-1)
+        data = data[data['delta_volume'] > 0]
+        cur_time = date + ' 09:30:00.000000000'
+        end_time = date + ' 15:00:00.000000000'
+        organized_data = pd.DataFrame(columns=self._columns)
+        while cur_time < end_time:
+            next_time = time_advance(cur_time, 60)
+            temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] <= next_time)]
+            if len(temp_data) == 0:
+                last_record = organized_data.iloc[-1]
+                last_record['datetime'] = next_time
+            else:
+                min_index = temp_data.index.min()
+                max_index = temp_data.index.max()
+                open = temp_data.loc[min_index]['cur_price']
+                close = temp_data.loc[max_index]['cur_price']
+                high = temp_data['cur_price'].max()
+                low = temp_data['cur_price'].min()
+                volume = temp_data['delta_volume'].sum()
+                last_record = pd.Series({'datetime': next_time,
+                                         'open': open,
+                                         'close': close,
+                                         'high': high,
+                                         'low': low,
+                                         'volume': volume})
+            if len(organized_data) == 0:
+                cur_index = 1
+            else:
+                cur_index = organized_data.index.max() + 1
+            delta_data = pd.DataFrame([last_record], [cur_index])
+            organized_data = pd.concat([organized_data, delta_data])
+            cur_time = next_time
+        return organized_data
 
 class IndexAbstactExtractor(DataProcessor):
     """提取股指成分股摘要：
@@ -346,21 +351,34 @@ class IndexAbstactExtractor(DataProcessor):
 
 if __name__ == '__main__':
     # 期货tick数据测试
-    product = 'IC'
-    instrument = 'IC1701'
-    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + '/' + FutureTickerHandler().build(instrument))
+    # product = 'IC'
+    # instrument = 'IC1701'
+    # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + '/' + FutureTickerHandler().build(instrument))
+    # content = FutureTickDataColumnTransform(product, instrument).process(content)
+    # content = DataCleaner().process(content)
+    # content['date'] = content['datetime'].apply(lambda item: item[0:10])
+    # print(len(content.drop_duplicates(subset='date')))
+    # content = content[
+    #     content['datetime'].str.contains('2016-11-21') | content['datetime'].str.contains('2016-11-22') | content[
+    #         'datetime'].str.contains('2016-11-23')]
+    # print(len(content))
+    # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701.csv')
+    # content = FutureTickDataEnricher().process(content)
+    # print(len(content))
+    # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
+
+    # 期货tick处理测试
+    product = 'IF'
+    instrument = 'IF2209'
+    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
     content = FutureTickDataColumnTransform(product, instrument).process(content)
     content = DataCleaner().process(content)
-    content['date'] = content['datetime'].apply(lambda item: item[0:10])
-    print(len(content.drop_duplicates(subset='date')))
-    content = content[
-        content['datetime'].str.contains('2016-11-21') | content['datetime'].str.contains('2016-11-22') | content[
-            'datetime'].str.contains('2016-11-23')]
-    print(len(content))
-    content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701.csv')
-    content = FutureTickDataEnricher().process(content)
-    print(len(content))
-    content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
+    content['date'] = content['datetime'].str[0:10]
+    date_list = sorted(list(set(content['date'].tolist())))
+    print(date_list[0])
+    data = content[content['date'] == date_list[0]]
+    print(FutureTickDataProcessorPhase1().process(data).iloc[40:60][['datetime','open','close','high','low','volume']])
+
 
     # 股票tick数据测试
     # From CSV

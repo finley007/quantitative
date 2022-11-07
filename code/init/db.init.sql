@@ -16,8 +16,8 @@ PRIMARY KEY(varchar_column)
 -- 股票数据检查结果表
 CREATE TABLE IF NOT EXISTS stock_validation_result
 (
-id VARCHAR(32),
-validation_code VARCHAR(32),
+id VARCHAR(40),
+validation_code VARCHAR(40),
 tscode  VARCHAR(10),
 date    VARCHAR(10),
 result  int comment '0-成功，1-失败',
@@ -28,8 +28,8 @@ PRIMARY KEY(id)
 -- 期货数据处理结果表
 CREATE TABLE IF NOT EXISTS future_process_record
 (
-id VARCHAR(32),
-process_code VARCHAR(32),
+id VARCHAR(40),
+process_code VARCHAR(40),
 instrument  VARCHAR(10),
 date    VARCHAR(10),
 status  int comment '0-已生成，1-已归并',

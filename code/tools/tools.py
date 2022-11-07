@@ -111,14 +111,17 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
     time.sleep(100000)
 
 # @time
-def validate_stock_tick_data(validate_code):
+def validate_stock_tick_data(validate_code, include_year_list=[]):
     data_length_threshold = 100
     session = create_session()
     checked_list = session.execute('select date || tscode from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
     year_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep)
     for year_folder in year_folder_list:
-        if not re.search('[0-9]{4}', year_folder):
+        years = re.search('[0-9]{4}', year_folder)
+        if not years:
+            continue
+        elif len(include_year_list) > 0 and years.group() not in include_year_list:
             continue
         month_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep)
         for month_folder in month_folder_list:
@@ -239,4 +242,4 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock 数据
-    validate_stock_tick_data('20221104-finley')
+    validate_stock_tick_data('20221107-finley',['2022'])
