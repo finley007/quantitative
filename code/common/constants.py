@@ -9,7 +9,7 @@ config = Config()
 
 DATA_PATH = config.get('common', 'data_path')
 FUTURE_TICK_DATA_PATH = config.get('common', 'data_path') + 'original' + os.path.sep + 'future' + os.path.sep + 'tick' + os.path.sep
-FUTURE_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + '/temp/future/tick/'
+FUTURE_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + 'temp' + os.path.sep + 'future' + os.path.sep + 'tick' + os.path.sep
 FUTURE_TICK_COMPARE_DATA_PATH = config.get('common', 'data_path') + '/compare/future/tick/'
 FUTURE_TICK_REPORT_DATA_PATH = config.get('common', 'data_path') + '/report/future/tick/'
 STOCK_TICK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/tick/'
