@@ -271,9 +271,8 @@ class FutureTickDataProcessorPhase1(DataProcessor):
 
     @timing
     def process(self, data):
-        print(data)
         date = data.iloc[1]['date']
-        data['delta_volume'] = data['volume'] - data['volume'].shift(1)
+        data['delta_volume'] = data['volume'].shift(-1) - data['volume']
         data['cur_price'] = data['last_price'].shift(-1)
         data = data[data['delta_volume'] > 0]
         cur_time = date + ' 09:30:00.000000000'
@@ -293,12 +292,14 @@ class FutureTickDataProcessorPhase1(DataProcessor):
                 high = temp_data['cur_price'].max()
                 low = temp_data['cur_price'].min()
                 volume = temp_data['delta_volume'].sum()
+                interest = temp_data.loc[max_index]['open_interest']
                 last_record = pd.Series({'datetime': next_time,
                                          'open': open,
                                          'close': close,
                                          'high': high,
                                          'low': low,
-                                         'volume': volume})
+                                         'volume': volume,
+                                         'interest': interest})
             if len(organized_data) == 0:
                 cur_index = 1
             else:
@@ -377,7 +378,7 @@ if __name__ == '__main__':
     date_list = sorted(list(set(content['date'].tolist())))
     print(date_list[0])
     data = content[content['date'] == date_list[0]]
-    print(FutureTickDataProcessorPhase1().process(data).iloc[40:60][['datetime','open','close','high','low','volume']])
+    print(FutureTickDataProcessorPhase1().process(data).iloc[0:30][['datetime','open','close','high','low','volume','interest']])
 
 
     # 股票tick数据测试
