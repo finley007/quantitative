@@ -59,6 +59,8 @@ class StockTickDataCleaner(DataCleaner):
     """股票数据清洗：
     删除不需要的列
     删除9：15之前的数据
+    删除非法数据：
+    000028.SZ               28  2017-01-05         0::.0    0.0       0
 
     Parameters
     ----------
@@ -281,9 +283,11 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         while cur_time < end_time:
             next_time = time_advance(cur_time, 60)
             temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] <= next_time)]
+            last_record = None
             if len(temp_data) == 0:
-                last_record = organized_data.iloc[-1]
-                last_record['datetime'] = next_time
+                if len(organized_data) > 0:
+                    last_record = organized_data.iloc[-1]
+                    last_record['datetime'] = next_time
             else:
                 min_index = temp_data.index.min()
                 max_index = temp_data.index.max()
@@ -300,12 +304,13 @@ class FutureTickDataProcessorPhase1(DataProcessor):
                                          'low': low,
                                          'volume': volume,
                                          'interest': interest})
-            if len(organized_data) == 0:
-                cur_index = 1
-            else:
-                cur_index = organized_data.index.max() + 1
-            delta_data = pd.DataFrame([last_record], [cur_index])
-            organized_data = pd.concat([organized_data, delta_data])
+            if last_record is not None:
+                if len(organized_data) == 0:
+                    cur_index = 1
+                else:
+                    cur_index = organized_data.index.max() + 1
+                delta_data = pd.DataFrame([last_record], [cur_index])
+                organized_data = pd.concat([organized_data, delta_data])
             cur_time = next_time
         return organized_data
 
