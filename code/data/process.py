@@ -12,7 +12,7 @@ from common import constants
 from common.aop import timing
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.io import read_decompress, save_compress
-from common.timeutils import time_advance
+from common.timeutils import time_advance, date_alignment
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,9 +76,13 @@ class StockTickDataCleaner(DataCleaner):
     def process(self, data):
         super().process(data)
         data = data.drop(columns=self._ignore_columns)
-        data = data.drop(data.index[data['time'] < constants.TRANSACTION_START_TIME])
+        data = data.drop(data.index[data['time'] < constants.STOCK_TRANSACTION_START_TIME])
+        data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME])
         # 去除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
+        # 去除股票的重复成交量为0的数据
+        data['count'] = data.groupby(['time'])['time'].transform('count')
+        data = data.drop(data.index[(data['count'] > 1) & (data['volume'] == 0)])
         return data
 
 
@@ -274,15 +278,28 @@ class FutureTickDataProcessorPhase1(DataProcessor):
     @timing
     def process(self, data):
         date = data.iloc[1]['date']
-        data['delta_volume'] = data['volume'].shift(-1) - data['volume']
-        data['cur_price'] = data['last_price'].shift(-1)
+        data['datetime'] = data.apply(lambda item: date_alignment(str(item['datetime'])), axis=1)
+        data['delta_volume'] = data['volume'] - data['volume'].shift(1)
+        first_index = data.head(1).index.tolist()[0]
+        data.loc[first_index, 'delta_volume'] = data.loc[
+            first_index, 'volume']  # 这里要处理边界情况，主要是第一个值的delta_volume为空
+        # print(data[['datetime','volume','delta_volume']])
+        # data['cur_price'] = data['last_price'].shift(-1)
+        data['cur_price'] = data['last_price']
         data = data[data['delta_volume'] > 0]
-        cur_time = date + ' 09:30:00.000000000'
+        cur_time = date + ' 09:29:00.000000000' #股指期货包含集合竞价
         end_time = date + ' 15:00:00.000000000'
+        is_open = True
         organized_data = pd.DataFrame(columns=self._columns)
         while cur_time < end_time:
-            next_time = time_advance(cur_time, 60)
-            temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] <= next_time)]
+            if is_open:
+                next_time = time_advance(cur_time, 120)
+                is_open = False
+            else:
+                next_time = time_advance(cur_time, 60)
+            temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] < next_time)]
+            print(temp_data)
+            print(temp_data['delta_volume'].tolist())
             last_record = None
             if len(temp_data) == 0:
                 if len(organized_data) > 0:
@@ -368,7 +385,7 @@ if __name__ == '__main__':
     #     content['datetime'].str.contains('2016-11-21') | content['datetime'].str.contains('2016-11-22') | content[
     #         'datetime'].str.contains('2016-11-23')]
     # print(len(content))
-    # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701.csv')
+    # # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701.csv')
     # content = FutureTickDataEnricher().process(content)
     # print(len(content))
     # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
@@ -381,16 +398,18 @@ if __name__ == '__main__':
     content = DataCleaner().process(content)
     content['date'] = content['datetime'].str[0:10]
     date_list = sorted(list(set(content['date'].tolist())))
-    print(date_list[0])
-    data = content[content['date'] == date_list[0]]
-    print(FutureTickDataProcessorPhase1().process(data).iloc[0:30][['datetime','open','close','high','low','volume','interest']])
+    date = '2022-09-09'
+    # date = date_list[0]
+    print(date)
+    data = content[content['date'] == date]
+    print(FutureTickDataProcessorPhase1().process(data).iloc[110:140][['datetime','open','close','high','low','volume','interest']])
 
 
     # 股票tick数据测试
     # From CSV
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
-    # From pkl
+    # # From pkl
     # content = read_decompress('E:\\data\\000001.pkl')
     # content = StockTickDataColumnTransform().process(content)
     # content = StockTickDataCleaner().process(content)

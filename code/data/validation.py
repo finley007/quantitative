@@ -11,7 +11,8 @@ from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.io import FileWriter, read_decompress
-from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform
+from common.timeutils import date_alignment
+from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner
 
 
 class ValidationResult:
@@ -396,12 +397,12 @@ class FutureTickDataValidator(Validator):
             对比数据.
         """
         compare_data['datetime'] = compare_data.apply(lambda item: self.date_format(str(item['time'])), axis=1)
-        target_data['datetime'] = target_data.apply(lambda item: self.date_alignment(str(item['datetime'])), axis=1)
+        target_data['datetime'] = target_data.apply(lambda item: date_alignment(str(item['datetime'])), axis=1)
         return compare_data
 
     def date_format(self, date):
         # 20170103092900.0 -> 2017-01-03 09:29:00.000000000
-        return self.date_alignment(date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
+        return date_alignment(date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' \
                                    + date[8:10] + ':' + date[10:12] + ':' + date[12:16] + '00000000')
 
     def format(num=0):
@@ -427,13 +428,6 @@ class FutureTickDataValidator(Validator):
         else:
             return datetime
 
-    def date_alignment(self, date):
-        # 分秒对齐
-        subsec = 0
-        if int(date.split('.')[1][0]) > 4:
-            subsec = 5
-        return date.split('.')[0] + '.' + str(subsec) + '00000000'
-
 
 if __name__ == '__main__':
     # 测试股指tick数据比较验证
@@ -446,8 +440,10 @@ if __name__ == '__main__':
     # compare_data = FutureTickDataValidator().convert(target_data, compare_data)
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
-    path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/20170103/pkl/600220.pkl'
+    # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2022/stk_tick10_w_202204/20220418/pkl/601828.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202202\\20220207\\688006.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
+    data = StockTickDataCleaner().process(data)
     print(StockTickDataValidator().validate(data))
 

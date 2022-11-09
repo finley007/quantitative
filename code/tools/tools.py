@@ -148,7 +148,7 @@ def validate_stock_tick_data(validate_code, include_year_list=[]):
                         print("{0} {1} has been handled".format(date, stock))
 
 @timing
-def create_k_line_for_future_tick(process_code):
+def create_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
     """遍历股指文件生成k线文件到临时目录
     临时文件目录
     instrument
@@ -163,6 +163,8 @@ def create_k_line_for_future_tick(process_code):
                                    {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
     for product in products:
+        if len(include_product) > 0 and product not in include_product:
+            continue
         product_path = FUTURE_TICK_DATA_PATH + product
         instrument_list = list_files_in_path(product_path)
         instrument_list.sort()
@@ -170,6 +172,8 @@ def create_k_line_for_future_tick(process_code):
             if not re.search('[0-9]{4}', instrument_file):
                 continue
             instrument = instrument_file.split('.')[1]
+            if len(include_instrument) > 0 and instrument not in include_instrument:
+                continue
             data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
             data = FutureTickDataColumnTransform(product, instrument).process(data)
             data = DataCleaner().process(data)
@@ -180,10 +184,12 @@ def create_k_line_for_future_tick(process_code):
                     continue
                 date_data = data[data['date'] == date]
                 k_line_data = FutureTickDataProcessorPhase1().process(date_data)
+                print(k_line_data)
                 if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
                     os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
-                save_compress(k_line_data, FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
-                future_process_record = FutrueProcessRecord(process_code, instrument, date, 0)
+                date_replace = date.replace('-', '')
+                save_compress(k_line_data, FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date_replace + '.pkl')
+                future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
                 session.add(future_process_record)
                 session.commit()
 
@@ -250,7 +256,7 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock 数据
-    # validate_stock_tick_data('20221107-finley',['2022'])
+    validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成股指k线
-    create_k_line_for_future_tick('20221108-finley')
+    # create_k_line_for_future_tick('20221109-finley', ['IF'], ['IF2209'])
