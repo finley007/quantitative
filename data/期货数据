@@ -30,6 +30,8 @@ CFFEX.IC2212.open_interest - 未平仓合约
 2. 数据对齐: FutureTickDataEnricher
 3. 数据填充: FutureTickDataEnricher 
 4. 收盘冗余数据处理
+5. 合并k线，这一步替代了2，3，4步
+6. 拼装成合约文件并计算ret，每天收盘前的ret用收盘价计算，不跨天 ret: 1, 2, 5, 10, 20, 30
 
 
 算法：

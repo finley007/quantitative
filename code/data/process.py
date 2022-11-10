@@ -7,6 +7,7 @@ from abc import abstractmethod, ABCMeta
 from datetime import datetime, timedelta, time
 import pandas as pd
 from pandas import DataFrame
+import numpy as np
 
 from common import constants
 from common.aop import timing
@@ -293,10 +294,10 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         organized_data = pd.DataFrame(columns=self._columns)
         while cur_time < end_time:
             if is_open:
-                next_time = time_advance(cur_time, 120)
+                next_time = time_advance(cur_time, 63)
                 is_open = False
             else:
-                next_time = time_advance(cur_time, 60)
+                next_time = time_advance(cur_time, 3)
             temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] < next_time)]
             print(temp_data)
             print(temp_data['delta_volume'].tolist())
@@ -330,6 +331,28 @@ class FutureTickDataProcessorPhase1(DataProcessor):
                 organized_data = pd.concat([organized_data, delta_data])
             cur_time = next_time
         return organized_data
+
+
+class FutureTickDataProcessorPhase2(DataProcessor):
+    """计算ret 1, 2, 5, 10, 20, 30
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+    """
+
+    #收益计算周期
+    _ret_period = [1, 2, 5, 10, 20, 30]
+
+    @timing
+    def process(self, data):
+        for period in self._ret_period:
+            data['ret.' + str(period)] = (data['close'].shift(-period) - data['close'])/data['close']
+        closing_price = data.iloc[-1]['close']
+        for period in self._ret_period:
+            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'])/data['close']
+        return data
 
 class IndexAbstactExtractor(DataProcessor):
     """提取股指成分股摘要：
@@ -391,19 +414,24 @@ if __name__ == '__main__':
     # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
 
     # 期货tick处理测试
+    # product = 'IF'
+    # instrument = 'IF2209'
+    # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
+    # content = FutureTickDataColumnTransform(product, instrument).process(content)
+    # content = DataCleaner().process(content)
+    # content['date'] = content['datetime'].str[0:10]
+    # date_list = sorted(list(set(content['date'].tolist())))
+    # date = '2022-09-09'
+    # # date = date_list[0]
+    # print(date)
+    # data = content[content['date'] == date]
+    # print(FutureTickDataProcessorPhase1().process(data).iloc[110:140][['datetime','open','close','high','low','volume','interest']])
+
+    # 期货tick处理phase2测试
     product = 'IF'
     instrument = 'IF2209'
-    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
-    content = FutureTickDataColumnTransform(product, instrument).process(content)
-    content = DataCleaner().process(content)
-    content['date'] = content['datetime'].str[0:10]
-    date_list = sorted(list(set(content['date'].tolist())))
-    date = '2022-09-09'
-    # date = date_list[0]
-    print(date)
-    data = content[content['date'] == date]
-    print(FutureTickDataProcessorPhase1().process(data).iloc[110:140][['datetime','open','close','high','low','volume','interest']])
-
+    content = read_decompress(constants.FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + '20220124.pkl')
+    print(FutureTickDataProcessorPhase2().process(content)[['close','ret.30']])
 
     # 股票tick数据测试
     # From CSV

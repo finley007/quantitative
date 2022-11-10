@@ -9,12 +9,12 @@ import pandas as pd
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH
 from common.io import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
-    FutureTickDataProcessorPhase1
+    FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
@@ -152,16 +152,18 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
     """遍历股指文件生成k线文件到临时目录
     临时文件目录
     instrument
-        instrument-date
+        date
     Parameters
     ----------
-    exclude_instument : list 排除的合约.
+    include_product : list 包含的产品.
+    include_instrument : list 包含的合约.
     """
     products = ['IC', 'IF', 'IH']
     session = create_session()
-    checked_list = session.execute('select instrument || date from future_process_record where process_code = :pcode',
+    checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode',
                                    {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
+    runner = ProcessRunner(10)
     for product in products:
         if len(include_product) > 0 and product not in include_product:
             continue
@@ -174,24 +176,80 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
             instrument = instrument_file.split('.')[1]
             if len(include_instrument) > 0 and instrument not in include_instrument:
                 continue
-            data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
-            data = FutureTickDataColumnTransform(product, instrument).process(data)
-            data = DataCleaner().process(data)
-            data['date'] = data['datetime'].str[0:10]
-            date_list = sorted(list(set(data['date'].tolist())))
-            for date in date_list:
+            runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
+    time.sleep(100000)
+
+@timing
+def conbine_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
+    """遍历k线临时文件，将文件按合约合并生成到organized目录
+    organized文件目录
+    product
+        instrument
+    Parameters
+    ----------
+    include_product : list 包含的产品
+    include_instrument : list 包含的合约
+    """
+    columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10', 'ret.20', 'ret.30']
+
+    products = ['IC', 'IF', 'IH']
+    session = create_session()
+    checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
+                                   {'pcode': process_code})
+    checked_set = set(map(lambda item: item[0], checked_list))
+    for product in products:
+        if len(include_product) > 0 and product not in include_product:
+            continue
+        instrument_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product)
+        instrument_list.sort()
+        for instrument in instrument_list:
+            if not re.search('[0-9]{4}', instrument):
+                continue
+            if len(include_instrument) > 0 and instrument not in include_instrument:
+                continue
+            if not os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product):
+                os.makedirs(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
+            data = pd.DataFrame(columns=columns)
+            if os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl'):
+                data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+            file_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
+            file_list.sort()
+            for file in file_list:
+                date = file[0: 8]
                 if instrument + date in checked_set:
-                    continue
-                date_data = data[data['date'] == date]
-                k_line_data = FutureTickDataProcessorPhase1().process(date_data)
-                print(k_line_data)
-                if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
-                    os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
-                date_replace = date.replace('-', '')
-                save_compress(k_line_data, FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date_replace + '.pkl')
-                future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
-                session.add(future_process_record)
-                session.commit()
+                    date_file = read_decompress(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
+                    date_file = FutureTickDataProcessorPhase2().process(date_file) #计算收益
+                    data = pd.concat([data, date_file])
+                    session.execute('update future_process_record set status = 1 where process_code = :pcode and instrument = :instrument and date = :date and status = 0',
+                                    {'pcode': process_code, 'instrument': instrument, 'date': date})
+                    session.commit()
+            data = data.reset_index()
+            save_compress(data, FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+
+def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
+    session = create_session()
+    print('AA')
+    instrument = instrument_file.split('.')[1]
+    print('Create k-line for {0} and {1}'.format(product, instrument))
+    data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
+    data = FutureTickDataColumnTransform(product, instrument).process(data)
+    data = DataCleaner().process(data)
+    data['date'] = data['datetime'].str[0:10]
+    date_list = sorted(list(set(data['date'].tolist())))
+    for date in date_list:
+        if instrument + date in checked_set:
+            continue
+        date_data = data[data['date'] == date]
+        k_line_data = FutureTickDataProcessorPhase1().process(date_data)
+        print(k_line_data)
+        if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
+            os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
+        date_replace = date.replace('-', '')
+        save_compress(k_line_data,
+                      FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date_replace + '.pkl')
+        future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
+        session.add(future_process_record)
+        session.commit()
 
 
 def do_compare(future_file, instrument, product):
@@ -256,7 +314,10 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock 数据
-    validate_stock_tick_data('20221109-finley',['2022'])
+    # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成股指k线
-    # create_k_line_for_future_tick('20221109-finley', ['IF'], ['IF2209'])
+    # create_k_line_for_future_tick('20221109-finley-1')
+
+    # 拼接股指k线
+    conbine_k_line_for_future_tick('20221109-finley-1', ['IF'], ['IF1701'])
