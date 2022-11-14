@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
-from abc import ABCMeta, abstractclassmethod, abstractmethod
+from abc import ABCMeta, abstractmethod
 
 from scipy.stats import pearsonr
 
@@ -27,10 +27,9 @@ class Factor(metaclass=ABCMeta):
         data = self.caculate(data)
         data = factor.caculate(data)
         data = data.dropna()
-        return pearsonr(data[self.get_factor_code()], data[factor.get_factor_code()])
+        return pearsonr(data[self.factor_code], data[factor.factor_code])
 
     # 全局计算因子值
     @abstractmethod
-    @classmethod
     def caculate(self, data):
         pass

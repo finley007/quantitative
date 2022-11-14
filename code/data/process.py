@@ -11,9 +11,9 @@ import numpy as np
 
 from common import constants
 from common.aop import timing
-from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
+from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME
 from common.io import read_decompress, save_compress
-from common.timeutils import time_advance, date_alignment
+from common.timeutils import time_advance, date_alignment, time_carry
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,8 +77,8 @@ class StockTickDataCleaner(DataCleaner):
     def process(self, data):
         super().process(data)
         data = data.drop(columns=self._ignore_columns)
-        data = data.drop(data.index[data['time'] < constants.STOCK_TRANSACTION_START_TIME])
-        data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME])
+        data = data.drop(data.index[data['time'] <= constants.STOCK_START_TIME])
+        data = data.drop(data.index[data['time'] >= constants.STOCK_TRANSACTION_END_TIME])
         # 去除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
         # 去除股票的重复成交量为0的数据
@@ -181,6 +181,76 @@ class StockTickDataColumnTransform(DataProcessor):
         data.columns = self._columns
         return data
 
+class StockTickDataEnricher(DataProcessor):
+    """股票Tick填充：先对齐后插值
+    对齐：从9点30开始
+    插值：基于对齐结果
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+    @timing
+    def process(self, data):
+        pre_data = data[data['time'] < STOCK_TRANSACTION_START_TIME]
+
+        #对齐
+        data = data[data['time'] >= STOCK_TRANSACTION_START_TIME]
+        to_be_removed_index = []
+        for index, row_data in data.iterrows():
+            cur_time = datetime.strptime(row_data['time'], '%H:%M:%S.%f')
+            if cur_time.second % 3 == 0:
+                continue
+            else:
+                new_hour, new_minute, new_second = time_carry(cur_time.hour, cur_time.minute, (int((cur_time.second + 3) / 3)) * 3)
+                new_time = datetime(year=cur_time.year, month=cur_time.month, day=cur_time.day, hour=new_hour, minute=new_minute, second=new_second)
+                if len(data[data['time'] == datetime.strftime(new_time, '%H:%M:%S') + '.000']) == 0:
+                    data['time'][index] = datetime.strftime(new_time, '%H:%M:%S') + '.000'
+                else:
+                    to_be_removed_index.append(index)
+            if len(to_be_removed_index) > 0:
+                data.drop(to_be_removed_index)
+
+        #插值
+        miss_data = pd.DataFrame(columns=data.columns.tolist())
+        data['realtime'] = data.apply(
+            lambda item: datetime.strptime(item['time'], "%H:%M:%S.%f"), axis=1)
+        data['delta_time'] = data.shift(-1)['realtime'] - data['realtime']
+        data['delta_time_sec'] = data.apply(
+            lambda item: self.handle_off_time(item), axis=1)
+        issued_data = data[data['delta_time_sec'] > constants.STOCK_TICK_SAMPLE_INTERVAL]
+        for index, row_data in issued_data.iterrows():
+            delta_time_sec = row_data[64]
+            step = constants.STOCK_TICK_SAMPLE_INTERVAL
+            item = data.loc[index]
+            str_cur_time = item['time']
+            while step < delta_time_sec:
+                item['time'] = self.time_advance(str_cur_time, step)
+                miss_data = miss_data.append(item)
+                step = step + constants.STOCK_TICK_SAMPLE_INTERVAL
+        data = data.append(miss_data)
+        data = pd.concat([pre_data, data])
+
+        data = data.sort_values(by=['time'])
+        # data = data.reset_index(drop=True)
+        return data
+
+    def handle_off_time(self, item):
+        seconds = item['delta_time'].total_seconds()
+        if seconds >= OFF_TIME_IN_SECOND:
+            return seconds - OFF_TIME_IN_SECOND
+        else:
+            return seconds
+
+    def time_advance(self, str_cur_time, step):
+        cur_time = datetime.strptime(str_cur_time, "%H:%M:%S.%f")
+        if cur_time.time() == time.fromisoformat(OFF_TIME_IN_MORNING): # 处理中午停盘的时间
+            cur_time = cur_time + timedelta(seconds=step) + timedelta(hours=1.5)
+        else:
+            cur_time = cur_time + timedelta(seconds=step)
+        return datetime.strftime(cur_time, "%H:%M:%S") + '.000'
 
 class FutureTickDataColumnTransform(DataProcessor):
     """更改Tick数据的列名，去掉合约信息：
@@ -199,7 +269,7 @@ class FutureTickDataColumnTransform(DataProcessor):
 
     def process(self, data):
         column_list = data.columns.tolist()[1:]
-        new_column_list = [column.replace(constants.TICK_FILE_PREFIX + '.' + self._instrument + '.', '') for column in
+        new_column_list = [column.replace(constants.FUTURE_TICK_FILE_PREFIX + '.' + self._instrument + '.', '') for column in
                            column_list]
         column_map = dict(map(lambda x, y: [x, y], column_list, new_column_list))
         data = data.rename(columns=column_map)
@@ -241,17 +311,17 @@ class FutureTickDataEnricher(DataProcessor):
             temp_data['delta_time'] = temp_data.shift(-1)['datetime'] - temp_data['datetime']
             temp_data['delta_time_sec'] = temp_data.apply(
                 lambda item: self.handle_off_time(item), axis=1)
-            temp_data = temp_data[temp_data['delta_time_sec'] > constants.TICK_SAMPLE_INTERVAL]
+            temp_data = temp_data[temp_data['delta_time_sec'] > constants.FUTURE_TICK_SAMPLE_INTERVAL]
             for index, row_data in temp_data.iterrows():
                 delta_time_sec = row_data[4]
                 print(delta_time_sec)
-                step = constants.TICK_SAMPLE_INTERVAL
+                step = constants.FUTURE_TICK_SAMPLE_INTERVAL
                 item = data.loc[index]
                 str_cur_time = item['datetime']
                 while step < delta_time_sec:
                     item['datetime'] = time_advance(str_cur_time, step)
                     miss_data = miss_data.append(item)
-                    step = step + constants.TICK_SAMPLE_INTERVAL
+                    step = step + constants.FUTURE_TICK_SAMPLE_INTERVAL
         data = data.append(miss_data)
         data = data.sort_values(by=['datetime'])
         data = data.reset_index(drop=True)
@@ -284,8 +354,7 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         first_index = data.head(1).index.tolist()[0]
         data.loc[first_index, 'delta_volume'] = data.loc[
             first_index, 'volume']  # 这里要处理边界情况，主要是第一个值的delta_volume为空
-        # print(data[['datetime','volume','delta_volume']])
-        # data['cur_price'] = data['last_price'].shift(-1)
+        # data['cur_price'] = data['last_price'].shift(-1) #对于last_price有点误解，这个就是当前时间
         data['cur_price'] = data['last_price']
         data = data[data['delta_volume'] > 0]
         cur_time = date + ' 09:29:00.000000000' #股指期货包含集合竞价
@@ -299,8 +368,6 @@ class FutureTickDataProcessorPhase1(DataProcessor):
             else:
                 next_time = time_advance(cur_time, 3)
             temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] < next_time)]
-            print(temp_data)
-            print(temp_data['delta_volume'].tolist())
             last_record = None
             if len(temp_data) == 0:
                 if len(organized_data) > 0:
@@ -428,21 +495,24 @@ if __name__ == '__main__':
     # print(FutureTickDataProcessorPhase1().process(data).iloc[110:140][['datetime','open','close','high','low','volume','interest']])
 
     # 期货tick处理phase2测试
-    product = 'IF'
-    instrument = 'IF2209'
-    content = read_decompress(constants.FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + '20220124.pkl')
-    print(FutureTickDataProcessorPhase2().process(content)[['close','ret.30']])
+    # product = 'IF'
+    # instrument = 'IF2209'
+    # content = read_decompress(constants.FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + '20220124.pkl')
+    # print(FutureTickDataProcessorPhase2().process(content)[['close','ret.30']])
 
     # 股票tick数据测试
     # From CSV
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
     # # From pkl
-    # content = read_decompress('E:\\data\\000001.pkl')
-    # content = StockTickDataColumnTransform().process(content)
-    # content = StockTickDataCleaner().process(content)
-    # save_compress(content, 'E:\\data\\000001_1.pkl')
-    # print(content)
+    content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202204\\20220429\\688188.pkl')
+    content = StockTickDataColumnTransform().process(content)
+    content = StockTickDataCleaner().process(content)
+    content.to_csv("E:\\data\\688188_org.csv")
+    content = StockTickDataEnricher().process(content)
+    content.to_csv("E:\\data\\688188_new.csv")
+
+
     # 测试期指摘要处理类
     # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
     # data = IndexAbstactExtractor().process(data)

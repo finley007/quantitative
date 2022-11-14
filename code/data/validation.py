@@ -8,7 +8,7 @@ import numpy
 import pandas as pd
 
 from common.aop import timing
-from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH
+from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH, STOCK_START_TIME
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.io import FileWriter, read_decompress
 from common.timeutils import date_alignment
@@ -201,24 +201,37 @@ class StockTickDataValidator(Validator):
 
     """
 
+    _ignore_length_check = False
+
+    def __init__(self, ignore_length_check = False):
+        self._ignore_length_check = ignore_length_check
+
     @classmethod
     def validate(self, data):
         """数据验证接口
         1. 检查tick是否完整
-        2. 检查成交量是否递增
+        2. 检查是否包含开盘时间点的数据，插值时需要
+        3. 检查成交量是否递增
+        4. 检查是否停盘，price价全为0
         Parameters
         ----------
         data : DataFrame
             待处理数据.
 
         """
-        print(len(data))
         tscode = data.iloc[0]['tscode']
         date = data.iloc[0]['date']
+        time = data.iloc[0]['time']
         result = StockValidationResult(RESULT_SUCCESS, [], tscode, date)
-        if len(data) < 4800:
+        # 检查tick是否完整
+        if self._ignore_length_check and len(data) < 4800:
             result.result = RESULT_FAIL
             result.error_details.append('The data is incomplete and length: {0}'.format(str(len(data))))
+        # 检查是否包含开盘时间点的数据
+        if time > '09:16:00.000':
+            result.result = RESULT_FAIL
+            result.error_details.append('The data is incomplete and miss the opening time data')
+        # 检查成交量是否递增
         time_sorted_list = data.sort_values(by='time')['daily_accumulated_volume'].to_list()
         time_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), time_sorted_list))).encode('gbk')).hexdigest()
@@ -228,6 +241,10 @@ class StockTickDataValidator(Validator):
         if time_sorted_abstract != volume_sorted_abstract:
             result.result = RESULT_FAIL
             result.error_details.append('The volume has reverse order')
+        # 检查是否停盘
+        if 'price' in data.loc[:, (data == 0).all()].columns.tolist():
+            result.result = RESULT_FAIL
+            result.error_details.append('The stock is suspended')
         return result
 
     @classmethod
@@ -441,7 +458,7 @@ if __name__ == '__main__':
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2022/stk_tick10_w_202204/20220418/pkl/601828.pkl'
-    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202202\\20220207\\688006.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202201\\20220104\\300001.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
     data = StockTickDataCleaner().process(data)

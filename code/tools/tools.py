@@ -8,13 +8,13 @@ import pandas as pd
 
 from common import constants
 from common.aop import timing
-from common.constants import FUTURE_TICK_DATA_PATH, TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH
+from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH
 from common.io import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
-from common.persistence.po import StockValidationResult, FutrueProcessRecord
+from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
-    FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2
+    FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
@@ -95,7 +95,7 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
     if len(include_instrument) > 0:
         for instrument in include_instrument:
             product = instrument[0:2]
-            future_file = constants.TICK_FILE_PREFIX + '.' + instrument + '.csv'
+            future_file = constants.FUTURE_TICK_FILE_PREFIX + '.' + instrument + '.csv'
             runner.execute(do_compare, args=(future_file, instrument, product))
     else:
         for product in product_list:
@@ -104,7 +104,7 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
             future_file_list = list_files_in_path(FUTURE_TICK_DATA_PATH + product + os.path)
             future_file_list.sort()
             for future_file in future_file_list:
-                if TICK_FILE_PREFIX in future_file:
+                if FUTURE_TICK_FILE_PREFIX in future_file:
                     instrument = future_file.split('.')[1]
                     if instrument in exclude_instument:
                         continue
@@ -113,10 +113,10 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
 
 # @time
 def validate_stock_tick_data(validate_code, include_year_list=[]):
-    data_length_threshold = 100
     session = create_session()
-    checked_list = session.execute('select date || tscode from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
+    checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
+    runner = ProcessRunner(10)
     year_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep)
     for year_folder in year_folder_list:
         years = re.search('[0-9]{4}', year_folder)
@@ -128,24 +128,104 @@ def validate_stock_tick_data(validate_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            date_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
-            for date in date_folder_list:
-                if not re.search('[0-9]{8}', date):
+            runner.execute(validate_stock_tick_by_month, args=(validate_code, checked_set, year_folder, month_folder))
+    time.sleep(100000)
+
+def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_folder):
+    session = create_session()
+    data_length_threshold = 100
+    date_folder_list = list_files_in_path(
+        STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    for date in date_folder_list:
+        if not re.search('[0-9]{8}', date):
+            continue
+        stock_file_list = list_files_in_path(
+            STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        for stock in stock_file_list:
+            if date + stock.split('.')[0] not in checked_set:
+                data = read_decompress(
+                    STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
+                print(date + ':' + stock)
+                data = StockTickDataColumnTransform().process(data)
+                data = StockTickDataCleaner().process(data)
+                if len(data) > data_length_threshold:
+                    validation_result = StockTickDataValidator().validate(data)
+                    stock_validation_result = StockValidationResult(validate_code, validation_result)
+                    session.add(stock_validation_result)
+                    session.commit()
+            else:
+                print("{0} {1} has been handled".format(date, stock))
+
+def enrich_stock_tick_data(process_code, include_year_list=[], include_month_list=[], include_date_list=[], include_stock_list=[]):
+    runner = ProcessRunner(20)
+    session = create_session()
+    checked_list = session.execute('select concat(date, tscode) from stock_process_record where process_code = :pcode', {'pcode': process_code})
+    checked_set = set(map(lambda item : item[0], checked_list))
+    year_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep)
+    for year_folder in year_folder_list:
+        years = re.search('[0-9]{4}', year_folder)
+        if not years:
+            continue
+        elif len(include_year_list) > 0 and years.group() not in include_year_list:
+            continue
+        month_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        for month_folder in month_folder_list:
+            months = re.search('[0-9]{6}', month_folder)
+            if not months:
+                continue
+            elif len(include_month_list) > 0 and months.group()[4:] not in include_month_list:
+                continue
+            runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list,
+                                            year_folder, month_folder))
+    time.sleep(100000)
+
+
+def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list,
+                                    year_folder, month_folder):
+    data_length_threshold = 100
+    session = create_session()
+    date_folder_list = list_files_in_path(
+        STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    for date in date_folder_list:
+        days = re.search('[0-9]{8}', date)
+        if not days:
+            continue
+        elif len(include_date_list) > 0 and days.group()[6:] not in include_date_list:
+            continue
+        stock_file_list = list_files_in_path(
+            STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        for stock in stock_file_list:
+            if date + stock.split('.')[0] not in checked_set:
+                stocks = re.search('[0-9]{6}', stock)
+                if not stocks:
                     continue
-                stock_file_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
-                for stock in stock_file_list:
-                    if date + stock.split('.')[0] not in checked_set:
-                        data = read_decompress(STOCK_TICK_DATA_PATH  + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
-                        print(date + ':' + stock)
-                        data = StockTickDataColumnTransform().process(data)
-                        data = StockTickDataCleaner().process(data)
-                        if len(data) > data_length_threshold:
-                            validation_result = StockTickDataValidator().validate(data)
-                            stock_validation_result = StockValidationResult(validate_code, validation_result)
-                            session.add(stock_validation_result)
-                            session.commit()
+                elif len(include_stock_list) > 0 and stocks.group()[0:6] not in include_stock_list:
+                    continue
+                data = read_decompress(
+                    STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
+                data = StockTickDataColumnTransform().process(data)
+                data = StockTickDataCleaner().process(data)
+                if len(data) > data_length_threshold:
+                    validation_result = StockTickDataValidator(True).validate(data)
+                    if validation_result.result == RESULT_SUCCESS:
+                        data = StockTickDataEnricher().process(data)
+                        if not os.path.exists(
+                                STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date):
+                            os.makedirs(
+                                STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date)
+                        save_compress(data,
+                                      STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
+                        stock_process_record = StockProcessRecord(process_code, stock.split('.')[0], date, 0)
+                        session.add(stock_process_record)
+                        session.commit()
                     else:
-                        print("{0} {1} has been handled".format(date, stock))
+                        stock_process_record = StockProcessRecord(process_code, stock.split('.')[0], date, 1,
+                                                                  validation_result)
+                        session.add(stock_process_record)
+                        session.commit()
+            else:
+                print("{0} {1} has been handled".format(date, stock))
+
 
 @timing
 def create_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
@@ -190,13 +270,13 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
     include_product : list 包含的产品
     include_instrument : list 包含的合约
     """
-    columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10', 'ret.20', 'ret.30']
 
     products = ['IC', 'IF', 'IH']
     session = create_session()
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
                                    {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
+    runner = ProcessRunner(10)
     for product in products:
         if len(include_product) > 0 and product not in include_product:
             continue
@@ -209,22 +289,34 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
                 continue
             if not os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product):
                 os.makedirs(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
-            data = pd.DataFrame(columns=columns)
-            if os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl'):
-                data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
-            file_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
-            file_list.sort()
-            for file in file_list:
-                date = file[0: 8]
-                if instrument + date in checked_set:
-                    date_file = read_decompress(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
-                    date_file = FutureTickDataProcessorPhase2().process(date_file) #计算收益
-                    data = pd.concat([data, date_file])
-                    session.execute('update future_process_record set status = 1 where process_code = :pcode and instrument = :instrument and date = :date and status = 0',
-                                    {'pcode': process_code, 'instrument': instrument, 'date': date})
-                    session.commit()
-            data = data.reset_index()
-            save_compress(data, FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+            runner.execute(combine_future_k_line_by_instrument,
+                           args=(process_code, checked_set, product, instrument))
+    time.sleep(100000)
+
+
+def combine_future_k_line_by_instrument(process_code, checked_set, product, instrument):
+    session = create_session()
+    columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10',
+               'ret.20', 'ret.30']
+    data = pd.DataFrame(columns=columns)
+    if os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl'):
+        data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+    file_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
+    file_list.sort()
+    for file in file_list:
+        date = file[0: 8]
+        if instrument + date in checked_set:
+            date_file = read_decompress(
+                FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
+            date_file = FutureTickDataProcessorPhase2().process(date_file)  # 计算收益
+            data = pd.concat([data, date_file])
+            session.execute(
+                'update future_process_record set status = 1 where process_code = :pcode and instrument = :instrument and date = :date and status = 0',
+                {'pcode': process_code, 'instrument': instrument, 'date': date})
+            session.commit()
+    data = data.reset_index()
+    save_compress(data, FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+
 
 def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
     session = create_session()
@@ -313,11 +405,16 @@ if __name__ == '__main__':
     #                           'IF1807', 'IF1808', 'IF1809', 'IF1810', 'IF1811', 'IF1812', 'IF1901', 'IF1902', 'IF1903',
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
-    # 检查stock 数据
+    # 检查stock数据
     # validate_stock_tick_data('20221109-finley',['2022'])
 
+    # 生成stock数据
+    # enrich_stock_tick_data('20221111-finley-1',['2022','2021'])
+
     # 生成股指k线
-    # create_k_line_for_future_tick('20221109-finley-1')
+    # create_k_line_for_future_tick('20221110-finley')
 
     # 拼接股指k线
-    conbine_k_line_for_future_tick('20221109-finley-1', ['IF'], ['IF1701'])
+    conbine_k_line_for_future_tick('20221109-finley-1')
+
+

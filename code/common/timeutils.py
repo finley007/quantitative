@@ -18,3 +18,12 @@ def date_alignment(date):
     if int(date.split('.')[1][0]) > 4:
         subsec = 5
     return date.split('.')[0] + '.' + str(subsec) + '00000000'
+
+def time_carry(hour, minute, second):
+    if second == 60:
+        second = 0
+        minute = minute + 1
+        if minute == 60:
+            minute = 0
+            hour = hour + 1
+    return hour, minute, second
