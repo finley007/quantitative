@@ -1,3 +1,4 @@
 pip3 install SQLalchemy -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install pymysql -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install scipy -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install distfit -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
