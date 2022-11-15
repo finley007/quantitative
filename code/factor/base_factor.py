@@ -1,8 +1,14 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
+import os
 from abc import ABCMeta, abstractmethod
+import pandas as pd
 
 from scipy.stats import pearsonr
+
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH
+from common.io import read_decompress
+from data.process import StockTickDataColumnTransform
 
 
 class Factor(metaclass=ABCMeta):
@@ -41,6 +47,7 @@ class Factor(metaclass=ABCMeta):
     def caculate(self, data):
         pass
 
+
 class StockTickFactor(Factor):
     """股票Tick因子基类，可以加载股票Tick数据
 
@@ -48,11 +55,63 @@ class StockTickFactor(Factor):
     ----------
     """
 
-    @classmethod
-    def get_stock_tick_data(self, data):
+    def __init__(self):
+        self._stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
+        self._stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
+        self._stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
+        self._stocks_map = {
+            'IC' : self._stocks_abstract_500,
+            'IH' : self._stocks_abstract_50,
+            'IF' : self._stocks_abstract_300
+        }
+
+    def get_stock_tick_data(self, product, date):
+        """获取相关的股票tick数据，
+        因为一次处理一个股指合约文件，所包含的信息：
+        日期，品种
+        TODO 这部分可以预处理
+        Parameters
+        ----------
+        product ： 品种
+        date ： 日期
+        """
+        stock_list = self.get_stock_list_by_date(product, date)
+        file_path = self.create_stock_tick_data_path(date)
+        columns = StockTickDataColumnTransform().get_columns()
+        data = pd.DataFrame(columns=columns)
+        for stock in stock_list:
+            temp_data = read_decompress(file_path + stock + '.pkl')
+            pd.concat(data, temp_data)
         return data
+
+    def create_stock_tick_data_path(self, date):
+        file_prefix = 'stk_tick10_w_'
+        year = date[0:4]
+        month = date[4:6]
+        day = date[6:8]
+        return STOCK_TICK_ORGANIZED_DATA_PATH + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date
+
+
+
+    def get_stock_list_by_date(self, product, date):
+        """获取股票列表
+        Parameters
+        ----------
+        product ： 品种
+        date ： 日期
+        """
+        stock_abstract = self._stocks_map.get(product)
+        for key in stock_abstract.keys():
+            start_date = key.split('_')[0]
+            end_date = key.split('_')[1]
+            if date >= start_date and date <= end_date:
+                return stock_abstract[key]
+
 
     # 全局计算因子值
     @abstractmethod
     def caculate(self, data):
         pass
+
+
+

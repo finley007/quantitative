@@ -177,6 +177,9 @@ class StockTickDataColumnTransform(DataProcessor):
                          'total_ask_volume', 'unwighted_index', 'total_varieties', 'total_increase_varieties',
                          'total_falling_varieties', 'total_equal_varieties']
 
+    def get_columns(self):
+        return self._columns
+
     def process(self, data):
         data.columns = self._columns
         return data

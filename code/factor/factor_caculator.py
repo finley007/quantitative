@@ -7,6 +7,7 @@ import pandas as pd
 
 from common.aop import timing
 from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH
+from common.exception.exception import InvalidStatus
 from common.io import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
