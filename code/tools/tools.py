@@ -409,12 +409,12 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    # enrich_stock_tick_data('20221111-finley-1',['2022','2021'])
+    enrich_stock_tick_data('20221111-finley-1')
 
     # 生成股指k线
     # create_k_line_for_future_tick('20221110-finley')
 
     # 拼接股指k线
-    conbine_k_line_for_future_tick('20221109-finley-1')
+    # conbine_k_line_for_future_tick('20221109-finley-1')
 
 

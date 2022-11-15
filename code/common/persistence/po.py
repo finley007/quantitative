@@ -58,3 +58,41 @@ class FutrueProcessRecord(Base):
         self.instrument = instrument
         self.date = date
         self.status = status
+
+class StockProcessRecord(Base):
+    """股票处理记录表po：
+    """
+    __tablename__ = "stock_process_record"
+
+    id = Column(String(32), primary_key=True)
+    process_code = Column(String(32))
+    tscode = Column(String(10))
+    date = Column(String(10))
+    status = Column(Integer)
+    invalid_msg = Column(String(1024))
+
+    def __init__(self, process_code, tscode, date, status, invalid_msg=''):
+        self.id = uuid.uuid4()
+        self.process_code = process_code
+        self.tscode = tscode
+        self.date = date
+        self.status = status
+        self.invalid_msg = invalid_msg
+
+class FutureInstrumentConfig(Base):
+    """期货合约配置表po：
+    """
+    __tablename__ = "future_instrument_config"
+
+    id = Column(String(32), primary_key=True)
+    product = Column(String(2))
+    instrument = Column(String(8))
+    date = Column(String(10))
+    is_main = Column(Integer)
+
+    def __init__(self, product, instrument, date, is_main):
+        self.id = uuid.uuid4()
+        self.product = product
+        self.instrument = instrument
+        self.date = date
+        self.is_main = is_main

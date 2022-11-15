@@ -36,3 +36,26 @@ status  int comment '0-已生成，1-已归并',
 err_msg  VARCHAR(1024),
 PRIMARY KEY(id)
 );
+
+-- 股票数据处理结果表
+CREATE TABLE IF NOT EXISTS stock_process_record
+(
+id VARCHAR(40),
+process_code VARCHAR(40),
+tscode  VARCHAR(10),
+date    VARCHAR(10),
+status  int comment '0-合法，1-非法',
+invalid_msg  VARCHAR(1024),
+PRIMARY KEY(id)
+);
+
+-- 股指合约表
+CREATE TABLE IF NOT EXISTS future_instrument_config
+(
+id VARCHAR(40),
+product VARCHAR(2),
+instrument  VARCHAR(8),
+date    VARCHAR(10),
+is_main  int comment '0-主力合约，1-非主力合约',
+PRIMARY KEY(id)
+);
