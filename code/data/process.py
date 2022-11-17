@@ -365,17 +365,20 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         is_open = True
         organized_data = pd.DataFrame(columns=self._columns)
         while cur_time < end_time:
-            if is_open:
+            if is_open: #判断是否开盘
                 next_time = time_advance(cur_time, 63)
                 is_open = False
             else:
                 next_time = time_advance(cur_time, 3)
             temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] < next_time)]
             last_record = None
+            # 该时间区间内无交易处理
             if len(temp_data) == 0:
                 if len(organized_data) > 0:
                     last_record = organized_data.iloc[-1]
                     last_record['datetime'] = next_time
+                    last_record['volume'] = 0
+            # 该时间区间内有交易处理
             else:
                 min_index = temp_data.index.min()
                 max_index = temp_data.index.max()
@@ -446,15 +449,16 @@ class IndexAbstactExtractor(DataProcessor):
         stock_list = ''
         index_abstract = {}
         for time in list(data.keys()):
-            cur_stock_list = ''.join(sorted(data[time]))
+            cur_stock_list = '|'.join(sorted(data[time])) #转成字符串来比较
+            #初始化
             if (start_time == ''):
                 start_time = time.strftime('%Y%m%d')
-            if (stock_list == ''):
+            if (stock_list == ''): #初始化
                 stock_list = cur_stock_list
-            elif (stock_list == cur_stock_list):
+            elif (stock_list == cur_stock_list): #成分股未发生变化
                 end_date = time.strftime('%Y%m%d')
-            else:
-                index_abstract[start_time + '_' + end_date] = [stock.split('.')[0] for stock in data[time]]
+            else: #成分股发生变化
+                index_abstract[start_time + '_' + end_date] = [stock.split('.')[0] for stock in stock_list.split('|')]
                 start_time = time.strftime('%Y%m%d')
                 stock_list = cur_stock_list
         return index_abstract
@@ -484,18 +488,18 @@ if __name__ == '__main__':
     # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
 
     # 期货tick处理测试
-    # product = 'IF'
-    # instrument = 'IF2209'
-    # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
-    # content = FutureTickDataColumnTransform(product, instrument).process(content)
-    # content = DataCleaner().process(content)
-    # content['date'] = content['datetime'].str[0:10]
-    # date_list = sorted(list(set(content['date'].tolist())))
-    # date = '2022-09-09'
-    # # date = date_list[0]
-    # print(date)
-    # data = content[content['date'] == date]
-    # print(FutureTickDataProcessorPhase1().process(data).iloc[110:140][['datetime','open','close','high','low','volume','interest']])
+    product = 'IH'
+    instrument = 'IH2208'
+    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
+    content = FutureTickDataColumnTransform(product, instrument).process(content)
+    content = DataCleaner().process(content)
+    content['date'] = content['datetime'].str[0:10]
+    date_list = sorted(list(set(content['date'].tolist())))
+    date = '2022-06-20'
+    # date = date_list[0]
+    print(date)
+    data = content[content['date'] == date]
+    print(FutureTickDataProcessorPhase1().process(data).iloc[0:50][['datetime','open','close','high','low','volume','interest']])
 
     # 期货tick处理phase2测试
     # product = 'IF'
@@ -508,12 +512,12 @@ if __name__ == '__main__':
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
     # # From pkl
-    content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202204\\20220429\\688188.pkl')
-    content = StockTickDataColumnTransform().process(content)
-    content = StockTickDataCleaner().process(content)
-    content.to_csv("E:\\data\\688188_org.csv")
-    content = StockTickDataEnricher().process(content)
-    content.to_csv("E:\\data\\688188_new.csv")
+    # content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202204\\20220429\\688188.pkl')
+    # content = StockTickDataColumnTransform().process(content)
+    # content = StockTickDataCleaner().process(content)
+    # content.to_csv("E:\\data\\688188_org.csv")
+    # content = StockTickDataEnricher().process(content)
+    # content.to_csv("E:\\data\\688188_new.csv")
 
 
     # 测试期指摘要处理类
@@ -521,15 +525,15 @@ if __name__ == '__main__':
     # data = IndexAbstactExtractor().process(data)
     # print(data)
     # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
-    # data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/300_stocks.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
     # data = IndexAbstactExtractor().process(data)
     # print(data)
-    # pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/300_stocks_abstract.pkl')
-    # data = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/500_stocks.pkl')
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
     # print(data)
     # data = IndexAbstactExtractor().process(data)
     # print(data)
-    # pd.to_pickle(data, '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
     # data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
     # list50 = data50['20170103_20170609']
     # print(list50)
