@@ -213,10 +213,10 @@ class StockTickDataEnricher(DataProcessor):
                     data['time'][index] = datetime.strftime(new_time, '%H:%M:%S') + '.000'
                 else:
                     to_be_removed_index.append(index)
-            if len(to_be_removed_index) > 0:
-                data.drop(to_be_removed_index)
+            # if len(to_be_removed_index) > 0: # 这种数据有可能包含有用信息，所以应该保留
+            #     data.drop(to_be_removed_index)
 
-        #插值
+            #插值
         miss_data = pd.DataFrame(columns=data.columns.tolist())
         data['realtime'] = data.apply(
             lambda item: datetime.strptime(item['time'], "%H:%M:%S.%f"), axis=1)
@@ -365,7 +365,7 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         is_open = True
         organized_data = pd.DataFrame(columns=self._columns)
         while cur_time < end_time:
-            if is_open: #判断是否开盘
+            if is_open: #判断是否开盘, 如果是开盘从9：29：00 - 9：30：03时间间隔是63秒
                 next_time = time_advance(cur_time, 63)
                 is_open = False
             else:
@@ -378,6 +378,10 @@ class FutureTickDataProcessorPhase1(DataProcessor):
                     last_record = organized_data.iloc[-1]
                     last_record['datetime'] = next_time
                     last_record['volume'] = 0
+                    close = last_record['close']
+                    last_record['open'] = close
+                    last_record['low'] = close
+                    last_record['high'] = close
             # 该时间区间内有交易处理
             else:
                 min_index = temp_data.index.min()
@@ -488,18 +492,18 @@ if __name__ == '__main__':
     # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
 
     # 期货tick处理测试
-    product = 'IH'
-    instrument = 'IH2208'
-    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
-    content = FutureTickDataColumnTransform(product, instrument).process(content)
-    content = DataCleaner().process(content)
-    content['date'] = content['datetime'].str[0:10]
-    date_list = sorted(list(set(content['date'].tolist())))
-    date = '2022-06-20'
-    # date = date_list[0]
-    print(date)
-    data = content[content['date'] == date]
-    print(FutureTickDataProcessorPhase1().process(data).iloc[0:50][['datetime','open','close','high','low','volume','interest']])
+    # product = 'IH'
+    # instrument = 'IH2208'
+    # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
+    # content = FutureTickDataColumnTransform(product, instrument).process(content)
+    # content = DataCleaner().process(content)
+    # content['date'] = content['datetime'].str[0:10]
+    # date_list = sorted(list(set(content['date'].tolist())))
+    # date = '2022-06-20'
+    # # date = date_list[0]
+    # print(date)
+    # data = content[content['date'] == date]
+    # print(FutureTickDataProcessorPhase1().process(data).iloc[0:50][['datetime','open','close','high','low','volume','interest']])
 
     # 期货tick处理phase2测试
     # product = 'IF'
@@ -512,12 +516,12 @@ if __name__ == '__main__':
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
     # # From pkl
-    # content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202204\\20220429\\688188.pkl')
-    # content = StockTickDataColumnTransform().process(content)
-    # content = StockTickDataCleaner().process(content)
-    # content.to_csv("E:\\data\\688188_org.csv")
-    # content = StockTickDataEnricher().process(content)
-    # content.to_csv("E:\\data\\688188_new.csv")
+    content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210719\\601998.pkl')
+    content = StockTickDataColumnTransform().process(content)
+    content = StockTickDataCleaner().process(content)
+    content.to_csv("E:\\data\\temp\\601998_org.csv")
+    content = StockTickDataEnricher().process(content)
+    content.to_csv("E:\\data\\temp\\601998_new.csv")
 
 
     # 测试期指摘要处理类

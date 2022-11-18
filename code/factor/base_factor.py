@@ -32,6 +32,12 @@ class Factor(metaclass=ABCMeta):
         return self.factor_code + '-' + self.version + '[' \
                + (','.join(list(map(lambda x: str(x), self._params)))) + ']'
 
+    def get_key(self, param):
+        return self.factor_code + '.' + str(param)
+
+    def get_keys(self):
+        return list(map(lambda param: self.factor_code + '.' + str(param), self._params))
+
     def get_category(self):
         return self.factor_code.split('_')[1]
 
@@ -77,21 +83,24 @@ class StockTickFactor(Factor):
         """
         stock_list = self.get_stock_list_by_date(product, date)
         file_path = self.create_stock_tick_data_path(date)
-        columns = StockTickDataColumnTransform().get_columns()
+        columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         for stock in stock_list:
+            print('Handle stock {0}'.format(stock))
             temp_data = read_decompress(file_path + stock + '.pkl')
-            pd.concat(data, temp_data)
+            temp_data = temp_data.loc[:, columns]
+            data = pd.concat([data, temp_data])
         return data
+
+    def get_columns(self):
+        return ['tscode','date','time']
 
     def create_stock_tick_data_path(self, date):
         file_prefix = 'stk_tick10_w_'
+        date = date.replace('-','')
         year = date[0:4]
         month = date[4:6]
-        day = date[6:8]
-        return STOCK_TICK_ORGANIZED_DATA_PATH + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date
-
-
+        return STOCK_TICK_ORGANIZED_DATA_PATH + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
 
     def get_stock_list_by_date(self, product, date):
         """获取股票列表
@@ -101,6 +110,7 @@ class StockTickFactor(Factor):
         date ： 日期
         """
         stock_abstract = self._stocks_map.get(product)
+        date = date.replace('-', '')
         for key in stock_abstract.keys():
             start_date = key.split('_')[0]
             end_date = key.split('_')[1]

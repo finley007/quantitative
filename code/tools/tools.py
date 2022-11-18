@@ -3,6 +3,7 @@
 import os
 import re
 import time
+from datetime import datetime
 
 import pandas as pd
 
@@ -409,12 +410,59 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    enrich_stock_tick_data('20221111-finley-1')
+    # enrich_stock_tick_data('20221111-finley-1',['2021'], ['07'], ['19'])
+    enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
 
     # 生成股指k线
-    # create_k_line_for_future_tick('20221110-finley')
+    # create_k_line_for_future_tick('20221117-finley')
 
     # 拼接股指k线
     # conbine_k_line_for_future_tick('20221109-finley-1')
 
+    # 分析股指成分股
+    # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
+    # print('stocks_50-----------------------------')
+    # for key in stocks_50.keys():
+    #     if '2022-06-13' in str(key):
+    #         print(stocks_50[key])
+    # stocks_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks.pkl')
+    # print('stocks_300-----------------------------')
+    # for key in stocks_300.keys():
+    #     if '2022-06-13' in str(key):
+    #         print(stocks_300[key])
+    # stocks_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks.pkl')
+    # print('stocks_500-----------------------------')
+    # for key in stocks_500.keys():
+    #     if '2022-06-13' in str(key):
+    #         print(stocks_500[key])
 
+    # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
+    # print('stocks_50-----------------------------')
+    # for key in stocks_50.keys():
+    #     if '2022' in key:
+    #         print(key)
+    #         print(stocks_50[key])
+    # stocks_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
+    # print('stocks_300-----------------------------')
+    # for key in stocks_300.keys():
+    #     if '2022' in key:
+    #         print(key)
+    #         print(stocks_300[key])
+    # stocks_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
+    # print('stocks_500-----------------------------')
+    # for key in stocks_500.keys():
+    #     if '2022' in key:
+    #         print(key)
+    #         print(stocks_500[key])
+
+    # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
+    # print('stocks_50-----------------------------')
+    # print(stocks_50[pd.Timestamp('2021-12-10 00:00:00')])
+    # print(stocks_50[pd.Timestamp('2021-12-13 00:00:00')])
+    # stocks_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks.pkl')
+    # print('stocks_300-----------------------------')
+    # print(stocks_300[pd.Timestamp('2021-12-10 00:00:00')])
+    # print(stocks_300[pd.Timestamp('2021-12-13 00:00:00')])
+    # stocks_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks.pkl')
+    # print(stocks_500[pd.Timestamp('2021-09-27 00:00:00')])
+    # print(stocks_500[pd.Timestamp('2021-09-28 00:00:00')])
