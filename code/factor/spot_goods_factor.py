@@ -5,7 +5,7 @@ from datetime import datetime
 
 from factor.base_factor import Factor, StockTickFactor
 from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME
-from common.io import read_decompress
+from common.localio import read_decompress
 from common.aop import timing
 
 """现货类因子

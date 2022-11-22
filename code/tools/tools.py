@@ -11,9 +11,11 @@ from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH
-from common.io import list_files_in_path, save_compress, read_decompress, FileWriter
+from common.crawler import StockInfoCrawler
+from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, IndexConstituentConfig
+from common.stockutils import get_full_stockcode
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from common.timeutils import date_format_transform
@@ -398,12 +400,15 @@ def validate_stock_data_integrity_check(check_original=True):
     # file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\organized_amount_check_20221121")
     file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
     root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+    stock_cache = {}
+    stock_info_crawler = StockInfoCrawler()
     if check_original:
         root_path = STOCK_TICK_DATA_PATH
     year_folder_list = list_files_in_path(root_path)
     year_folder_list.sort()
     for year_folder in year_folder_list:
-        if not re.search('[0-9]{4}', year_folder):
+        year = re.search('[0-9]{4}', year_folder)
+        if not year:
             continue
         year_folder_path = root_path + year_folder
         month_folder_list = list_files_in_path(year_folder_path)
@@ -426,6 +431,16 @@ def validate_stock_data_integrity_check(check_original=True):
                 checked_stock_list.sort()
                 miss_stocks = set(stock_list).difference(set(checked_stock_list))
                 if len(miss_stocks) > 0:
+                    filter_miss_stocks = []
+                    for stock_code in miss_stocks:
+                        full_stock_code = get_full_stockcode(stock_code)
+                        if stock_cache.get(stock_code):
+                            date_set = set(stock_info_crawler.get_content(year[2:], full_stock_code))
+                            stock_cache[stock_code] = date_set
+                        if full_stock_code not in stock_cache[stock_code]:
+                            filter_miss_stocks.append(stock_code + 'x')
+                        else:
+                            filter_miss_stocks.append(stock_code)
                     file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, miss_stocks))
 
 

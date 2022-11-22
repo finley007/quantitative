@@ -10,7 +10,7 @@ import pandas as pd
 from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH, STOCK_START_TIME
 from common.exception.exception import ValidationFailed, InvalidStatus
-from common.io import FileWriter, read_decompress
+from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner
 

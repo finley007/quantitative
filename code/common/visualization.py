@@ -7,7 +7,7 @@ import matplotlib
 import pandas as pd
 import numpy as np
 
-from common.io import read_decompress
+from common.localio import read_decompress
 from common.constants import TEST_PATH
 
 

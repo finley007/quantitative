@@ -4,7 +4,7 @@ import pandas as pd
 
 from factor.base_factor import Factor
 from common.constants import TEST_PATH
-from common.io import read_decompress
+from common.localio import read_decompress
 from common.visualization import draw_analysis_curve
 
 """量价类因子

@@ -12,7 +12,7 @@ import numpy as np
 from common import constants
 from common.aop import timing
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME
-from common.io import read_decompress, save_compress
+from common.localio import read_decompress, save_compress
 from common.timeutils import time_advance, date_alignment, time_carry
 from data.analysis import FutureTickerHandler, StockTickerHandler
 

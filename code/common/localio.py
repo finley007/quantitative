@@ -4,9 +4,6 @@ import gzip
 import os
 import _pickle as cPickle
 
-from common.constants import TEMP_PATH
-
-
 def list_files_in_path(path):
     """列出给定目录下的所有文件
 

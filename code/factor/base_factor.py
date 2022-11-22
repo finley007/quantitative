@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.stats import pearsonr
 
 from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH
-from common.io import read_decompress
+from common.localio import read_decompress
 from data.process import StockTickDataColumnTransform
 
 

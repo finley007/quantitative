@@ -7,7 +7,7 @@ import sys
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir)
 from common import constants
-from common import io
+from common import localio
 from abc import ABCMeta, abstractmethod
 import pandas as pd
 
