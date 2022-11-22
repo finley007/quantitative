@@ -96,3 +96,20 @@ class FutureInstrumentConfig(Base):
         self.instrument = instrument
         self.date = date
         self.is_main = is_main
+
+
+class IndexConstituentConfig(Base):
+    """股指成分股映射表po：
+    """
+    __tablename__ = "index_constituent_config"
+
+    id = Column(String(32), primary_key=True)
+    product = Column(String(2))
+    date = Column(String(10))
+    tscode = Column(String(10))
+
+    def __init__(self, product, date, tscode):
+        self.id = uuid.uuid4()
+        self.product = product
+        self.date = date
+        self.tscode = tscode

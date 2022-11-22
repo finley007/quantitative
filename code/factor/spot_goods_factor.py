@@ -35,7 +35,6 @@ class TotalCommissionRatioFactor(StockTickFactor):
     @timing
     def caculate(self, data):
         columns = data.columns.tolist() + [TotalCommissionRatioFactor.factor_code, 'time', 'second_remainder']
-        print(columns)
         new_data = pd.DataFrame(columns = columns)
         product = data.iloc[0]['product']
         date_list = list(set(data['date'].tolist()))
@@ -85,13 +84,15 @@ if __name__ == '__main__':
     # print(total_commision.get_stock_list_by_date('IH', '20210719'))
     # print(total_commision.create_stock_tick_data_path('20220101'))
 
-    data = read_decompress(TEST_PATH + 'IF2203.pkl')
+    data = read_decompress(TEST_PATH + '20200928.pkl')
     data['product'] = 'IF'
     data['date'] = data['datetime'].str[0:10]
 
     print(data)
     print(TotalCommissionRatioFactor().caculate(data))
-
+    data.index = pd.DatetimeIndex(data['datetime'])
+    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    draw_analysis_curve(data, show_signal=True, signal_keys=william_factor.get_keys())
 
 
 

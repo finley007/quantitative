@@ -10,12 +10,13 @@ import pandas as pd
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH
-from common.io import list_files_in_path, save_compress, read_decompress
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH
+from common.io import list_files_in_path, save_compress, read_decompress, FileWriter
 from common.persistence.dbutils import create_session
-from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
+from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, IndexConstituentConfig
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
+from common.timeutils import date_format_transform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
@@ -294,7 +295,7 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
                            args=(process_code, checked_set, product, instrument))
     time.sleep(100000)
 
-
+@timing
 def combine_future_k_line_by_instrument(process_code, checked_set, product, instrument):
     session = create_session()
     columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10',
@@ -318,10 +319,9 @@ def combine_future_k_line_by_instrument(process_code, checked_set, product, inst
     data = data.reset_index()
     save_compress(data, FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
 
-
+@timing
 def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
     session = create_session()
-    print('AA')
     instrument = instrument_file.split('.')[1]
     print('Create k-line for {0} and {1}'.format(product, instrument))
     data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
@@ -343,6 +343,90 @@ def create_future_k_line_by_instrument(process_code,  checked_set, product, inst
         future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
         session.add(future_process_record)
         session.commit()
+
+@timing
+def init_index_constituent_config():
+    """根据股指合约成分股配置文件生成数据库数据，用于检查股票数据的完整性
+    """
+    session = create_session()
+    stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
+    stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks.pkl')
+    stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks.pkl')
+    start_date = '2017-01-01'
+    end_date = '2022-08-12'
+    for time in stocks_abstract_50:
+        date = str(time)[0 : 10]
+        if date < start_date or date > end_date:
+            continue
+        for stock in stocks_abstract_50[time]:
+            config = IndexConstituentConfig('IH', date, stock[0: 6])
+            try:
+                session.add(config)
+                session.commit()
+            except Exception as e:
+                print('The combination: {0}, {1}, {2}'.format('IH', date, stock[0: 6]))
+    for time in stocks_abstract_300:
+        date = str(time)[0: 10]
+        if date < start_date or date > end_date:
+            continue
+        for stock in stocks_abstract_300[time]:
+            config = IndexConstituentConfig('IF', date, stock[0: 6])
+            try:
+                session.add(config)
+                session.commit()
+            except Exception as e:
+                print('The combination: {0}, {1}, {2}'.format('IF', date, stock[0: 6]))
+    for time in stocks_abstract_500:
+        date = str(time)[0: 10]
+        if date < start_date or date > end_date:
+            continue
+        for stock in stocks_abstract_500[time]:
+            config = IndexConstituentConfig('IC', date, stock[0: 6])
+            try:
+                session.add(config)
+                session.commit()
+            except Exception as e:
+                print('The combination: {0}, {1}, {2}'.format('IC', date, stock[0: 6]))
+
+def validate_stock_data_integrity_check(check_original=True):
+    """根据股指合约成分股配置文件生成数据库数据，用于检查股票数据的完整性
+    Parameters
+    ----------
+    check_original : boolean 检查原始数据 为true则检查：original/stock/tick目录，如果为false则检查：organized/stock/tick
+    """
+    session = create_session()
+    # file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\organized_amount_check_20221121")
+    file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
+    root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+    if check_original:
+        root_path = STOCK_TICK_DATA_PATH
+    year_folder_list = list_files_in_path(root_path)
+    year_folder_list.sort()
+    for year_folder in year_folder_list:
+        if not re.search('[0-9]{4}', year_folder):
+            continue
+        year_folder_path = root_path + year_folder
+        month_folder_list = list_files_in_path(year_folder_path)
+        month_folder_list.sort()
+        for month_folder in month_folder_list:
+            if not re.search('[0-9]{6}', month_folder):
+                continue
+            month_folder_path = root_path + year_folder + os.path.sep + month_folder
+            date_list = list_files_in_path(month_folder_path)
+            date_list.sort()
+            for date in date_list:
+                if not re.match('[0-9]{8}', date):
+                    continue
+                print('Handle date %s' % date)
+                query_result = session.execute(
+                    'select distinct tscode from index_constituent_config where date = :date order by tscode;', {'date': date_format_transform(date)}).fetchall()
+                stock_list = list(map(lambda stock: stock[0], query_result))
+                stock_list.sort()
+                checked_stock_list = list(map(lambda stock: stock.split('.')[0], list_files_in_path(month_folder_path + os.path.sep + date)))
+                checked_stock_list.sort()
+                miss_stocks = set(stock_list).difference(set(checked_stock_list))
+                if len(miss_stocks) > 0:
+                    file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, miss_stocks))
 
 
 def do_compare(future_file, instrument, product):
@@ -375,6 +459,8 @@ def get_index_stock_list(date, abstract):
     for date_range in abstract.keys():
         if in_date_range(date, date_range):
             return abstract[date_range]
+
+
 
 
 if __name__ == '__main__':
@@ -410,8 +496,16 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    # enrich_stock_tick_data('20221111-finley-1',['2021'], ['07'], ['19'])
-    enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
+    # enrich_stock_tick_data('20221111-finley-1',['2017'], ['04'])
+    # enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
+
+    # 检查stock数据
+    #初始化表
+    # init_index_constituent_config()
+    #检查原始股票数据
+    validate_stock_data_integrity_check()
+    #检查已处理股票数据
+    # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
     # create_k_line_for_future_tick('20221117-finley')

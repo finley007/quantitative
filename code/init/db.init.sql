@@ -59,3 +59,14 @@ date    VARCHAR(10),
 is_main  int comment '0-主力合约，1-非主力合约',
 PRIMARY KEY(id)
 );
+
+-- 股指成分股表
+CREATE TABLE IF NOT EXISTS index_constituent_config
+(
+id VARCHAR(40),
+product VARCHAR(2),
+date    VARCHAR(10),
+tscode  VARCHAR(10),
+PRIMARY KEY(id),
+UNIQUE (product, date, tscode)
+);

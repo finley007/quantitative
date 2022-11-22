@@ -24,6 +24,8 @@ TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep
 CONFIG_PATH = 'E:\\data\\' + 'config' + os.path.sep
 # FACTOR_PATH = config.get('common', 'data_path') + os.path.sep + 'factor' + os.path.sep
 FACTOR_PATH = 'E:\\data\\' + 'factor' + os.path.sep
+# REPORT_PATH = config.get('common', 'data_path') + os.path.sep + 'report' + os.path.sep
+REPORT_PATH = 'E:\\data\\' + 'report' + os.path.sep
 
 DB_CONNECTION = config.get('common', 'db_connection')
 
