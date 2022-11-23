@@ -6,7 +6,7 @@ import pandas as pd
 
 from scipy.stats import pearsonr
 
-from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH
 from common.localio import read_decompress
 from data.process import StockTickDataColumnTransform
 
@@ -47,6 +47,11 @@ class Factor(metaclass=ABCMeta):
         data = factor.caculate(data)
         data = data.dropna()
         return pearsonr(data[self.factor_code], data[factor.factor_code])
+
+    #加载因子文件
+    def load(self):
+        factor_path = FACTOR_PATH + self.get_full_name()
+        return read_decompress(factor_path)
 
     # 全局计算因子值
     @abstractmethod
