@@ -397,8 +397,10 @@ def validate_stock_data_integrity_check(check_original=True):
     check_original : boolean 检查原始数据 为true则检查：original/stock/tick目录，如果为false则检查：organized/stock/tick
     """
     session = create_session()
-    # file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\organized_amount_check_20221121")
-    file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
+    if check_original:
+        file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
+    else:
+        file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\organized_amount_check_20221121")
     root_path = STOCK_TICK_ORGANIZED_DATA_PATH
     stock_cache = {}
     stock_info_crawler = StockInfoCrawler()
@@ -434,14 +436,14 @@ def validate_stock_data_integrity_check(check_original=True):
                     filter_miss_stocks = []
                     for stock_code in miss_stocks:
                         full_stock_code = get_full_stockcode(stock_code)
-                        if stock_cache.get(stock_code):
-                            date_set = set(stock_info_crawler.get_content(year[2:], full_stock_code))
+                        if stock_code not in stock_cache:
+                            date_set = set(stock_info_crawler.get_content(year.group()[2:], full_stock_code))
                             stock_cache[stock_code] = date_set
-                        if full_stock_code not in stock_cache[stock_code]:
+                        if date[2:] not in stock_cache[stock_code]:
                             filter_miss_stocks.append(stock_code + 'x')
                         else:
-                            filter_miss_stocks.append(stock_code)
-                    file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, miss_stocks))
+                            filter_miss_stocks.append(stock_code + 'o')
+                    file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, filter_miss_stocks))
 
 
 def do_compare(future_file, instrument, product):
@@ -511,7 +513,7 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    # enrich_stock_tick_data('20221111-finley-1',['2017'], ['04'])
+    # enrich_stock_tick_data('20221111-finley-1',['2022'])
     # enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
 
     # 检查stock数据
