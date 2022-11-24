@@ -15,7 +15,7 @@ from factor.volume_price_factor import WilliamFactor
 
 class FactorCaculator():
     """因子文件生成类
-
+        生成按品种目录的因子文件
     Parameters
     ----------
     """
@@ -29,10 +29,10 @@ class FactorCaculator():
         columns = example.columns.tolist()
         for factor in factor_list:
             columns.append(factor.factor_code)
-        factor_data = pd.DataFrame(columns=columns)
         products = ['IC', 'IH', 'IF']
         session = create_session()
         for product in products:
+            factor_data = pd.DataFrame(columns=columns)
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
             for instrument in instrument_list:
                 data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
@@ -50,7 +50,8 @@ class FactorCaculator():
                     end_date = date_range_query_result[0][1]
                     data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
                     factor_data = pd.concat([factor_data, data])
-        save_compress(factor_data, FACTOR_PATH + '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list))))
+            factor_data = factor_data.reset_index()
+            save_compress(factor_data, FACTOR_PATH + product + '_' + '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list))))
 
     @timing
     def init_instrument_config(self):

@@ -263,6 +263,7 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
             runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
     time.sleep(100000)
 
+
 @timing
 def conbine_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
     """遍历k线临时文件，将文件按合约合并生成到organized目录
@@ -280,7 +281,7 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
                                    {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
-    runner = ProcessRunner(10)
+    # runner = ProcessRunner(10)
     for product in products:
         if len(include_product) > 0 and product not in include_product:
             continue
@@ -293,9 +294,10 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
                 continue
             if not os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product):
                 os.makedirs(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
-            runner.execute(combine_future_k_line_by_instrument,
-                           args=(process_code, checked_set, product, instrument))
-    time.sleep(100000)
+            combine_future_k_line_by_instrument(process_code, checked_set, product, instrument)
+            # runner.execute(combine_future_k_line_by_instrument,
+            #                args=(process_code, checked_set, product, instrument))
+    # time.sleep(100000)
 
 @timing
 def combine_future_k_line_by_instrument(process_code, checked_set, product, instrument):
@@ -303,8 +305,6 @@ def combine_future_k_line_by_instrument(process_code, checked_set, product, inst
     columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10',
                'ret.20', 'ret.30']
     data = pd.DataFrame(columns=columns)
-    if os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl'):
-        data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
     file_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
     file_list.sort()
     for file in file_list:
@@ -336,7 +336,6 @@ def create_future_k_line_by_instrument(process_code,  checked_set, product, inst
             continue
         date_data = data[data['date'] == date]
         k_line_data = FutureTickDataProcessorPhase1().process(date_data)
-        print(k_line_data)
         if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
             os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
         date_replace = date.replace('-', '')
@@ -401,11 +400,12 @@ def validate_stock_data_integrity_check(check_original=True):
         file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
     else:
         file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\organized_amount_check_20221121")
-    root_path = STOCK_TICK_ORGANIZED_DATA_PATH
     stock_cache = {}
     stock_info_crawler = StockInfoCrawler()
     if check_original:
         root_path = STOCK_TICK_DATA_PATH
+    else:
+        root_path = STOCK_TICK_ORGANIZED_DATA_PATH
     year_folder_list = list_files_in_path(root_path)
     year_folder_list.sort()
     for year_folder in year_folder_list:
@@ -436,10 +436,11 @@ def validate_stock_data_integrity_check(check_original=True):
                     filter_miss_stocks = []
                     for stock_code in miss_stocks:
                         full_stock_code = get_full_stockcode(stock_code)
-                        if stock_code not in stock_cache:
+                        cache_key = (stock_code + '-' + year.group()[2:])
+                        if cache_key not in stock_cache:
                             date_set = set(stock_info_crawler.get_content(year.group()[2:], full_stock_code))
-                            stock_cache[stock_code] = date_set
-                        if date[2:] not in stock_cache[stock_code]:
+                            stock_cache[cache_key] = date_set
+                        if date not in stock_cache[cache_key]:
                             filter_miss_stocks.append(stock_code + 'x')
                         else:
                             filter_miss_stocks.append(stock_code + 'o')
@@ -513,22 +514,21 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    # enrich_stock_tick_data('20221111-finley-1',['2022'])
+    enrich_stock_tick_data('20221111-finley-1',['2021'])
     # enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
 
     # 检查stock数据
     #初始化表
     # init_index_constituent_config()
     #检查原始股票数据
-    validate_stock_data_integrity_check()
+    # validate_stock_data_integrity_check()
     #检查已处理股票数据
     # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
     # create_k_line_for_future_tick('20221117-finley')
-
     # 拼接股指k线
-    # conbine_k_line_for_future_tick('20221109-finley-1')
+    # conbine_k_line_for_future_tick('20221117-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')

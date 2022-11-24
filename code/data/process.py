@@ -425,7 +425,7 @@ class FutureTickDataProcessorPhase2(DataProcessor):
     @timing
     def process(self, data):
         for period in self._ret_period:
-            data['ret.' + str(period)] = (data['close'].shift(-period) - data['close'])/data['close']
+            data['ret.' + str(period)] = (data['close'].shift(-(period * 20)) - data['close'])/data['close']
         closing_price = data.iloc[-1]['close']
         for period in self._ret_period:
             data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'])/data['close']
