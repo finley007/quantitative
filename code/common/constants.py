@@ -29,6 +29,8 @@ REPORT_PATH = 'E:\\data\\' + 'report' + os.path.sep
 
 DB_CONNECTION = config.get('common', 'db_connection')
 
+STOCK_INDEX_PRODUCTS = ['IC', 'IH', 'IF']
+
 FILE_TYPE_CSV = '.csv'
 
 FUTURE_TICK_FILE_PREFIX = 'CFFEX'
