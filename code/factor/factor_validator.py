@@ -13,7 +13,7 @@ from common.exception.exception import InvalidStatus
 from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
-from common.visualization import draw_line
+from common.visualization import draw_line, join_two_images
 from factor.volume_price_factor import WilliamFactor
 
 class FactorValidator():
@@ -68,12 +68,17 @@ class StabilityValidator(FactorValidator):
                         'std' : std
                     })
                     groupby_data['date'] = groupby_data.index
-                    pdf = PdfPages(factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '.pdf')
+                    mean_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '_mean.png'
+                    std_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '_std.png'
+                    final_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '.png'
                     draw_line(groupby_data, factor.get_key(param), 'Date', 'Mean',
-                              {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, pdf = pdf)
+                              {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, save_path = mean_path)
                     draw_line(groupby_data, factor.get_key(param), 'Date', 'Std',
-                              {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, pdf = pdf)
-                    pdf.close()
+                              {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, save_path = std_path)
+                    png_file = join_two_images(mean_path, std_path, final_path, flag = 'vertical')
+                    os.remove(mean_path)
+                    os.remove(std_path)
+
 
 
 if __name__ == '__main__':
