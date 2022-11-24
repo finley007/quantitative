@@ -1,11 +1,8 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
-from matplotlib.font_manager import FontProperties
 import mplfinance as mpf
 import matplotlib.pyplot as plt
-import matplotlib
 import pandas as pd
-import numpy as np
 
 from common.localio import read_decompress
 from common.constants import TEST_PATH
@@ -30,10 +27,6 @@ def draw_analysis_curve(data, type='candle',
     :param add_plot: 绘制额外信息
     :return: NoneType
 
-    Usage::
-
-      >>> from visualization import draw_analysis_curve
-      >>> draw_analysis_curve(data)
     """
     mc = mpf.make_marketcolors(up='r', down='g')
     s = mpf.make_mpf_style(marketcolors=mc)
@@ -44,6 +37,33 @@ def draw_analysis_curve(data, type='candle',
     else:
         mpf.plot(data=data, type=type, volume=volume, figratio=figratio, figscale=figscale,
                  show_nontrading=show_nontrading, style=s)
+
+def draw_line(data, title='', xlabel='', ylabel='', plot_info={'x': 'x', 'y': [{'key': 'y', 'label': ''}]},
+              show_grid=False, pdf=None):
+    """画折线图
+
+    :param data: 待分析数据源
+    :type data: Dataframe
+    :param title: 标题
+    :param xlabel: 横坐标标识
+    :param ylabel: 纵坐标标识
+    :param plot_info: 数据源解析字典
+    :param show_grid: 是否展示网格
+    :return: NoneType
+
+    """
+    plt.style.use('ggplot')
+    fig = plt.figure(figsize=(6, 3))
+    for y in plot_info.get('y'):
+        plt.plot(data[plot_info.get('x')], data[y.get('key')], label=y.get('label'))
+    plt.legend()
+    plt.grid(show_grid)
+    if pdf:
+        pdf.savefig(fig)
+        plt.close()
+    else:
+        plt.show()
+
 
 if __name__ == '__main__':
     data = read_decompress(TEST_PATH + '20200928.pkl')

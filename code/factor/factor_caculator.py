@@ -7,7 +7,7 @@ import pandas as pd
 import random
 
 from common.aop import timing
-from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH
+from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH, STOCK_INDEX_PRODUCTS
 from common.exception.exception import InvalidStatus
 from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
@@ -44,9 +44,8 @@ class FactorCaculator():
         columns = example.columns.tolist()
         for factor in factor_list:
             columns.append(factor.factor_code)
-        products = ['IC', 'IH', 'IF']
         session = create_session()
-        for product in products:
+        for product in STOCK_INDEX_PRODUCTS:
             factor_data = pd.DataFrame(columns=columns)
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
             for instrument in instrument_list:
@@ -85,10 +84,9 @@ class FactorCaculator():
         example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
         columns = example.columns.tolist()
         columns.append(factor.factor_code)
-        products = ['IC', 'IH', 'IF']
         window_size = 100
         session = create_session()
-        for product in products:
+        for product in STOCK_INDEX_PRODUCTS:
             factor_data = pd.DataFrame(columns=columns)
             instrument_list = session.execute(
                 'select distinct instrument from future_instrument_config where product = :product order by instrument',
@@ -111,11 +109,10 @@ class FactorCaculator():
     def init_instrument_config(self):
         session = create_session()
         session.execute('delete from future_instrument_config')
-        products = ['IC', 'IH', 'IF']
         main_instrument_config = pd.DataFrame(pd.read_pickle(CONFIG_PATH + 'all-main.pkl'))
-        main_instrument_config = main_instrument_config[products]
+        main_instrument_config = main_instrument_config[STOCK_INDEX_PRODUCTS]
         print(main_instrument_config)
-        for product in products:
+        for product in STOCK_INDEX_PRODUCTS:
             instrument_list = list_files_in_path(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
             instrument_list.sort()
             for instrument in instrument_list:

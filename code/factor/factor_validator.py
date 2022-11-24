@@ -4,13 +4,16 @@ import os
 import re
 import time
 import pandas as pd
+from matplotlib.backends.backend_pdf import PdfPages
 
 from common.aop import timing
-from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH
+from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH, STOCK_INDEX_PRODUCTS, \
+    REPORT_PATH
 from common.exception.exception import InvalidStatus
 from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
+from common.visualization import draw_line
 from factor.volume_price_factor import WilliamFactor
 
 class FactorValidator():
@@ -51,9 +54,26 @@ class StabilityValidator(FactorValidator):
 
     @timing
     def validate(self, factor_list):
+        factor_diagram_path = REPORT_PATH + 'factor'
+        if not os.path.exists(factor_diagram_path):
+            os.makedirs(factor_diagram_path)
         for factor in factor_list:
-            data = factor.load()
-            print(data.columns)
+            for param in factor.get_params():
+                for product in STOCK_INDEX_PRODUCTS:
+                    data = factor.load(product)
+                    mean = data.groupby('date')[factor.get_key(param)].mean()
+                    std = data.groupby('date')[factor.get_key(param)].std()
+                    groupby_data = pd.DataFrame({
+                        'mean' : mean,
+                        'std' : std
+                    })
+                    groupby_data['date'] = groupby_data.index
+                    pdf = PdfPages(factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '.pdf')
+                    draw_line(groupby_data, factor.get_key(param), 'Date', 'Mean',
+                              {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, pdf = pdf)
+                    draw_line(groupby_data, factor.get_key(param), 'Date', 'Std',
+                              {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, pdf = pdf)
+                    pdf.close()
 
 
 if __name__ == '__main__':

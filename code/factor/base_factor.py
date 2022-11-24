@@ -49,8 +49,8 @@ class Factor(metaclass=ABCMeta):
         return pearsonr(data[self.factor_code], data[factor.factor_code])
 
     #加载因子文件
-    def load(self):
-        factor_path = FACTOR_PATH + self.get_full_name()
+    def load(self, product):
+        factor_path = FACTOR_PATH + product + '_' + self.get_full_name()
         return read_decompress(factor_path)
 
     # 全局计算因子值
