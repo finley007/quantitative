@@ -27,7 +27,7 @@ class WilliamFactor(Factor):
 
     def caculate(self, data):
         for param in self._params:
-            data[self.get_key(param)] = (data['close'] - data['close'].rolling(window=param).min())/(data['close'].rolling(window=param).max()-data['close'].rolling(window=param).min())
+            data[self.get_key(param)] = (data['close'] - (data['high'].rolling(window=param).max()+data['low'].rolling(window=param).min())/2)/(data['high'].rolling(window=param).max()-data['low'].rolling(window=param).min())
         return data
 
 if __name__ == '__main__':

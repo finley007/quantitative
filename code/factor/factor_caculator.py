@@ -4,6 +4,7 @@ import os
 import re
 import time
 import pandas as pd
+import random
 
 from common.aop import timing
 from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH
@@ -20,8 +21,22 @@ class FactorCaculator():
     ----------
     """
 
+    _manually_check_file_count = 10
+
     @timing
-    def caculate(self, factor_list):
+    def caculate(self, factor_list
+                 ):
+        '''
+        生成因子文件
+
+        Parameters
+        ----------
+        factor_list
+
+        Returns
+        -------
+
+        '''
         if len(factor_list) == 0:
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
@@ -52,6 +67,45 @@ class FactorCaculator():
                     factor_data = pd.concat([factor_data, data])
             factor_data = factor_data.reset_index()
             save_compress(factor_data, FACTOR_PATH + product + '_' + '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list))))
+
+    @timing
+    def caculate_manually_check(self, factor):
+        '''
+        生成用于检测的因子文件
+
+        Parameters
+        ----------
+        factor
+
+        Returns
+        -------
+
+        '''
+        # 获取k线文件列模板
+        example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
+        columns = example.columns.tolist()
+        columns.append(factor.factor_code)
+        products = ['IC', 'IH', 'IF']
+        window_size = 100
+        session = create_session()
+        for product in products:
+            factor_data = pd.DataFrame(columns=columns)
+            instrument_list = session.execute(
+                'select distinct instrument from future_instrument_config where product = :product order by instrument',
+                {'product': product}).fetchall()
+            for i in range(self._manually_check_file_count):
+                rdm_number = random.randint(0, len(instrument_list) - 1)
+                instrument = instrument_list[rdm_number]
+                data = read_decompress(
+                    FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
+                data['date'] = data['datetime'].str[0:10]
+                data['product'] = product
+                data = factor.caculate(data)
+                if len(data) > 0:
+                    start_index = max(factor.get_params())
+                    rdm_index = random.randint(start_index, len(data) - window_size)
+                    data = data.loc[rdm_index: rdm_index + window_size]
+                    data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + str(i) + '.csv')
 
     @timing
     def init_instrument_config(self):
@@ -87,7 +141,11 @@ if __name__ == '__main__':
     # FactorCaculator().init_instrument_config()
 
     #因子计算
-    william_factor = WilliamFactor()
-    factor_list = [william_factor]
-    FactorCaculator().caculate(factor_list)
+    # william_factor = WilliamFactor()
+    # factor_list = [william_factor]
+    # FactorCaculator().caculate(factor_list)
+
+    #生成因子比对文件
+    william_factor = WilliamFactor([10])
+    FactorCaculator().caculate_manually_check(william_factor)
 
