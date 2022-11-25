@@ -6,3 +6,4 @@ pip3 install cryptography -i http://mirrors.aliyun.com/pypi/simple/ --trusted-ho
 pip3 install matplotlib -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install mplfinance -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install requests -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install pillow -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
