@@ -13,9 +13,9 @@ schema:
 自然日        date
 时间          time
 成交价        price
-成交量        volume
-成交额        amount
-成交笔数      transaction_number
+成交量        volume  -  插值清0
+成交额        amount  -  插值清0
+成交笔数      transaction_number - 插值清0
 IOPV(先忽略)  iopv
 成交标志      transaction_flag
 BS标志        bs_flag 

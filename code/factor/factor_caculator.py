@@ -40,13 +40,12 @@ class FactorCaculator():
         if len(factor_list) == 0:
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
-        example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
-        columns = example.columns.tolist()
-        for factor in factor_list:
-            columns.append(factor.factor_code)
+        # example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
+        # columns = example.columns.tolist()
         session = create_session()
         for product in STOCK_INDEX_PRODUCTS:
-            factor_data = pd.DataFrame(columns=columns)
+            # factor_data = pd.DataFrame(columns=columns)
+            factor_data = pd.DataFrame()
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
             for instrument in instrument_list:
                 data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
@@ -81,13 +80,9 @@ class FactorCaculator():
 
         '''
         # 获取k线文件列模板
-        example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
-        columns = example.columns.tolist()
-        columns.append(factor.factor_code)
         window_size = 100
         session = create_session()
         for product in STOCK_INDEX_PRODUCTS:
-            factor_data = pd.DataFrame(columns=columns)
             instrument_list = session.execute(
                 'select distinct instrument from future_instrument_config where product = :product order by instrument',
                 {'product': product}).fetchall()
@@ -138,11 +133,11 @@ if __name__ == '__main__':
     # FactorCaculator().init_instrument_config()
 
     #因子计算
-    # william_factor = WilliamFactor()
-    # factor_list = [william_factor]
-    # FactorCaculator().caculate(factor_list)
+    william_factor = WilliamFactor()
+    factor_list = [william_factor]
+    FactorCaculator().caculate(factor_list)
 
     #生成因子比对文件
-    william_factor = WilliamFactor([10])
-    FactorCaculator().caculate_manually_check(william_factor)
+    # william_factor = WilliamFactor([10])
+    # FactorCaculator().caculate_manually_check(william_factor)
 
