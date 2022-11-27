@@ -79,6 +79,7 @@ class StockTickDataCleaner(DataCleaner):
         data = data.drop(columns=self._ignore_columns)
         data = data.drop(data.index[data['time'] <= constants.STOCK_START_TIME])
         data = data.drop(data.index[data['time'] >= constants.STOCK_TRANSACTION_END_TIME])
+        data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME) & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME)])
         # 去除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
         # 去除股票的重复成交量为0的数据
@@ -181,6 +182,12 @@ class StockTickDataColumnTransform(DataProcessor):
         return self._columns
 
     def process(self, data):
+        if len(data.columns) > len(self._columns):
+            columns_to_be_deleted = []
+            for i in range(len(data.columns) - len(self._columns)):
+                columns_to_be_deleted.append(data.columns.tolist()[len(data.columns) - (i + 1)])
+            data = data.drop(columns_to_be_deleted, axis=1)
+            print(data)
         data.columns = self._columns
         return data
 
@@ -216,7 +223,7 @@ class StockTickDataEnricher(DataProcessor):
             # if len(to_be_removed_index) > 0: # 这种数据有可能包含有用信息，所以应该保留
             #     data.drop(to_be_removed_index)
 
-            #插值
+        #插值
         miss_data = pd.DataFrame(columns=data.columns.tolist())
         data['realtime'] = data.apply(
             lambda item: datetime.strptime(item['time'], "%H:%M:%S.%f"), axis=1)
@@ -231,13 +238,16 @@ class StockTickDataEnricher(DataProcessor):
             str_cur_time = item['time']
             while step < delta_time_sec:
                 item['time'] = self.time_advance(str_cur_time, step)
+                item['volume'] = 0
+                item['amount'] = 0
+                item['transaction_number'] = 0
                 miss_data = miss_data.append(item)
                 step = step + constants.STOCK_TICK_SAMPLE_INTERVAL
         data = data.append(miss_data)
         data = pd.concat([pre_data, data])
 
         data = data.sort_values(by=['time'])
-        # data = data.reset_index(drop=True)
+        data = data.reset_index(drop=True)
         return data
 
     def handle_off_time(self, item):

@@ -40,8 +40,6 @@ class FactorCaculator():
         if len(factor_list) == 0:
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
-        # example = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + 'IF' + os.path.sep + 'IF1701.pkl')
-        # columns = example.columns.tolist()
         session = create_session()
         for product in STOCK_INDEX_PRODUCTS:
             # factor_data = pd.DataFrame(columns=columns)

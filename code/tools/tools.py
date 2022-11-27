@@ -514,8 +514,8 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221109-finley',['2022'])
 
     # 生成stock数据
-    enrich_stock_tick_data('20221111-finley-1',['2018'])
-    # enrich_stock_tick_data('20221118-finley',['2021'], ['07'], ['22'])
+    enrich_stock_tick_data('20221111-finley-1')
+    # enrich_stock_tick_data('20221111-finley-1',['2020'],['09'],['28'])
 
     # 检查stock数据
     #初始化表
