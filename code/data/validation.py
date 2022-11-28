@@ -11,7 +11,7 @@ from common.constants import RESULT_SUCCESS, RESULT_FAIL, FUTURE_TICK_REPORT_DAT
     STOCK_CALL_AUACTION_END_TIME
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.localio import FileWriter, read_decompress
-from common.timeutils import date_alignment
+from common.timeutils import date_alignment, add_milliseconds_suffix
 from data.process import StockTickDataColumnTransform, StockTickDataCleaner
 
 
@@ -249,7 +249,7 @@ class StockTickDataValidator(Validator):
             result.result = RESULT_FAIL
             result.error_details.append('The stock is suspended')
         # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
-        if len(data[(data['price'] == 0) & (data['time'] > STOCK_CALL_AUACTION_OPEN_TIME)]):
+        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_CALL_AUACTION_OPEN_TIME))]) > 0:
             result.result = RESULT_FAIL
             result.error_details.append('Invalid price value')
         # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据
@@ -258,15 +258,15 @@ class StockTickDataValidator(Validator):
                           'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10',
                           'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10']
         temp_data = data[check_columns]
-        temp_data = temp_data[(temp_data['time'] > STOCK_CALL_AUACTION_OPEN_TIME) & (temp_data['time'] < STOCK_CALL_AUACTION_END_TIME)]
+        temp_data = temp_data[(temp_data['time'] > add_milliseconds_suffix(STOCK_CALL_AUACTION_OPEN_TIME)) & (temp_data['time'] < add_milliseconds_suffix(STOCK_CALL_AUACTION_END_TIME))]
         for i in range(len(check_columns)):
             if i > 0:
                 if 0 in temp_data[check_columns[i]].tolist():
                     result.result = RESULT_FAIL
-                    result.error_details.append('Invalid ask or bid price value')
+                    result.error_details.append('Invalid {0} value'.format(check_columns[i]))
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > STOCK_CALL_AUACTION_OPEN_TIME)]) > 0:
+               & (data['time'] > add_milliseconds_suffix(STOCK_CALL_AUACTION_OPEN_TIME))]) > 0:
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result

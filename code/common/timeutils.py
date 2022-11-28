@@ -36,6 +36,13 @@ def date_format_transform(date):
     else:
         return date.replace('-','')
 
+
+def add_milliseconds_suffix(time):
+    if len(time) == 8:
+        return time + '.000'
+    else:
+        return time
+
 if __name__ == '__main__':
     print(date_format_transform('20221121'))
     print(date_format_transform('2022-11-21'))
