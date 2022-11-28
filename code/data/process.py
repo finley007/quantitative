@@ -76,13 +76,15 @@ class StockTickDataCleaner(DataCleaner):
 
     def process(self, data):
         super().process(data)
+        # 清除多余的列
         data = data.drop(columns=self._ignore_columns)
+        # 按时间清除 小于09:15:00，11：30到13：00，大于15：00的数据
         data = data.drop(data.index[data['time'] <= constants.STOCK_START_TIME])
         data = data.drop(data.index[data['time'] >= constants.STOCK_TRANSACTION_END_TIME])
         data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME) & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME)])
-        # 去除000028.SZ               28  2017-01-05         0::.0    0.0       0
+        # 清除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
-        # 去除股票的重复成交量为0的数据
+        # 清除股票的重复成交量为0的数据
         data['count'] = data.groupby(['time'])['time'].transform('count')
         data = data.drop(data.index[(data['count'] > 1) & (data['volume'] == 0)])
         return data

@@ -5,14 +5,14 @@ from abc import ABCMeta, abstractmethod
 import hashlib
 
 import numpy
-import pandas as pd
 
 from common.aop import timing
-from common.constants import RESULT_SUCCESS, RESULT_FAIL, TEMP_PATH, FUTURE_TICK_REPORT_DATA_PATH, STOCK_START_TIME
+from common.constants import RESULT_SUCCESS, RESULT_FAIL, FUTURE_TICK_REPORT_DATA_PATH, STOCK_CALL_AUACTION_OPEN_TIME, \
+    STOCK_CALL_AUACTION_END_TIME
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment
-from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner
+from data.process import StockTickDataColumnTransform, StockTickDataCleaner
 
 
 class ValidationResult:
@@ -213,6 +213,9 @@ class StockTickDataValidator(Validator):
         2. 检查是否包含开盘时间点的数据，插值时需要
         3. 检查成交量是否递增
         4. 检查是否停盘，price价全为0
+        5. 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
+        6. 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据
+        7. 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         Parameters
         ----------
         data : DataFrame
@@ -245,6 +248,27 @@ class StockTickDataValidator(Validator):
         if 'price' in data.loc[:, (data == 0).all()].columns.tolist():
             result.result = RESULT_FAIL
             result.error_details.append('The stock is suspended')
+        # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
+        if len(data[(data['price'] == 0) & (data['time'] > STOCK_CALL_AUACTION_OPEN_TIME)]):
+            result.result = RESULT_FAIL
+            result.error_details.append('Invalid price value')
+        # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据
+        check_columns = ['time', 'bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5', 'bid_price6', 'bid_price7', 'bid_price8', 'bid_price9', 'bid_price10',
+                          'bid_volume1', 'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5', 'bid_volume6', 'bid_volume7', 'bid_volume8', 'bid_volume9', 'bid_volume10',
+                          'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10',
+                          'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10']
+        temp_data = data[check_columns]
+        temp_data = temp_data[(temp_data['time'] > STOCK_CALL_AUACTION_OPEN_TIME) & (temp_data['time'] < STOCK_CALL_AUACTION_END_TIME)]
+        for i in range(len(check_columns)):
+            if i > 0:
+                if 0 in temp_data[check_columns[i]].tolist():
+                    result.result = RESULT_FAIL
+                    result.error_details.append('Invalid ask or bid price value')
+        # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
+        if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
+               & (data['time'] > STOCK_CALL_AUACTION_OPEN_TIME)]) > 0:
+            result.result = RESULT_FAIL
+            result.error_details.append('Invalid OCHL value')
         return result
 
     @classmethod
@@ -457,7 +481,7 @@ if __name__ == '__main__':
     # compare_data = FutureTickDataValidator().convert(target_data, compare_data)
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
-    # path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2022/stk_tick10_w_202204/20220418/pkl/601828.pkl'
+    # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
     path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202201\\20220104\\300001.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
