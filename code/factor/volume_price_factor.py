@@ -9,7 +9,7 @@ import numpy as np
 from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
-from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation
+from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX
 
 """量价类因子
 分类编号：01
@@ -78,7 +78,7 @@ class LinearPerAtrFactor(Factor):
         self._params = params
         self._atr = ATR(self._params)
         self._linear_regression = LinearRegression(self._params, 'log')
-        self._linear_regression.set_key_func(self.caculation_function)
+        self._linear_regression.set_caculation_func(self.caculation_function)
 
     def caculate(self, data):
         data['log'] = data.apply(lambda item:math.log((item['open'] + item['close'] + item['high'] + item['low'])/4), axis=1)
@@ -97,7 +97,7 @@ class LinearDeviationFactor(Factor):
     TSSB LINEAR DEVIATION HistLength 因子
     """
 
-    factor_code = 'FCT_01_003_LINEAR_DEVIATION'
+    factor_code = 'FCT_01_004_LINEAR_DEVIATION'
     version = '1.0'
 
     def __init__(self, params = [10, 20, 50, 100]):
@@ -128,7 +128,7 @@ class QuadraticDeviationFactor(Factor):
     TSSB QUADRATIC DEVIATION HistLength 因子
     """
 
-    factor_code = 'FCT_01_004_QUADRATIC_DEVIATION'
+    factor_code = 'FCT_01_005_QUADRATIC_DEVIATION'
     version = '1.0'
 
     def __init__(self, params = [10, 20, 50, 100]):
@@ -160,7 +160,7 @@ class CubicDeviationFactor(Factor):
     TSSB CUBIC DEVIATION HistLength 因子
     """
 
-    factor_code = 'FCT_01_005_CUBIC_DEVIATION'
+    factor_code = 'FCT_01_006_CUBIC_DEVIATION'
     version = '1.0'
 
     def __init__(self, params = [10, 20, 50, 100]):
@@ -192,7 +192,7 @@ class PriceMomentumFactor(Factor):
     TSSB PRICE MOMENTUM HistLength StdDevLength 因子
     """
 
-    factor_code = 'FCT_01_006_PRICE_MOMENTUM'
+    factor_code = 'FCT_01_007_PRICE_MOMENTUM'
     version = '1.0'
 
     def __init__(self, params = [10, 20, 50, 100]):
@@ -212,6 +212,101 @@ class PriceMomentumFactor(Factor):
     def formula(self, item):
         list = item.tolist()
         return math.log(list[-1]/list[0])
+
+class AdxFactor(Factor):
+    """
+    TSSB ADX HistLength 因子
+    """
+
+    factor_code = 'FCT_01_008_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [14]):
+        self._params = params
+        self._adx = ADX(self._params)
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class MinAdxFactor(Factor):
+    """
+    TSSB MIN ADX HistLength MinLength 因子
+    """
+
+    factor_code = 'FCT_01_008_MIN_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).min()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class ResidualMinAdxFactor(Factor):
+    """
+    TSSB RESIDUAL MIN ADX HistLength MinLength 因子
+    """
+
+    factor_code = 'FCT_01_009_RESIDUAL_MIN_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])] - data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).min()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class MaxAdxFactor(Factor):
+    """
+    TSSB MAX ADX HistLength MaxLength 因子
+    """
+
+    factor_code = 'FCT_01_010_MAX_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).max()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class ResidualMaxAdxFactor(Factor):
+    """
+    TSSB RESIDUAL MAX ADX HistLength MaxLength 因子
+    """
+
+    factor_code = 'FCT_01_011_RESIDUAL_MAX_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].max() - data[self._adx.get_key(self._adx.get_params()[0])].rolling(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
 
 
 if __name__ == '__main__':
@@ -304,19 +399,94 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=cubic_deviation_factor.get_keys())
 
     # TSSB PRICE MOMENTUM HistLength StdDevLength
-    price_momentum_factor = PriceMomentumFactor([10])
-    print(price_momentum_factor.factor_code)
-    print(price_momentum_factor.version)
-    print(price_momentum_factor.get_params())
-    print(price_momentum_factor.get_category())
-    print(price_momentum_factor.get_full_name())
-    print(price_momentum_factor.get_key(5))
-    print(price_momentum_factor.get_keys())
+    # price_momentum_factor = PriceMomentumFactor([10])
+    # print(price_momentum_factor.factor_code)
+    # print(price_momentum_factor.version)
+    # print(price_momentum_factor.get_params())
+    # print(price_momentum_factor.get_category())
+    # print(price_momentum_factor.get_full_name())
+    # print(price_momentum_factor.get_key(5))
+    # print(price_momentum_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = price_momentum_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=price_momentum_factor.get_keys())
+
+    # TSSB ADX HistLength
+    adx_factor = AdxFactor()
+    print(adx_factor.factor_code)
+    print(adx_factor.version)
+    print(adx_factor.get_params())
+    print(adx_factor.get_category())
+    print(adx_factor.get_full_name())
+    print(adx_factor.get_key(5))
+    print(adx_factor.get_keys())
     # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = price_momentum_factor.caculate(data)
+    data = adx_factor.caculate(data)
+    print(data.iloc[0:50][adx_factor.get_keys()])
     data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=price_momentum_factor.get_keys())
+    draw_analysis_curve(data, show_signal=True, signal_keys=adx_factor.get_keys())
+
+    # TSSB MIN ADX HistLength MinLength
+    # min_adx_factor = MinAdxFactor([20])
+    # print(min_adx_factor.factor_code)
+    # print(min_adx_factor.version)
+    # print(min_adx_factor.get_params())
+    # print(min_adx_factor.get_category())
+    # print(min_adx_factor.get_full_name())
+    # print(min_adx_factor.get_key(5))
+    # print(min_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = min_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=min_adx_factor.get_keys())
+
+    # TSSB RESIDUAL MIN ADX HistLength MinLength
+    # residual_min_adx_factor = ResidualMinAdxFactor([20])
+    # print(residual_min_adx_factor.factor_code)
+    # print(residual_min_adx_factor.version)
+    # print(residual_min_adx_factor.get_params())
+    # print(residual_min_adx_factor.get_category())
+    # print(residual_min_adx_factor.get_full_name())
+    # print(residual_min_adx_factor.get_key(5))
+    # print(residual_min_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = residual_min_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=residual_min_adx_factor.get_keys())
+
+    # TSSB MAX ADX HistLength MaxLength
+    # max_adx_factor = MaxAdxFactor([20])
+    # print(max_adx_factor.factor_code)
+    # print(max_adx_factor.version)
+    # print(max_adx_factor.get_params())
+    # print(max_adx_factor.get_category())
+    # print(max_adx_factor.get_full_name())
+    # print(max_adx_factor.get_key(5))
+    # print(max_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = max_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=max_adx_factor.get_keys())
+
+    # TSSB RESIDUAL MAX ADX HistLength MaxLength
+    # residual_max_adx_factor = ResidualMaxAdxFactor([20])
+    # print(residual_max_adx_factor.factor_code)
+    # print(residual_max_adx_factor.version)
+    # print(residual_max_adx_factor.get_params())
+    # print(residual_max_adx_factor.get_category())
+    # print(residual_max_adx_factor.get_full_name())
+    # print(residual_max_adx_factor.get_key(5))
+    # print(residual_max_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = residual_max_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=residual_max_adx_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()

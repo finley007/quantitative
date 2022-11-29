@@ -185,6 +185,41 @@ class PolynomialRegression(Indicator):
         self.model.fit(X, y)
         return func(self.model, self.poly, window)
 
+class ADX(Indicator):
+    """
+    ADX
+    """
+
+    key = 'adx'
+
+    def __init__(self, params):
+        self._params = params
+        self._atr = ATR(self._params)
+
+    def get_key(self, param):
+        return self.key + '.' + str(param)
+
+    def enrich(self, data):
+        self._atr.enrich(data)
+        data['up'] = data['high'] - data['high'].shift(1) #今天和昨天最高价之差
+        data['down'] = data['low'].shift(1) - data['low'] #今天和昨天最低价之差
+        data.loc[((data['up'] < 0) & (data['down'] < 0)) | (data['up'] == data['down']), 'DM+'] = 0
+        data.loc[((data['up'] < 0) & (data['down'] < 0)) | (data['up'] == data['down']), 'DM-'] = 0
+        data.loc[(data['up'] > data['down']), 'DM+'] = data['up']
+        data.loc[(data['up'] > data['down']), 'DM-'] = 0
+        data.loc[(data['up'] < data['down']), 'DM-'] = data['down']
+        data.loc[(data['up'] < data['down']), 'DM+'] = 0
+        for param in self._params:
+            data['DM+.' + str(param)] = data['DM+'].rolling(param).mean()
+            data['DM-.' + str(param)] = data['DM-'].rolling(param).mean()
+            data['DI+.' + str(param)] = data['DM+.' + str(param)] / data[self._atr.get_key(param)]
+            data['DI-.' + str(param)] = data['DM-.' + str(param)] / data[self._atr.get_key(param)]
+            data['DI.SUM.' + str(param)] = data['DI+.' + str(param)] + data['DI-.' + str(param)]
+            data['DI.SUB.' + str(param)] = abs(data['DI+.' + str(param)] - data['DI-.' + str(param)])
+            data['DX.' + str(param)] = (data['DI.SUB.' + str(param)] * 100) / data['DI.SUM.' + str(param)]
+            data[self.get_key(param)] = data['DX.' + str(param)].rolling(param).mean()
+        return data
+
 
 if __name__ == '__main__':
     data = read_decompress('/Users/finley/Projects/stock-index-future/data/organised/future/IH/IH2209.pkl')
@@ -196,8 +231,8 @@ if __name__ == '__main__':
     # print(data)
     #
 
-    data = StandardDeviation([10]).enrich(data)
-    print(data)
+    # data = StandardDeviation([10]).enrich(data)
+    # print(data)
 
     # data = ATR([10]).enrich(data)
     # print(data)
@@ -207,6 +242,9 @@ if __name__ == '__main__':
 
     # data = PolynomialRegression([10]).enrich(data)
     # print(data)
+
+    data = ADX([14]).enrich(data)
+    print(data)
 
 
 
