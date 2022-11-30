@@ -9,7 +9,8 @@ import numpy as np
 from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
-from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX
+from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX, TR, \
+    Variance
 
 """量价类因子
 分类编号：01
@@ -309,6 +310,208 @@ class ResidualMaxAdxFactor(Factor):
         return data
 
 
+class DeltaAdxFactor(Factor):
+    """
+    TSSB DELTA ADX HistLength DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_012_DELTA_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])] - data[self._adx.get_key(self._adx.get_params()[0])].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class AccelAdxFactor(Factor):
+    """
+    TSSB ACCEL ADX HistLength DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_013_ACCEL_ADX'
+    version = '1.0'
+
+    def __init__(self, params = [20]):
+        self._params = params
+        self._adx = ADX([14])
+
+    def caculate(self, data):
+        data = self._adx.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])] + data[self._adx.get_key(self._adx.get_params()[0])].shift(2 * param)\
+                                        - 2 * data[self._adx.get_key(self._adx.get_params()[0])].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class IntradayIntensityFactor(Factor):
+    """
+    TSSB INTRADAY INTENSITY HistLength 因子
+    """
+
+    factor_code = 'FCT_01_014_INTRADAY_INTENSITY'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._tr = TR()
+        self._moving_average = MovingAverage(self._params, IntradayIntensityFactor.factor_code)
+
+    def caculate(self, data):
+        data = self._tr.enrich(data)
+        data[IntradayIntensityFactor.factor_code] = (data['close'] - data['open'])/data[self._tr.get_key()]
+        data = self._moving_average.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._moving_average.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaIntradayIntensityFactor(Factor):
+    """
+    TSSB DELTA INTRADAY INTENSITY HistLength DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_015_DELTA_INTRADAY_INTENSITY'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._tr = TR()
+
+    def caculate(self, data):
+        data = self._tr.enrich(data)
+        data[IntradayIntensityFactor.factor_code] = (data['close'] - data['open'])/data[self._tr.get_key()]
+        for param in self._params:
+            data[self.get_key(param)] = data[IntradayIntensityFactor.factor_code] - data[IntradayIntensityFactor.factor_code].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class PriceVarianceRatioFactor(Factor):
+    """
+    TSSB PRICE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_016_PRICE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        var_params = list(set((np.array(self._params) * 2).tolist() + self._params))
+        self._var = Variance(var_params, 'log')
+
+    def caculate(self, data):
+        data['log'] = data['close'].apply(lambda item: math.log(item))
+        data = self._var.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(2 * param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class MinPriceVarianceRatioFactor(Factor):
+    """
+    TSSB MIN PRICE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_017_MIN_PRICE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._price_variance_ratio_factor = PriceVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_variance_ratio_factor.get_key(param)].rolling(param).min()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class MaxPriceVarianceRatioFactor(Factor):
+    """
+    TSSB MAX PRICE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_018_MAX_PRICE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._price_variance_ratio_factor = PriceVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_variance_ratio_factor.get_key(param)].rolling(param).max()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class ChangeVarianceRatioFactor(Factor):
+    """
+    TSSB CHANGE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_019_CHANGE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        var_params = list(set((np.array(self._params) * 2).tolist() + self._params))
+        self._var = Variance(var_params, 'log')
+
+    def caculate(self, data):
+        data['change'] = data['close']/data['close'].shift(1)
+        data['log'] = data['change'].apply(lambda item: math.log(item))
+        data = self._var.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(2 * param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class MinChangeVarianceRatioFactor(Factor):
+    """
+    TSSB MIN CHANGE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_020_MIN_CHANGE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._change_variance_ratio_factor = ChangeVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._change_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._change_variance_ratio_factor.get_key(param)].rolling(param).min()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class MaxChangeVarianceRatioFactor(Factor):
+    """
+    TSSB MAX CHANGE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_021_MAX_CHANGE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._change_variance_ratio_factor = ChangeVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._change_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._change_variance_ratio_factor.get_key(param)].rolling(param).max()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
 if __name__ == '__main__':
     # 测试数据
     # data = read_decompress(TEST_PATH + 'IC2003.pkl')
@@ -414,19 +617,19 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=price_momentum_factor.get_keys())
 
     # TSSB ADX HistLength
-    adx_factor = AdxFactor()
-    print(adx_factor.factor_code)
-    print(adx_factor.version)
-    print(adx_factor.get_params())
-    print(adx_factor.get_category())
-    print(adx_factor.get_full_name())
-    print(adx_factor.get_key(5))
-    print(adx_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    data = adx_factor.caculate(data)
-    print(data.iloc[0:50][adx_factor.get_keys()])
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=adx_factor.get_keys())
+    # adx_factor = AdxFactor()
+    # print(adx_factor.factor_code)
+    # print(adx_factor.version)
+    # print(adx_factor.get_params())
+    # print(adx_factor.get_category())
+    # print(adx_factor.get_full_name())
+    # print(adx_factor.get_key(5))
+    # print(adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # data = adx_factor.caculate(data)
+    # print(data.iloc[0:50][adx_factor.get_keys()])
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=adx_factor.get_keys())
 
     # TSSB MIN ADX HistLength MinLength
     # min_adx_factor = MinAdxFactor([20])
@@ -487,6 +690,156 @@ if __name__ == '__main__':
     # data = residual_max_adx_factor.caculate(data)
     # data.index = pd.DatetimeIndex(data['datetime'])
     # draw_analysis_curve(data, show_signal=True, signal_keys=residual_max_adx_factor.get_keys())
+
+    # TSSB DELTA ADX HistLength DeltaLength
+    # delta_adx_factor = DeltaAdxFactor([20])
+    # print(delta_adx_factor.factor_code)
+    # print(delta_adx_factor.version)
+    # print(delta_adx_factor.get_params())
+    # print(delta_adx_factor.get_category())
+    # print(delta_adx_factor.get_full_name())
+    # print(delta_adx_factor.get_key(5))
+    # print(delta_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_adx_factor.get_keys())
+
+    # TSSB ACCEL ADX HistLength DeltaLength
+    # accel_adx_factor = AccelAdxFactor([20])
+    # print(accel_adx_factor.factor_code)
+    # print(accel_adx_factor.version)
+    # print(accel_adx_factor.get_params())
+    # print(accel_adx_factor.get_category())
+    # print(accel_adx_factor.get_full_name())
+    # print(accel_adx_factor.get_key(5))
+    # print(accel_adx_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = accel_adx_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=accel_adx_factor.get_keys())
+
+    # TSSB ACCEL ADX HistLength DeltaLength
+    # intraday_intensity_factor = IntradayIntensityFactor([20])
+    # print(intraday_intensity_factor.factor_code)
+    # print(intraday_intensity_factor.version)
+    # print(intraday_intensity_factor.get_params())
+    # print(intraday_intensity_factor.get_category())
+    # print(intraday_intensity_factor.get_full_name())
+    # print(intraday_intensity_factor.get_key(5))
+    # print(intraday_intensity_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = intraday_intensity_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=intraday_intensity_factor.get_keys())
+
+    # TSSB DELTA INTRADAY INTENSITY HistLength DeltaLength
+    # delta_intraday_intensity_factor = DeltaIntradayIntensityFactor([20])
+    # print(delta_intraday_intensity_factor.factor_code)
+    # print(delta_intraday_intensity_factor.version)
+    # print(delta_intraday_intensity_factor.get_params())
+    # print(delta_intraday_intensity_factor.get_category())
+    # print(delta_intraday_intensity_factor.get_full_name())
+    # print(delta_intraday_intensity_factor.get_key(5))
+    # print(delta_intraday_intensity_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_intraday_intensity_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_intraday_intensity_factor.get_keys())
+
+    # TSSB PRICE VARIANCE RATIO HistLength Multiplier
+    # price_variance_ratio_factor = PriceVarianceRatioFactor([20])
+    # print(price_variance_ratio_factor.factor_code)
+    # print(price_variance_ratio_factor.version)
+    # print(price_variance_ratio_factor.get_params())
+    # print(price_variance_ratio_factor.get_category())
+    # print(price_variance_ratio_factor.get_full_name())
+    # print(price_variance_ratio_factor.get_key(5))
+    # print(price_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = price_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=price_variance_ratio_factor.get_keys())
+
+    # TSSB MIN PRICE VARIANCE RATIO HistLength Multiplier
+    # min_price_variance_ratio_factor = MinPriceVarianceRatioFactor([20])
+    # print(min_price_variance_ratio_factor.factor_code)
+    # print(min_price_variance_ratio_factor.version)
+    # print(min_price_variance_ratio_factor.get_params())
+    # print(min_price_variance_ratio_factor.get_category())
+    # print(min_price_variance_ratio_factor.get_full_name())
+    # print(min_price_variance_ratio_factor.get_key(5))
+    # print(min_price_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = min_price_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=min_price_variance_ratio_factor.get_keys())
+
+    # TSSB MAX PRICE VARIANCE RATIO HistLength Multiplier
+    # max_price_variance_ratio_factor = MaxPriceVarianceRatioFactor([20])
+    # print(max_price_variance_ratio_factor.factor_code)
+    # print(max_price_variance_ratio_factor.version)
+    # print(max_price_variance_ratio_factor.get_params())
+    # print(max_price_variance_ratio_factor.get_category())
+    # print(max_price_variance_ratio_factor.get_full_name())
+    # print(max_price_variance_ratio_factor.get_key(5))
+    # print(max_price_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = max_price_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=max_price_variance_ratio_factor.get_keys())
+
+    # TSSB CHANGE VARIANCE RATIO HistLength Multiplier
+    change_variance_ratio_factor = ChangeVarianceRatioFactor([20])
+    print(change_variance_ratio_factor.factor_code)
+    print(change_variance_ratio_factor.version)
+    print(change_variance_ratio_factor.get_params())
+    print(change_variance_ratio_factor.get_category())
+    print(change_variance_ratio_factor.get_full_name())
+    print(change_variance_ratio_factor.get_key(5))
+    print(change_variance_ratio_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = change_variance_ratio_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=change_variance_ratio_factor.get_keys())
+
+    # TSSB MIN CHANGE VARIANCE RATIO HistLength Multiplier
+    # min_change_variance_ratio_factor = MinChangeVarianceRatioFactor([20])
+    # print(min_change_variance_ratio_factor.factor_code)
+    # print(min_change_variance_ratio_factor.version)
+    # print(min_change_variance_ratio_factor.get_params())
+    # print(min_change_variance_ratio_factor.get_category())
+    # print(min_change_variance_ratio_factor.get_full_name())
+    # print(min_change_variance_ratio_factor.get_key(5))
+    # print(min_change_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = min_change_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=min_change_variance_ratio_factor.get_keys())
+
+    # TSSB MAX CHANGE VARIANCE RATIO HistLength Multiplier
+    # max_change_variance_ratio_factor = MaxChangeVarianceRatioFactor([20])
+    # print(max_change_variance_ratio_factor.factor_code)
+    # print(max_change_variance_ratio_factor.version)
+    # print(max_change_variance_ratio_factor.get_params())
+    # print(max_change_variance_ratio_factor.get_category())
+    # print(max_change_variance_ratio_factor.get_full_name())
+    # print(max_change_variance_ratio_factor.get_key(5))
+    # print(max_change_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = max_change_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=max_change_variance_ratio_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()

@@ -97,16 +97,33 @@ class StandardDeviation(Indicator):
             data[self.get_key(param)] = data[self._target].rolling(param).std()
         return data
 
-class ATR(Indicator):
+class Variance(Indicator):
     """
-    ATR
+    方差
     """
+    key = 'variance'
 
-    key = 'atr'
-
-    def __init__(self, params):
+    def __init__(self, params, target='close'):
         self._params = params
-        self._ma_indictor = MovingAverage(self._params, 'tr')
+        self._target = target
+
+    def get_key(self, param):
+        return self.key + '.' + self._target + '.' + str(param)
+
+    def enrich(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data[self._target].rolling(param).var()
+        return data
+
+class TR(Indicator):
+    """
+    TR
+    """
+
+    key = 'tr'
+
+    def get_key(self):
+        return self.key
 
     def enrich(self, data):
         # 当日振幅
@@ -116,7 +133,23 @@ class ATR(Indicator):
         # 昨日真实跌幅
         data['last_fall'] = abs(data['low'] - data['close'].shift(1))
         # 真实波幅
-        data['tr'] = data.apply(lambda x: max(x['current_amp'], x['last_rise'], x['last_fall']), axis=1)
+        data[self.get_key()] = data.apply(lambda x: max(x['current_amp'], x['last_rise'], x['last_fall']), axis=1)
+        return data
+
+class ATR(Indicator):
+    """
+    ATR
+    """
+
+    key = 'atr'
+
+    def __init__(self, params):
+        self._params = params
+        self._tr = TR()
+        self._ma_indictor = MovingAverage(self._params, self._tr.get_key())
+
+    def enrich(self, data):
+        data = self._tr.enrich(data)
         data = self._ma_indictor.enrich(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._ma_indictor.get_key(param)]
@@ -229,22 +262,27 @@ if __name__ == '__main__':
     #
     # data = ExpMovingAverage([10]).enrich(data)
     # print(data)
-    #
 
-    # data = StandardDeviation([10]).enrich(data)
+    data = StandardDeviation([10]).enrich(data)
+    print(data)
+
+    data = Variance([10]).enrich(data)
+    print(data)
+
+    # data = TR().enrich(data)
     # print(data)
-
+    #
     # data = ATR([10]).enrich(data)
     # print(data)
-    #
+
     # data = LinearRegression([10]).enrich(data)
     # print(data)
 
     # data = PolynomialRegression([10]).enrich(data)
     # print(data)
 
-    data = ADX([14]).enrich(data)
-    print(data)
+    # data = ADX([14]).enrich(data)
+    # print(data)
 
 
 
