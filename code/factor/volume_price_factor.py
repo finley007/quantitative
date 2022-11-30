@@ -10,7 +10,7 @@ from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
 from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX, TR, \
-    Variance
+    Variance, Skewness, Kurtosis
 
 """量价类因子
 分类编号：01
@@ -198,7 +198,8 @@ class PriceMomentumFactor(Factor):
 
     def __init__(self, params = [10, 20, 50, 100]):
         self._params = params
-        self._standard_deviation = StandardDeviation(list(map(lambda x: 2*x, self._params)), 'log2')
+        self._multiplier = 2
+        self._standard_deviation = StandardDeviation(list(map(lambda x: self._multiplier*x, self._params)), 'log2')
 
     def caculate(self, data):
         data['mean'] = (data['open'] + data['close'] + data['high'] + data['low'])/4
@@ -206,7 +207,7 @@ class PriceMomentumFactor(Factor):
         data = self._standard_deviation.enrich(data)
         for param in self._params:
             data['log' + str(param)] = data['mean'].rolling(param).apply(lambda item: self.formula(item))
-            data[self.get_key(param)] = data['log' + str(param)]/(data[self._standard_deviation.get_key(2*param)]*(param**0.5))
+            data[self.get_key(param)] = data['log' + str(param)]/(data[self._standard_deviation.get_key(self._multiplier*param)]*(param**0.5))
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -401,14 +402,15 @@ class PriceVarianceRatioFactor(Factor):
 
     def __init__(self, params = [50, 100, 200, 500]):
         self._params = params
-        var_params = list(set((np.array(self._params) * 2).tolist() + self._params))
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
         self._var = Variance(var_params, 'log')
 
     def caculate(self, data):
         data['log'] = data['close'].apply(lambda item: math.log(item))
         data = self._var.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(2 * param)]
+            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(self._multiplier * param)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -461,7 +463,8 @@ class ChangeVarianceRatioFactor(Factor):
 
     def __init__(self, params = [50, 100, 200, 500]):
         self._params = params
-        var_params = list(set((np.array(self._params) * 2).tolist() + self._params))
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
         self._var = Variance(var_params, 'log')
 
     def caculate(self, data):
@@ -469,7 +472,7 @@ class ChangeVarianceRatioFactor(Factor):
         data['log'] = data['change'].apply(lambda item: math.log(item))
         data = self._var.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(2 * param)]
+            data[self.get_key(param)] = data[self._var.get_key(param)]/data[self._var.get_key(self._multiplier * param)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -509,6 +512,167 @@ class MaxChangeVarianceRatioFactor(Factor):
         data = self._change_variance_ratio_factor.caculate(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._change_variance_ratio_factor.get_key(param)].rolling(param).max()
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class AtrRatioFactor(Factor):
+    """
+    TSSB ATR RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_022_ATR_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        self._atr = ATR(var_params)
+
+    def caculate(self, data):
+        data = self._atr.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._atr.get_key(param)]/data[self._atr.get_key(param * self._multiplier)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class DeltaPriceVarianceRatioFactor(Factor):
+    """
+    TSSB DELTA PRICE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_023_DELTA_PRICE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        self._price_variance_ratio_factor = PriceVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_variance_ratio_factor.get_key(param)] - data[self._price_variance_ratio_factor.get_key(param)].shift(param * self._multiplier)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaChangeVarianceRatioFactor(Factor):
+    """
+    TSSB DELTA CHANGE VARIANCE RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_024_DELTA_CHANGE_VARIANCE_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        self._change_variance_ratio_factor = ChangeVarianceRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._change_variance_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._change_variance_ratio_factor.get_key(param)] - data[self._change_variance_ratio_factor.get_key(param)].shift(param * self._multiplier)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaAtrRatioFactor(Factor):
+    """
+    TSSB DELTA ATR RATIO HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_025_DELTA_ATR_RATIO'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        self._atr_ratio_factor = AtrRatioFactor(self._params)
+
+    def caculate(self, data):
+        data = self._atr_ratio_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._atr_ratio_factor.get_key(param)] - data[self._atr_ratio_factor.get_key(param)].shift(param * self._multiplier)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class PriceSkewnessFactor(Factor):
+    """
+    TSSB PRICE SKEWNESS HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_026_PRICE_SKEWNESS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._skewness = Skewness(self._params)
+
+    def caculate(self, data):
+        data = self._skewness.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._skewness.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class ChangeSkewnessFactor(Factor):
+    """
+    TSSB CHANGE SKEWNESS HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_027_CHANGE_SKEWNESS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._skewness = Skewness(self._params, 'change')
+
+    def caculate(self, data):
+        data['change'] = data['close'] - data['close'].shift(1)
+        data = self._skewness.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._skewness.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class PriceKurtosisFactor(Factor):
+    """
+    TSSB PRICE KURTOSIS HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_028_PRICE_KURTOSIS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._kurtosis = Kurtosis(self._params)
+
+    def caculate(self, data):
+        data = self._kurtosis.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._kurtosis.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class ChangeKurtosisFactor(Factor):
+    """
+    TSSB CHANGE KURTOSIS HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_029_CHANGE_KURTOSIS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._kurtosis = Kurtosis(self._params, 'change')
+
+    def caculate(self, data):
+        data['change'] = data['close'] - data['close'].shift(1)
+        data = self._kurtosis.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._kurtosis.get_key(param)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -797,19 +961,19 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=max_price_variance_ratio_factor.get_keys())
 
     # TSSB CHANGE VARIANCE RATIO HistLength Multiplier
-    change_variance_ratio_factor = ChangeVarianceRatioFactor([20])
-    print(change_variance_ratio_factor.factor_code)
-    print(change_variance_ratio_factor.version)
-    print(change_variance_ratio_factor.get_params())
-    print(change_variance_ratio_factor.get_category())
-    print(change_variance_ratio_factor.get_full_name())
-    print(change_variance_ratio_factor.get_key(5))
-    print(change_variance_ratio_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = change_variance_ratio_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=change_variance_ratio_factor.get_keys())
+    # change_variance_ratio_factor = ChangeVarianceRatioFactor([20])
+    # print(change_variance_ratio_factor.factor_code)
+    # print(change_variance_ratio_factor.version)
+    # print(change_variance_ratio_factor.get_params())
+    # print(change_variance_ratio_factor.get_category())
+    # print(change_variance_ratio_factor.get_full_name())
+    # print(change_variance_ratio_factor.get_key(5))
+    # print(change_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = change_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=change_variance_ratio_factor.get_keys())
 
     # TSSB MIN CHANGE VARIANCE RATIO HistLength Multiplier
     # min_change_variance_ratio_factor = MinChangeVarianceRatioFactor([20])
@@ -840,6 +1004,126 @@ if __name__ == '__main__':
     # data = max_change_variance_ratio_factor.caculate(data)
     # data.index = pd.DatetimeIndex(data['datetime'])
     # draw_analysis_curve(data, show_signal=True, signal_keys=max_change_variance_ratio_factor.get_keys())
+
+    # TSSB ATR RATIO HistLength Multiplier
+    # atr_ratio_factor = AtrRatioFactor([20])
+    # print(atr_ratio_factor.factor_code)
+    # print(atr_ratio_factor.version)
+    # print(atr_ratio_factor.get_params())
+    # print(atr_ratio_factor.get_category())
+    # print(atr_ratio_factor.get_full_name())
+    # print(atr_ratio_factor.get_key(5))
+    # print(atr_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = atr_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=atr_ratio_factor.get_keys())
+
+    # DELTA PRICE VARIANCE RATIO HistLength Multiplier
+    # delta_price_variance_ratio_factor = DeltaPriceVarianceRatioFactor([20])
+    # print(delta_price_variance_ratio_factor.factor_code)
+    # print(delta_price_variance_ratio_factor.version)
+    # print(delta_price_variance_ratio_factor.get_params())
+    # print(delta_price_variance_ratio_factor.get_category())
+    # print(delta_price_variance_ratio_factor.get_full_name())
+    # print(delta_price_variance_ratio_factor.get_key(5))
+    # print(delta_price_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_price_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_price_variance_ratio_factor.get_keys())
+
+    # DELTA CHANGE VARIANCE RATIO HistLength Multiplier
+    # delta_change_variance_ratio_factor = DeltaChangeVarianceRatioFactor([20])
+    # print(delta_change_variance_ratio_factor.factor_code)
+    # print(delta_change_variance_ratio_factor.version)
+    # print(delta_change_variance_ratio_factor.get_params())
+    # print(delta_change_variance_ratio_factor.get_category())
+    # print(delta_change_variance_ratio_factor.get_full_name())
+    # print(delta_change_variance_ratio_factor.get_key(5))
+    # print(delta_change_variance_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_change_variance_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_change_variance_ratio_factor.get_keys())
+
+    # DELTA ATR RATIO HistLength Multiplier
+    # delta_atr_ratio_factor = DeltaAtrRatioFactor([20])
+    # print(delta_atr_ratio_factor.factor_code)
+    # print(delta_atr_ratio_factor.version)
+    # print(delta_atr_ratio_factor.get_params())
+    # print(delta_atr_ratio_factor.get_category())
+    # print(delta_atr_ratio_factor.get_full_name())
+    # print(delta_atr_ratio_factor.get_key(5))
+    # print(delta_atr_ratio_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_atr_ratio_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_atr_ratio_factor.get_keys())
+
+    # PRICE SKEWNESS HistLength Multiplier
+    # price_skewness_factor = PriceSkewnessFactor([20])
+    # print(price_skewness_factor.factor_code)
+    # print(price_skewness_factor.version)
+    # print(price_skewness_factor.get_params())
+    # print(price_skewness_factor.get_category())
+    # print(price_skewness_factor.get_full_name())
+    # print(price_skewness_factor.get_key(5))
+    # print(price_skewness_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = price_skewness_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=price_skewness_factor.get_keys())
+
+    # CHANGE SKEWNESS HistLength Multiplier
+    change_skewness_factor = ChangeSkewnessFactor([20])
+    print(change_skewness_factor.factor_code)
+    print(change_skewness_factor.version)
+    print(change_skewness_factor.get_params())
+    print(change_skewness_factor.get_category())
+    print(change_skewness_factor.get_full_name())
+    print(change_skewness_factor.get_key(5))
+    print(change_skewness_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = change_skewness_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=change_skewness_factor.get_keys())
+
+    # PRICE KURTOSIS HistLength Multiplier
+    price_kurtosis_factor = PriceKurtosisFactor([20])
+    print(price_kurtosis_factor.factor_code)
+    print(price_kurtosis_factor.version)
+    print(price_kurtosis_factor.get_params())
+    print(price_kurtosis_factor.get_category())
+    print(price_kurtosis_factor.get_full_name())
+    print(price_kurtosis_factor.get_key(5))
+    print(price_kurtosis_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = price_kurtosis_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=price_kurtosis_factor.get_keys())
+
+    # CHANGE KURTOSIS HistLength Multiplier
+    change_kurtosis_factor = ChangeKurtosisFactor([20])
+    print(change_kurtosis_factor.factor_code)
+    print(change_kurtosis_factor.version)
+    print(change_kurtosis_factor.get_params())
+    print(change_kurtosis_factor.get_category())
+    print(change_kurtosis_factor.get_full_name())
+    print(change_kurtosis_factor.get_key(5))
+    print(change_kurtosis_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = change_kurtosis_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=change_kurtosis_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()

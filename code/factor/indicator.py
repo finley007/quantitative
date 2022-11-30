@@ -115,6 +115,42 @@ class Variance(Indicator):
             data[self.get_key(param)] = data[self._target].rolling(param).var()
         return data
 
+class Skewness(Indicator):
+    """
+    偏度
+    """
+    key = 'skewness'
+
+    def __init__(self, params, target='close'):
+        self._params = params
+        self._target = target
+
+    def get_key(self, param):
+        return self.key + '.' + self._target + '.' + str(param)
+
+    def enrich(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data[self._target].rolling(param).skew()
+        return data
+
+class Kurtosis(Indicator):
+    """
+    峰度
+    """
+    key = 'kurtosis'
+
+    def __init__(self, params, target='close'):
+        self._params = params
+        self._target = target
+
+    def get_key(self, param):
+        return self.key + '.' + self._target + '.' + str(param)
+
+    def enrich(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data[self._target].rolling(param).kurt()
+        return data
+
 class TR(Indicator):
     """
     TR
@@ -263,10 +299,16 @@ if __name__ == '__main__':
     # data = ExpMovingAverage([10]).enrich(data)
     # print(data)
 
-    data = StandardDeviation([10]).enrich(data)
-    print(data)
+    # data = StandardDeviation([10]).enrich(data)
+    # print(data)
+    #
+    # data = Variance([10]).enrich(data)
+    # print(data)
+    #
+    # data = Skewness([10]).enrich(data)
+    # print(data)
 
-    data = Variance([10]).enrich(data)
+    data = Kurtosis([10]).enrich(data)
     print(data)
 
     # data = TR().enrich(data)
