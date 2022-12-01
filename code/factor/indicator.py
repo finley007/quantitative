@@ -60,6 +60,43 @@ class MovingAverage(Indicator):
         return data
 
 
+class WeightedMovingAverage(Indicator):
+    """
+    加权移动平均线
+    """
+    key = 'weighted_moving_average'
+
+    def __init__(self, params, target='close', weight='volume'):
+        self._params = params
+        self._target = target
+        self._weight = weight
+
+    def get_key(self, param):
+        return self.key + '.' + self._target + '.' + self._weight + '.' + str(param)
+
+    def enrich(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data['close'].rolling(param).apply(lambda item: self.caculate(item, data))
+        return data
+
+    def caculate(self, item, data):
+        """
+        这个方法需要优化
+        Parameters
+        ----------
+        item
+        data
+
+        Returns
+        -------
+
+        """
+        target = data.loc[item.index, [self._target]]
+        weight = data.loc[item.index, [self._weight]]
+        result = (target.values * weight.values).sum()/weight.values.sum()
+        return result
+
+
 # 指数移动平均线
 class ExpMovingAverage(Indicator):
     """
@@ -295,21 +332,24 @@ if __name__ == '__main__':
     data = data[(data['datetime'] >= '2022-01-24 09:30:00') & (data['datetime'] <= '2022-01-24 10:30:00')]
     # data = MovingAverage([10]).enrich(data)
     # print(data)
-    #
+
     # data = ExpMovingAverage([10]).enrich(data)
     # print(data)
 
+    data = WeightedMovingAverage([10]).enrich(data)
+    print(data[['close', 'volume', 'weighted_moving_average.close.volume.10']])
+
     # data = StandardDeviation([10]).enrich(data)
     # print(data)
-    #
+
     # data = Variance([10]).enrich(data)
     # print(data)
-    #
+
     # data = Skewness([10]).enrich(data)
     # print(data)
 
-    data = Kurtosis([10]).enrich(data)
-    print(data)
+    # data = Kurtosis([10]).enrich(data)
+    # print(data)
 
     # data = TR().enrich(data)
     # print(data)

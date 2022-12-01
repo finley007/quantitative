@@ -3,14 +3,14 @@
 import math
 from math import sqrt
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
 from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX, TR, \
-    Variance, Skewness, Kurtosis
+    Variance, Skewness, Kurtosis, WeightedMovingAverage
 
 """量价类因子
 分类编号：01
@@ -239,7 +239,7 @@ class MinAdxFactor(Factor):
     TSSB MIN ADX HistLength MinLength 因子
     """
 
-    factor_code = 'FCT_01_008_MIN_ADX'
+    factor_code = 'FCT_01_009_MIN_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -258,7 +258,7 @@ class ResidualMinAdxFactor(Factor):
     TSSB RESIDUAL MIN ADX HistLength MinLength 因子
     """
 
-    factor_code = 'FCT_01_009_RESIDUAL_MIN_ADX'
+    factor_code = 'FCT_01_010_RESIDUAL_MIN_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -277,7 +277,7 @@ class MaxAdxFactor(Factor):
     TSSB MAX ADX HistLength MaxLength 因子
     """
 
-    factor_code = 'FCT_01_010_MAX_ADX'
+    factor_code = 'FCT_01_011_MAX_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -296,7 +296,7 @@ class ResidualMaxAdxFactor(Factor):
     TSSB RESIDUAL MAX ADX HistLength MaxLength 因子
     """
 
-    factor_code = 'FCT_01_011_RESIDUAL_MAX_ADX'
+    factor_code = 'FCT_01_012_RESIDUAL_MAX_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -306,7 +306,7 @@ class ResidualMaxAdxFactor(Factor):
     def caculate(self, data):
         data = self._adx.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].max() - data[self._adx.get_key(self._adx.get_params()[0])].rolling(param)
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).max() - data[self._adx.get_key(self._adx.get_params()[0])]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -316,7 +316,7 @@ class DeltaAdxFactor(Factor):
     TSSB DELTA ADX HistLength DeltaLength 因子
     """
 
-    factor_code = 'FCT_01_012_DELTA_ADX'
+    factor_code = 'FCT_01_013_DELTA_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -335,7 +335,7 @@ class AccelAdxFactor(Factor):
     TSSB ACCEL ADX HistLength DeltaLength 因子
     """
 
-    factor_code = 'FCT_01_013_ACCEL_ADX'
+    factor_code = 'FCT_01_014_ACCEL_ADX'
     version = '1.0'
 
     def __init__(self, params = [20]):
@@ -355,7 +355,7 @@ class IntradayIntensityFactor(Factor):
     TSSB INTRADAY INTENSITY HistLength 因子
     """
 
-    factor_code = 'FCT_01_014_INTRADAY_INTENSITY'
+    factor_code = 'FCT_01_015_INTRADAY_INTENSITY'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -377,7 +377,7 @@ class DeltaIntradayIntensityFactor(Factor):
     TSSB DELTA INTRADAY INTENSITY HistLength DeltaLength 因子
     """
 
-    factor_code = 'FCT_01_015_DELTA_INTRADAY_INTENSITY'
+    factor_code = 'FCT_01_016_DELTA_INTRADAY_INTENSITY'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -397,7 +397,7 @@ class PriceVarianceRatioFactor(Factor):
     TSSB PRICE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_016_PRICE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_017_PRICE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -419,7 +419,7 @@ class MinPriceVarianceRatioFactor(Factor):
     TSSB MIN PRICE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_017_MIN_PRICE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_018_MIN_PRICE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -439,7 +439,7 @@ class MaxPriceVarianceRatioFactor(Factor):
     TSSB MAX PRICE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_018_MAX_PRICE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_019_MAX_PRICE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -458,7 +458,7 @@ class ChangeVarianceRatioFactor(Factor):
     TSSB CHANGE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_019_CHANGE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_020_CHANGE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -481,7 +481,7 @@ class MinChangeVarianceRatioFactor(Factor):
     TSSB MIN CHANGE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_020_MIN_CHANGE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_021_MIN_CHANGE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -501,7 +501,7 @@ class MaxChangeVarianceRatioFactor(Factor):
     TSSB MAX CHANGE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_021_MAX_CHANGE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_022_MAX_CHANGE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -520,7 +520,7 @@ class AtrRatioFactor(Factor):
     TSSB ATR RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_022_ATR_RATIO'
+    factor_code = 'FCT_01_023_ATR_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -542,7 +542,7 @@ class DeltaPriceVarianceRatioFactor(Factor):
     TSSB DELTA PRICE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_023_DELTA_PRICE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_024_DELTA_PRICE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -562,7 +562,7 @@ class DeltaChangeVarianceRatioFactor(Factor):
     TSSB DELTA CHANGE VARIANCE RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_024_DELTA_CHANGE_VARIANCE_RATIO'
+    factor_code = 'FCT_01_025_DELTA_CHANGE_VARIANCE_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -582,7 +582,7 @@ class DeltaAtrRatioFactor(Factor):
     TSSB DELTA ATR RATIO HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_025_DELTA_ATR_RATIO'
+    factor_code = 'FCT_01_026_DELTA_ATR_RATIO'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -602,7 +602,7 @@ class PriceSkewnessFactor(Factor):
     TSSB PRICE SKEWNESS HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_026_PRICE_SKEWNESS'
+    factor_code = 'FCT_01_027_PRICE_SKEWNESS'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -621,7 +621,7 @@ class ChangeSkewnessFactor(Factor):
     TSSB CHANGE SKEWNESS HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_027_CHANGE_SKEWNESS'
+    factor_code = 'FCT_01_028_CHANGE_SKEWNESS'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -642,7 +642,7 @@ class PriceKurtosisFactor(Factor):
     TSSB PRICE KURTOSIS HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_028_PRICE_KURTOSIS'
+    factor_code = 'FCT_01_029_PRICE_KURTOSIS'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -661,7 +661,7 @@ class ChangeKurtosisFactor(Factor):
     TSSB CHANGE KURTOSIS HistLength Multiplier 因子
     """
 
-    factor_code = 'FCT_01_029_CHANGE_KURTOSIS'
+    factor_code = 'FCT_01_030_CHANGE_KURTOSIS'
     version = '1.0'
 
     def __init__(self, params = [50, 100, 200, 500]):
@@ -673,6 +673,144 @@ class ChangeKurtosisFactor(Factor):
         data = self._kurtosis.enrich(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._kurtosis.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaPriceSkewnessFactor(Factor):
+    """
+    TSSB DELTA PRICE SKEWNESS HistLength Multiplier DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_031_DELTA_PRICE_SKEWNESS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._price_skewness_factor = PriceSkewnessFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_skewness_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_skewness_factor.get_key(param)] - data[self._price_skewness_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaChangeSkewnessFactor(Factor):
+    """
+    TSSB DELTA CHANGE SKEWNESS HistLength Multiplier DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_032_DELTA_CHANGE_SKEWNESS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._change_skewness_factor = ChangeSkewnessFactor(self._params)
+
+    def caculate(self, data):
+        data = self._change_skewness_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._change_skewness_factor.get_key(param)] - data[self._change_skewness_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaPriceKurtosisFactor(Factor):
+    """
+    TSSB DELTA PRICE KURTOSIS HistLength Multiplier DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_033_DELTA_PRICE_KURTOSIS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._price_kurtosis_factor = PriceKurtosisFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_kurtosis_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_kurtosis_factor.get_key(param)] - data[self._price_kurtosis_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaChangeKurtosisFactor(Factor):
+    """
+    TSSB DELTA CHANGE KURTOSIS HistLength Multiplier DeltaLength 因子
+    """
+
+    factor_code = 'FCT_01_034_DELTA_CHANGE_KURTOSIS'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._change_kurtosis_factor = ChangeKurtosisFactor(self._params)
+
+    def caculate(self, data):
+        data = self._change_kurtosis_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._change_kurtosis_factor.get_key(param)] - data[self._change_kurtosis_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class VolumeMomentumFactor(Factor):
+    """
+    TSSB VOLUME MOMENTUM HistLength Multiplier 因子
+    """
+
+    factor_code = 'FCT_01_035_VOLUME_MOMENTUM'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        self._moving_average = MovingAverage(var_params, 'volume')
+
+    def caculate(self, data):
+        data = self._moving_average.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._moving_average.get_key(param)]/data[self._moving_average.get_key(param * self._multiplier)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaVolumeMomentumFactor(Factor):
+    """
+    TSSB DELTA VOLUME MOMENTUM HistLen Multiplier DeltaLen 因子
+    """
+
+    factor_code = 'FCT_01_036_DELTA_VOLUME_MOMENTUM'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._volume_momentum_factor = VolumeMomentumFactor(self._params)
+
+    def caculate(self, data):
+        data = self._volume_momentum_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._volume_momentum_factor.get_key(param)] - data[self._volume_momentum_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class VolumeWeightedMaOverMa(Factor):
+    """
+    TSSB VOLUME WEIGHTED MA OVER MA HistLength 因子
+    """
+
+    factor_code = 'FCT_01_037_VOLUME_WEIGHTED_MA_OVER_MA'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._weighted_moving_average = WeightedMovingAverage(self._params)
+        self._moving_average = MovingAverage(self._params)
+
+    def caculate(self, data):
+        data = self._weighted_moving_average.enrich(data)
+        data = self._moving_average.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data.apply(lambda item:math.log(item[self._weighted_moving_average.get_key(param)]/item[self._moving_average.get_key(param)]), axis=1)
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -1081,49 +1219,154 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=price_skewness_factor.get_keys())
 
     # CHANGE SKEWNESS HistLength Multiplier
-    change_skewness_factor = ChangeSkewnessFactor([20])
-    print(change_skewness_factor.factor_code)
-    print(change_skewness_factor.version)
-    print(change_skewness_factor.get_params())
-    print(change_skewness_factor.get_category())
-    print(change_skewness_factor.get_full_name())
-    print(change_skewness_factor.get_key(5))
-    print(change_skewness_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = change_skewness_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=change_skewness_factor.get_keys())
+    # change_skewness_factor = ChangeSkewnessFactor([20])
+    # print(change_skewness_factor.factor_code)
+    # print(change_skewness_factor.version)
+    # print(change_skewness_factor.get_params())
+    # print(change_skewness_factor.get_category())
+    # print(change_skewness_factor.get_full_name())
+    # print(change_skewness_factor.get_key(5))
+    # print(change_skewness_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = change_skewness_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=change_skewness_factor.get_keys())
 
     # PRICE KURTOSIS HistLength Multiplier
-    price_kurtosis_factor = PriceKurtosisFactor([20])
-    print(price_kurtosis_factor.factor_code)
-    print(price_kurtosis_factor.version)
-    print(price_kurtosis_factor.get_params())
-    print(price_kurtosis_factor.get_category())
-    print(price_kurtosis_factor.get_full_name())
-    print(price_kurtosis_factor.get_key(5))
-    print(price_kurtosis_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = price_kurtosis_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=price_kurtosis_factor.get_keys())
+    # price_kurtosis_factor = PriceKurtosisFactor([20])
+    # print(price_kurtosis_factor.factor_code)
+    # print(price_kurtosis_factor.version)
+    # print(price_kurtosis_factor.get_params())
+    # print(price_kurtosis_factor.get_category())
+    # print(price_kurtosis_factor.get_full_name())
+    # print(price_kurtosis_factor.get_key(5))
+    # print(price_kurtosis_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = price_kurtosis_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=price_kurtosis_factor.get_keys())
 
     # CHANGE KURTOSIS HistLength Multiplier
-    change_kurtosis_factor = ChangeKurtosisFactor([20])
-    print(change_kurtosis_factor.factor_code)
-    print(change_kurtosis_factor.version)
-    print(change_kurtosis_factor.get_params())
-    print(change_kurtosis_factor.get_category())
-    print(change_kurtosis_factor.get_full_name())
-    print(change_kurtosis_factor.get_key(5))
-    print(change_kurtosis_factor.get_keys())
+    # change_kurtosis_factor = ChangeKurtosisFactor([20])
+    # print(change_kurtosis_factor.factor_code)
+    # print(change_kurtosis_factor.version)
+    # print(change_kurtosis_factor.get_params())
+    # print(change_kurtosis_factor.get_category())
+    # print(change_kurtosis_factor.get_full_name())
+    # print(change_kurtosis_factor.get_key(5))
+    # print(change_kurtosis_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = change_kurtosis_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=change_kurtosis_factor.get_keys())
+
+    # DELTA PRICE SKEWNESS HistLength Multiplier DeltaLength
+    # delta_price_skewness_factor = DeltaPriceSkewnessFactor([20])
+    # print(delta_price_skewness_factor.factor_code)
+    # print(delta_price_skewness_factor.version)
+    # print(delta_price_skewness_factor.get_params())
+    # print(delta_price_skewness_factor.get_category())
+    # print(delta_price_skewness_factor.get_full_name())
+    # print(delta_price_skewness_factor.get_key(5))
+    # print(delta_price_skewness_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_price_skewness_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_price_skewness_factor.get_keys())
+
+    # DELTA CHANGE SKEWNESS HistLength Multiplier DeltaLength
+    # delta_change_skewness_factor = DeltaChangeSkewnessFactor([20])
+    # print(delta_change_skewness_factor.factor_code)
+    # print(delta_change_skewness_factor.version)
+    # print(delta_change_skewness_factor.get_params())
+    # print(delta_change_skewness_factor.get_category())
+    # print(delta_change_skewness_factor.get_full_name())
+    # print(delta_change_skewness_factor.get_key(5))
+    # print(delta_change_skewness_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_change_skewness_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_change_skewness_factor.get_keys())
+
+    # DELTA PRICE KURTOSIS HistLength Multiplier DeltaLength
+    # delta_price_kurtosis_factor = DeltaPriceKurtosisFactor([20])
+    # print(delta_price_kurtosis_factor.factor_code)
+    # print(delta_price_kurtosis_factor.version)
+    # print(delta_price_kurtosis_factor.get_params())
+    # print(delta_price_kurtosis_factor.get_category())
+    # print(delta_price_kurtosis_factor.get_full_name())
+    # print(delta_price_kurtosis_factor.get_key(5))
+    # print(delta_price_kurtosis_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_price_kurtosis_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_price_kurtosis_factor.get_keys())
+
+    # DELTA CHANGE KURTOSIS HistLength Multiplier DeltaLength
+    # delta_change_kurtosis_factor = DeltaChangeKurtosisFactor([20])
+    # print(delta_change_kurtosis_factor.factor_code)
+    # print(delta_change_kurtosis_factor.version)
+    # print(delta_change_kurtosis_factor.get_params())
+    # print(delta_change_kurtosis_factor.get_category())
+    # print(delta_change_kurtosis_factor.get_full_name())
+    # print(delta_change_kurtosis_factor.get_key(5))
+    # print(delta_change_kurtosis_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_change_kurtosis_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_change_kurtosis_factor.get_keys())
+
+    # VOLUME MOMENTUM HistLength Multiplier
+    # volume_momentum_factor = VolumeMomentumFactor([20])
+    # print(volume_momentum_factor.factor_code)
+    # print(volume_momentum_factor.version)
+    # print(volume_momentum_factor.get_params())
+    # print(volume_momentum_factor.get_category())
+    # print(volume_momentum_factor.get_full_name())
+    # print(volume_momentum_factor.get_key(5))
+    # print(volume_momentum_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = volume_momentum_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=volume_momentum_factor.get_keys())
+
+    # DELTA VOLUME MOMENTUM HistLength Multiplier
+    # delta_volume_momentum_factor = DeltaVolumeMomentumFactor([20])
+    # print(delta_volume_momentum_factor.factor_code)
+    # print(delta_volume_momentum_factor.version)
+    # print(delta_volume_momentum_factor.get_params())
+    # print(delta_volume_momentum_factor.get_category())
+    # print(delta_volume_momentum_factor.get_full_name())
+    # print(delta_volume_momentum_factor.get_key(5))
+    # print(delta_volume_momentum_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_volume_momentum_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_volume_momentum_factor.get_keys())
+
+    # VOLUME WEIGHTED MA OVER MA HistLength
+    volume_weighted_ma_over_ma_factor = VolumeWeightedMaOverMa([20])
+    print(volume_weighted_ma_over_ma_factor.factor_code)
+    print(volume_weighted_ma_over_ma_factor.version)
+    print(volume_weighted_ma_over_ma_factor.get_params())
+    print(volume_weighted_ma_over_ma_factor.get_category())
+    print(volume_weighted_ma_over_ma_factor.get_full_name())
+    print(volume_weighted_ma_over_ma_factor.get_key(5))
+    print(volume_weighted_ma_over_ma_factor.get_keys())
     # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
     print(data.iloc[0:10])
-    data = change_kurtosis_factor.caculate(data)
+    data = volume_weighted_ma_over_ma_factor.caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=change_kurtosis_factor.get_keys())
+    draw_analysis_curve(data, show_signal=True, signal_keys=volume_weighted_ma_over_ma_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()
