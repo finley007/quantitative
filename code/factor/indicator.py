@@ -179,6 +179,44 @@ class Kurtosis(Indicator):
             data[self.get_key(param)] = data[self._target].rolling(param).kurt()
         return data
 
+class Median(Indicator):
+    """
+    中位数
+    """
+    key = 'median'
+
+    def __init__(self, params, target='close'):
+        self._params = params
+        self._target = target
+
+    def get_key(self, param):
+        return self.key + '.' + self._target + '.' + str(param)
+
+    def enrich(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data[self._target].rolling(param).median()
+        return data
+
+class Quantile(Indicator):
+    """
+    分位数
+    """
+    key = 'quantile'
+
+    def __init__(self, params, target='close', proportions=[0.5]):
+        self._params = params
+        self._target = target
+        self._proportions = proportions
+
+    def get_key(self, param, proportion):
+        return self.key + '.' + self._target + '.' + str(param) + '.' + str(proportion)
+
+    def enrich(self, data):
+        for param in self._params:
+            for proportion in self._proportions:
+                data[self.get_key(param, proportion)] = data[self._target].rolling(param).quantile(proportion)
+        return data
+
 class TR(Indicator):
     """
     TR
@@ -348,14 +386,20 @@ if __name__ == '__main__':
     # data = Kurtosis([10]).enrich(data)
     # print(data)
 
+    data = Median([10]).enrich(data)
+    print(data)
+
+    data = Quantile([10]).enrich(data)
+    print(data)
+
     # data = TR().enrich(data)
     # print(data)
     #
     # data = ATR([10]).enrich(data)
     # print(data)
 
-    data = LinearRegression([10]).enrich(data)
-    print(data)
+    # data = LinearRegression([10]).enrich(data)
+    # print(data)
 
     # data = PolynomialRegression([10]).enrich(data)
     # print(data)

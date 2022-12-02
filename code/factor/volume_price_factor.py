@@ -10,7 +10,7 @@ from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
 from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX, TR, \
-    Variance, Skewness, Kurtosis, WeightedMovingAverage
+    Variance, Skewness, Kurtosis, WeightedMovingAverage, Median, Quantile
 
 """量价类因子
 分类编号：01
@@ -919,8 +919,9 @@ class PositiveVolumeIndicatorFactor(Factor):
         data['change'] = data['close'].shift(1)/data['close']
         data['delta_volume'] = data['volume'] - data['volume'].shift(1)
         data['positive_change'] = 0
-        data.loc[[data['delta_volume'] > 0], 'positive_change'] = data['change']
+        data.loc[data['delta_volume'] > 0, 'positive_change'] = data['change']
         data = self._moving_average.enrich(data)
+        data = self._std.enrich(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._moving_average.get_key(param)]/data[self._std.get_key(self._multiplier * param)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
@@ -964,8 +965,9 @@ class NegativeVolumeIndicatorFactor(Factor):
         data['change'] = data['close'].shift(1)/data['close']
         data['delta_volume'] = data['volume'] - data['volume'].shift(1)
         data['negative_change'] = 0
-        data.loc[[data['delta_volume'] < 0], 'negative_change'] = data['change']
+        data.loc[data['delta_volume'] < 0, 'negative_change'] = data['change']
         data = self._moving_average.enrich(data)
+        data = self._std.enrich(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._moving_average.get_key(param)]/data[self._std.get_key(self._multiplier * param)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
@@ -981,17 +983,224 @@ class DeltaNegativeVolumeIndicatorFactor(Factor):
 
     def __init__(self, params = [50, 100, 200, 500]):
         self._params = params
-        self._moving_average = MovingAverage(self._params, 'negative_change')
-        self._multiplier = 2
-        self._std = StandardDeviation(np.array(self._params) * self._multiplier, 'negative_change')
+        self._negative_volume_indicator_factor = NegativeVolumeIndicatorFactor(self._params)
 
     def caculate(self, data):
-        self._negative_volume_indicator_factor = NegativeVolumeIndicatorFactor(self._params)
         data = self._negative_volume_indicator_factor.caculate(data)
         for param in self._params:
             data[self.get_key(param)] = data[self._negative_volume_indicator_factor.get_key(param)] - data[self._negative_volume_indicator_factor.get_key(param)].shift(param)
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
+
+class ProductPriceVolumeFactor(Factor):
+    """
+    TSSB PRODUCT PRICE VOLUME HistLength 因子
+    """
+
+    factor_code = 'FCT_01_046_PRODUCT_PRICE_VOLUME'
+    version = '1.0'
+
+    def __init__(self, params = [250]):
+        self._params = params
+        self._volume_median = Median(self._params, 'volume')
+        self._log_price_median = Median(self._params, 'log_price')
+        self._log_price_quantile = Quantile(self._params, 'log_price', [0.25, 0.75])
+
+    def caculate(self, data):
+        data['change_price'] = data['close']/data['close'].shift(1)
+        data['log_price'] = data.apply(lambda item: math.log(item['change_price']), axis = 1)
+        data = self._volume_median.enrich(data)
+        data = self._log_price_median.enrich(data)
+        data = self._log_price_quantile.enrich(data)
+        for param in self._params:
+            data['normalized.volume' + str(param)] = data['volume']/data[self._volume_median.get_key(param)]
+            data['normalized.log_price' + str(param)] = (data['log_price'] - data[self._log_price_median.get_key(param)])/(data[self._log_price_quantile.get_key(param, 0.75)] - data[self._log_price_quantile.get_key(param, 0.25)])
+            data[self.get_key(param)] = data['normalized.volume' + str(param)] * data['normalized.log_price' + str(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class SumPriceVolumeFactor(Factor):
+    """
+    TSSB SUM PRICE VOLUME HistLength 因子
+    """
+
+    factor_code = 'FCT_01_047_SUM_PRICE_VOLUME'
+    version = '1.0'
+
+    def __init__(self, params = [250]):
+        self._params = params
+        self._volume_median = Median(self._params, 'volume')
+        self._log_price_median = Median(self._params, 'log_price')
+        self._log_price_quantile = Quantile(self._params, 'log_price', [0.25, 0.75])
+
+    def caculate(self, data):
+        data['change_price'] = data['close']/data['close'].shift(1)
+        data['log_price'] = data.apply(lambda item: math.log(item['change_price']), axis = 1)
+        data = self._volume_median.enrich(data)
+        data = self._log_price_median.enrich(data)
+        data = self._log_price_quantile.enrich(data)
+        for param in self._params:
+            data['normalized.volume' + str(param)] = data['volume']/data[self._volume_median.get_key(param)]
+            data['normalized.log_price' + str(param)] = (data['log_price'] - data[self._log_price_median.get_key(param)])/(data[self._log_price_quantile.get_key(param, 0.75)] - data[self._log_price_quantile.get_key(param, 0.25)])
+            data.loc[data['normalized.log_price' + str(param)] >= 0, self.get_key(param)] = data['normalized.volume' + str(param)] + data['normalized.log_price' + str(param)]
+            data.loc[data['normalized.log_price' + str(param)] < 0, self.get_key(param)] = -(data['normalized.volume' + str(param)] - data['normalized.log_price' + str(param)])
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaProductPriceVolumeFactor(Factor):
+    """
+    TSSB DELTA PRODUCT PRICE VOLUME HistLength DeltaDist 因子
+    """
+
+    factor_code = 'FCT_01_048_DELTA_PRODUCT_PRICE_VOLUME'
+    version = '1.0'
+
+    def __init__(self, params = [250]):
+        self._params = params
+        self._multiplier = 2
+        self._product_price_volume_factor = ProductPriceVolumeFactor(self._params)
+
+    def caculate(self, data):
+        data = self._product_price_volume_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._product_price_volume_factor.get_key(param)] - data[self._product_price_volume_factor.get_key(param)].shift(self._multiplier * param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaSumPriceVolumeFactor(Factor):
+    """
+    TSSB DELTA SUM PRICE VOLUME HistLength DeltaDist 因子
+    """
+
+    factor_code = 'FCT_01_049_DELTA_SUM_PRICE_VOLUME'
+    version = '1.0'
+
+    def __init__(self, params = [250]):
+        self._params = params
+        self._multiplier = 2
+        self._sum_price_volume_factor = SumPriceVolumeFactor(self._params)
+
+    def caculate(self, data):
+        data = self._sum_price_volume_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._sum_price_volume_factor.get_key(param)] - data[self._sum_price_volume_factor.get_key(param)].shift(self._multiplier * param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class NDayHighFactor(Factor):
+    """
+    TSSB N DAY HIGH HistLength 因子
+    """
+
+    factor_code = 'FCT_01_050_N_DAY_HIGH'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+
+    def caculate(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data['close'].rolling(param).apply(self.n_day_high)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def n_day_high(self, window):
+        price_list = window.tolist()
+        cur_price = price_list[-1]
+        n = len(window) + 1
+        for i in range(len(window)):
+            print(price_list[-(i+1)])
+            if i > 0 and price_list[-(i+1)] > cur_price:
+                n = i
+                cur_price = price_list[-(i+1)]
+        return 100*(n-1)/len(window) - 50
+
+
+class NDayLowFactor(Factor):
+    """
+    TSSB N DAY LOW HistLength 因子
+    """
+
+    factor_code = 'FCT_01_051_N_DAY_LOW'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+
+    def caculate(self, data):
+        for param in self._params:
+            data[self.get_key(param)] = data['close'].rolling(param).apply(self.n_day_low)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def n_day_low(self, window):
+        price_list = window.tolist()
+        cur_price = price_list[-1]
+        n = len(window) + 1
+        for i in range(len(window)):
+            if i > 0 and price_list[-(i+1)] < cur_price:
+                n = i
+                price_list[-(i + 1)] = cur_price
+        return 100*(n-1)/len(window) - 50
+
+class NDayNarrowFactor(Factor):
+    """
+    TSSB N DAY NARROWER HistLength 因子
+    """
+
+    factor_code = 'FCT_01_052_N_DAY_NARROWER'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._tr = TR()
+
+    def caculate(self, data):
+        self._tr.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._tr.get_key()].rolling(param).apply(self.n_day_narrower)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def n_day_narrower(self, window):
+        price_list = window.tolist()
+        cur_price = price_list[-1]
+        n = len(window) + 1
+        for i in range(len(window)):
+            if i > 0 and price_list[-(i+1)] < cur_price:
+                n = i
+                price_list[-(i + 1)] = cur_price
+        return 100*(n-1)/len(window) - 50
+
+
+class NDayWiderFactor(Factor):
+    """
+    TSSB N DAY WIDER HistLength 因子
+    """
+
+    factor_code = 'FCT_01_053_N_DAY_WIDER'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._tr = TR()
+
+    def caculate(self, data):
+        self._tr.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._tr.get_key()].rolling(param).apply(self.n_day_wider)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def n_day_wider(self, window):
+        price_list = window.tolist()
+        cur_price = price_list[-1]
+        n = len(window) + 1
+        for i in range(len(window)):
+            if i > 0 and price_list[-(i+1)] > cur_price:
+                n = i
+                price_list[-(i + 1)] = cur_price
+        return 100*(n-1)/len(window) - 50
 
 if __name__ == '__main__':
     # 测试数据
@@ -1608,64 +1817,184 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=delta_price_volume_fit_factor.get_keys())
 
     # POSITIVE VOLUME INDICATOR HistLength
-    positive_volume_indicator_factor = PositiveVolumeIndicatorFactor([20])
-    print(positive_volume_indicator_factor.factor_code)
-    print(positive_volume_indicator_factor.version)
-    print(positive_volume_indicator_factor.get_params())
-    print(positive_volume_indicator_factor.get_category())
-    print(positive_volume_indicator_factor.get_full_name())
-    print(positive_volume_indicator_factor.get_key(5))
-    print(positive_volume_indicator_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = positive_volume_indicator_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=positive_volume_indicator_factor.get_keys())
+    # positive_volume_indicator_factor = PositiveVolumeIndicatorFactor([20])
+    # print(positive_volume_indicator_factor.factor_code)
+    # print(positive_volume_indicator_factor.version)
+    # print(positive_volume_indicator_factor.get_params())
+    # print(positive_volume_indicator_factor.get_category())
+    # print(positive_volume_indicator_factor.get_full_name())
+    # print(positive_volume_indicator_factor.get_key(5))
+    # print(positive_volume_indicator_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = positive_volume_indicator_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=positive_volume_indicator_factor.get_keys())
 
     # DELTA POSITIVE VOLUME INDICATOR HistLength DeltaDist
-    delta_positive_volume_indicator_factor = DeltaPositiveVolumeIndicatorFactor([20])
-    print(delta_positive_volume_indicator_factor.factor_code)
-    print(delta_positive_volume_indicator_factor.version)
-    print(delta_positive_volume_indicator_factor.get_params())
-    print(delta_positive_volume_indicator_factor.get_category())
-    print(delta_positive_volume_indicator_factor.get_full_name())
-    print(delta_positive_volume_indicator_factor.get_key(5))
-    print(delta_positive_volume_indicator_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = delta_positive_volume_indicator_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=delta_positive_volume_indicator_factor.get_keys())
+    # delta_positive_volume_indicator_factor = DeltaPositiveVolumeIndicatorFactor([20])
+    # print(delta_positive_volume_indicator_factor.factor_code)
+    # print(delta_positive_volume_indicator_factor.version)
+    # print(delta_positive_volume_indicator_factor.get_params())
+    # print(delta_positive_volume_indicator_factor.get_category())
+    # print(delta_positive_volume_indicator_factor.get_full_name())
+    # print(delta_positive_volume_indicator_factor.get_key(5))
+    # print(delta_positive_volume_indicator_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_positive_volume_indicator_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_positive_volume_indicator_factor.get_keys())
 
     # NEGATIVE VOLUME INDICATOR HistLength
-    negative_volume_indicator_factor = NegativeVolumeIndicatorFactor([20])
-    print(negative_volume_indicator_factor.factor_code)
-    print(negative_volume_indicator_factor.version)
-    print(negative_volume_indicator_factor.get_params())
-    print(negative_volume_indicator_factor.get_category())
-    print(negative_volume_indicator_factor.get_full_name())
-    print(negative_volume_indicator_factor.get_key(5))
-    print(negative_volume_indicator_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = negative_volume_indicator_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=negative_volume_indicator_factor.get_keys())
+    # negative_volume_indicator_factor = NegativeVolumeIndicatorFactor([20])
+    # print(negative_volume_indicator_factor.factor_code)
+    # print(negative_volume_indicator_factor.version)
+    # print(negative_volume_indicator_factor.get_params())
+    # print(negative_volume_indicator_factor.get_category())
+    # print(negative_volume_indicator_factor.get_full_name())
+    # print(negative_volume_indicator_factor.get_key(5))
+    # print(negative_volume_indicator_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = negative_volume_indicator_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=negative_volume_indicator_factor.get_keys())
 
     # DELTA NEGATIVE VOLUME INDICATOR HistLength DeltaDist
-    delta_negative_volume_indicator_factor = DeltaNegativeVolumeIndicatorFactor([20])
-    print(delta_negative_volume_indicator_factor.factor_code)
-    print(delta_negative_volume_indicator_factor.version)
-    print(delta_negative_volume_indicator_factor.get_params())
-    print(delta_negative_volume_indicator_factor.get_category())
-    print(delta_negative_volume_indicator_factor.get_full_name())
-    print(delta_negative_volume_indicator_factor.get_key(5))
-    print(delta_negative_volume_indicator_factor.get_keys())
+    # delta_negative_volume_indicator_factor = DeltaNegativeVolumeIndicatorFactor([20])
+    # print(delta_negative_volume_indicator_factor.factor_code)
+    # print(delta_negative_volume_indicator_factor.version)
+    # print(delta_negative_volume_indicator_factor.get_params())
+    # print(delta_negative_volume_indicator_factor.get_category())
+    # print(delta_negative_volume_indicator_factor.get_full_name())
+    # print(delta_negative_volume_indicator_factor.get_key(5))
+    # print(delta_negative_volume_indicator_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_negative_volume_indicator_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_negative_volume_indicator_factor.get_keys())
+
+    # PRODUCT PRICE VOLUME HistLength
+    # product_price_volume_factor = ProductPriceVolumeFactor([20])
+    # print(product_price_volume_factor.factor_code)
+    # print(product_price_volume_factor.version)
+    # print(product_price_volume_factor.get_params())
+    # print(product_price_volume_factor.get_category())
+    # print(product_price_volume_factor.get_full_name())
+    # print(product_price_volume_factor.get_key(5))
+    # print(product_price_volume_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = product_price_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=product_price_volume_factor.get_keys())
+
+    # SUM PRICE VOLUME HistLength
+    # sum_price_volume_factor = SumPriceVolumeFactor([20])
+    # print(sum_price_volume_factor.factor_code)
+    # print(sum_price_volume_factor.version)
+    # print(sum_price_volume_factor.get_params())
+    # print(sum_price_volume_factor.get_category())
+    # print(sum_price_volume_factor.get_full_name())
+    # print(sum_price_volume_factor.get_key(5))
+    # print(sum_price_volume_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = sum_price_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=sum_price_volume_factor.get_keys())
+
+    # DELTA PRODUCT PRICE VOLUME HistLength DeltaDist
+    # delta_product_price_volume_factor = DeltaProductPriceVolumeFactor([20])
+    # print(delta_product_price_volume_factor.factor_code)
+    # print(delta_product_price_volume_factor.version)
+    # print(delta_product_price_volume_factor.get_params())
+    # print(delta_product_price_volume_factor.get_category())
+    # print(delta_product_price_volume_factor.get_full_name())
+    # print(delta_product_price_volume_factor.get_key(5))
+    # print(delta_product_price_volume_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_product_price_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_product_price_volume_factor.get_keys())
+
+    # DELTA SUM PRICE VOLUME HistLength DeltaDist
+    # delta_sum_price_volume_factor = DeltaSumPriceVolumeFactor([20])
+    # print(delta_sum_price_volume_factor.factor_code)
+    # print(delta_sum_price_volume_factor.version)
+    # print(delta_sum_price_volume_factor.get_params())
+    # print(delta_sum_price_volume_factor.get_category())
+    # print(delta_sum_price_volume_factor.get_full_name())
+    # print(delta_sum_price_volume_factor.get_key(5))
+    # print(delta_sum_price_volume_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_sum_price_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_sum_price_volume_factor.get_keys())
+
+    # N DAY HIGH HistLength
+    # n_day_high_factor = NDayHighFactor([20])
+    # print(n_day_high_factor.factor_code)
+    # print(n_day_high_factor.version)
+    # print(n_day_high_factor.get_params())
+    # print(n_day_high_factor.get_category())
+    # print(n_day_high_factor.get_full_name())
+    # print(n_day_high_factor.get_key(5))
+    # print(n_day_high_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = n_day_high_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=n_day_high_factor.get_keys())
+
+    # N DAY LOW HistLength
+    # n_day_low_factor = NDayLowFactor([20])
+    # print(n_day_low_factor.factor_code)
+    # print(n_day_low_factor.version)
+    # print(n_day_low_factor.get_params())
+    # print(n_day_low_factor.get_category())
+    # print(n_day_low_factor.get_full_name())
+    # print(n_day_low_factor.get_key(5))
+    # print(n_day_low_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = n_day_low_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=n_day_low_factor.get_keys())
+
+    # N DAY NARROWER HistLength
+    n_day_narrow_factor = NDayNarrowFactor([20])
+    print(n_day_narrow_factor.factor_code)
+    print(n_day_narrow_factor.version)
+    print(n_day_narrow_factor.get_params())
+    print(n_day_narrow_factor.get_category())
+    print(n_day_narrow_factor.get_full_name())
+    print(n_day_narrow_factor.get_key(5))
+    print(n_day_narrow_factor.get_keys())
     # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
     print(data.iloc[0:10])
-    data = delta_negative_volume_indicator_factor.caculate(data)
+    data = n_day_narrow_factor.caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=delta_negative_volume_indicator_factor.get_keys())
+    draw_analysis_curve(data, show_signal=True, signal_keys=n_day_narrow_factor.get_keys())
+
+    # N DAY WIDER HistLength
+    n_day_wider_factor = NDayWiderFactor([20])
+    print(n_day_wider_factor.factor_code)
+    print(n_day_wider_factor.version)
+    print(n_day_wider_factor.get_params())
+    print(n_day_wider_factor.get_category())
+    print(n_day_wider_factor.get_full_name())
+    print(n_day_wider_factor.get_key(5))
+    print(n_day_wider_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = n_day_wider_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=n_day_wider_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()
