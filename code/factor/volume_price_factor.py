@@ -90,7 +90,7 @@ class LinearPerAtrFactor(Factor):
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
-    def caculation_function(self, model, window):
+    def caculation_function(self, model, window, variable):
         return model.coef_
 
 class LinearDeviationFactor(Factor):
@@ -793,7 +793,7 @@ class DeltaVolumeMomentumFactor(Factor):
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
-class VolumeWeightedMaOverMa(Factor):
+class VolumeWeightedMaOverMaFactor(Factor):
     """
     TSSB VOLUME WEIGHTED MA OVER MA HistLength 因子
     """
@@ -811,6 +811,185 @@ class VolumeWeightedMaOverMa(Factor):
         data = self._moving_average.enrich(data)
         for param in self._params:
             data[self.get_key(param)] = data.apply(lambda item:math.log(item[self._weighted_moving_average.get_key(param)]/item[self._moving_average.get_key(param)]), axis=1)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DiffVolumeWeightedMaOverMaFactor(Factor):
+    """
+    TSSB DIFF VOLUME WEIGHTED MA OVER MA ShortDist LongDist 因子
+    """
+
+    factor_code = 'FCT_01_038_DIFF_VOLUME_WEIGHTED_MA_OVER_MA'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        self._volume_weighted_ma_over_ma_factor = VolumeWeightedMaOverMaFactor(var_params)
+
+    def caculate(self, data):
+        data = self._volume_weighted_ma_over_ma_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._volume_weighted_ma_over_ma.get_key(param)] - data[self._volume_weighted_ma_over_ma.get_key(param * self._multiplier)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class PriceVolumeFitFactor(Factor):
+    """
+    TSSB PRICE VOLUME FIT HistLength 因子
+    """
+
+    factor_code = 'FCT_01_039_PRICE_VOLUME_FIT'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._linear_regression = LinearRegression(self._params, 'log_price', 'log_volume')
+        self._linear_regression.set_caculation_func(self.caculation_function)
+
+    def caculate(self, data):
+        data['log_price'] = data.apply(lambda item: math.log(item['close']), axis = 1)
+        data['log_volume'] = data.apply(lambda item: 0 if item['volume'] == 0 else math.log(item['volume']), axis = 1)
+        data = self._linear_regression.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._linear_regression.get_key(param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def caculation_function(self, model, window, variable):
+        return model.coef_
+
+class DiffPriceVolumeFitFactor(Factor):
+    """
+    TSSB DIFF PRICE VOLUME FIT ShortDist LongDist 因子
+    """
+
+    factor_code = 'FCT_01_040_DIFF_PRICE_VOLUME_FIT'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        self._price_volume_fit_factor = PriceVolumeFitFactor(self._params)
+
+    def caculate(self, data):
+        data = self._price_volume_fit_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_volume_fit_factor.get_key(param)] - data[self._price_volume_fit_factor.get_key(param)].shift(self._multiplier * param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaPriceVolumeFitFactor(Factor):
+    """
+    TSSB DELTA PRICE VOLUME FIT ShortDist LongDist 因子
+    """
+
+    factor_code = 'FCT_01_041_DELTA_PRICE_VOLUME_FIT'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        self._price_volume_fit_factor = PriceVolumeFitFactor(var_params)
+
+    def caculate(self, data):
+        data = self._price_volume_fit_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._price_volume_fit_factor.get_key(param)] - data[self._price_volume_fit_factor.get_key(self._multiplier * param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class PositiveVolumeIndicatorFactor(Factor):
+    """
+    TSSB POSITIVE VOLUME INDICATOR HistLength 因子
+    """
+
+    factor_code = 'FCT_01_042_POSITIVE_VOLUME_INDICATOR'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._moving_average = MovingAverage(self._params, 'positive_change')
+        self._multiplier = 2
+        self._std = StandardDeviation(np.array(self._params) * self._multiplier, 'positive_change')
+
+    def caculate(self, data):
+        data['change'] = data['close'].shift(1)/data['close']
+        data['delta_volume'] = data['volume'] - data['volume'].shift(1)
+        data['positive_change'] = 0
+        data.loc[[data['delta_volume'] > 0], 'positive_change'] = data['change']
+        data = self._moving_average.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._moving_average.get_key(param)]/data[self._std.get_key(self._multiplier * param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaPositiveVolumeIndicatorFactor(Factor):
+    """
+    TSSB DELTA POSITIVE VOLUME INDICATOR HistLength DeltaDist 因子
+    """
+
+    factor_code = 'FCT_01_043_DELTA_POSITIVE_VOLUME_INDICATOR'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._positive_volume_indicator_factor = PositiveVolumeIndicatorFactor(self._params)
+
+    def caculate(self, data):
+        data = self._positive_volume_indicator_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._positive_volume_indicator_factor.get_key(param)] - data[self._positive_volume_indicator_factor.get_key(param)].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+
+class NegativeVolumeIndicatorFactor(Factor):
+    """
+    TSSB NEGATIVE VOLUME INDICATOR HistLength 因子
+    """
+
+    factor_code = 'FCT_01_044_NEGATIVE_VOLUME_INDICATOR'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._moving_average = MovingAverage(self._params, 'negative_change')
+        self._multiplier = 2
+        self._std = StandardDeviation(np.array(self._params) * self._multiplier, 'negative_change')
+
+    def caculate(self, data):
+        data['change'] = data['close'].shift(1)/data['close']
+        data['delta_volume'] = data['volume'] - data['volume'].shift(1)
+        data['negative_change'] = 0
+        data.loc[[data['delta_volume'] < 0], 'negative_change'] = data['change']
+        data = self._moving_average.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._moving_average.get_key(param)]/data[self._std.get_key(self._multiplier * param)]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DeltaNegativeVolumeIndicatorFactor(Factor):
+    """
+    TSSB DELTA NEGATIVE VOLUME INDICATOR HistLen DeltaDist 因子
+    """
+
+    factor_code = 'FCT_01_045_DELTA_NEGATIVE_VOLUME_INDICATOR'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._moving_average = MovingAverage(self._params, 'negative_change')
+        self._multiplier = 2
+        self._std = StandardDeviation(np.array(self._params) * self._multiplier, 'negative_change')
+
+    def caculate(self, data):
+        self._negative_volume_indicator_factor = NegativeVolumeIndicatorFactor(self._params)
+        data = self._negative_volume_indicator_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._negative_volume_indicator_factor.get_key(param)] - data[self._negative_volume_indicator_factor.get_key(param)].shift(param)
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -1354,19 +1533,139 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=delta_volume_momentum_factor.get_keys())
 
     # VOLUME WEIGHTED MA OVER MA HistLength
-    volume_weighted_ma_over_ma_factor = VolumeWeightedMaOverMa([20])
-    print(volume_weighted_ma_over_ma_factor.factor_code)
-    print(volume_weighted_ma_over_ma_factor.version)
-    print(volume_weighted_ma_over_ma_factor.get_params())
-    print(volume_weighted_ma_over_ma_factor.get_category())
-    print(volume_weighted_ma_over_ma_factor.get_full_name())
-    print(volume_weighted_ma_over_ma_factor.get_key(5))
-    print(volume_weighted_ma_over_ma_factor.get_keys())
+    # volume_weighted_ma_over_ma_factor = VolumeWeightedMaOverMaFactor([20])
+    # print(volume_weighted_ma_over_ma_factor.factor_code)
+    # print(volume_weighted_ma_over_ma_factor.version)
+    # print(volume_weighted_ma_over_ma_factor.get_params())
+    # print(volume_weighted_ma_over_ma_factor.get_category())
+    # print(volume_weighted_ma_over_ma_factor.get_full_name())
+    # print(volume_weighted_ma_over_ma_factor.get_key(5))
+    # print(volume_weighted_ma_over_ma_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = volume_weighted_ma_over_ma_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=volume_weighted_ma_over_ma_factor.get_keys())
+
+    # DIFF VOLUME WEIGHTED MA OVER MA ShortDist LongDist
+    # diff_volume_weighted_ma_over_ma_factor = DiffVolumeWeightedMaOverMaFactor([20])
+    # print(diff_volume_weighted_ma_over_ma_factor.factor_code)
+    # print(diff_volume_weighted_ma_over_ma_factor.version)
+    # print(diff_volume_weighted_ma_over_ma_factor.get_params())
+    # print(diff_volume_weighted_ma_over_ma_factor.get_category())
+    # print(diff_volume_weighted_ma_over_ma_factor.get_full_name())
+    # print(diff_volume_weighted_ma_over_ma_factor.get_key(5))
+    # print(diff_volume_weighted_ma_over_ma_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = diff_volume_weighted_ma_over_ma_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=diff_volume_weighted_ma_over_ma_factor.get_keys())
+
+    # PRICE VOLUME FIT HistLength
+    # price_volume_fit_factor = PriceVolumeFitFactor([20])
+    # print(price_volume_fit_factor.factor_code)
+    # print(price_volume_fit_factor.version)
+    # print(price_volume_fit_factor.get_params())
+    # print(price_volume_fit_factor.get_category())
+    # print(price_volume_fit_factor.get_full_name())
+    # print(price_volume_fit_factor.get_key(5))
+    # print(price_volume_fit_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = price_volume_fit_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=price_volume_fit_factor.get_keys())
+
+    # DIFF PRICE VOLUME FIT ShortDist LongDist
+    # diff_price_volume_fit_factor = DiffPriceVolumeFitFactor([20])
+    # print(diff_price_volume_fit_factor.factor_code)
+    # print(diff_price_volume_fit_factor.version)
+    # print(diff_price_volume_fit_factor.get_params())
+    # print(diff_price_volume_fit_factor.get_category())
+    # print(diff_price_volume_fit_factor.get_full_name())
+    # print(diff_price_volume_fit_factor.get_key(5))
+    # print(diff_price_volume_fit_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = diff_price_volume_fit_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=diff_price_volume_fit_factor.get_keys())
+
+    # DELTA PRICE VOLUME FIT HistLength DeltaDist
+    # delta_price_volume_fit_factor = DeltaPriceVolumeFitFactor([20])
+    # print(delta_price_volume_fit_factor.factor_code)
+    # print(delta_price_volume_fit_factor.version)
+    # print(delta_price_volume_fit_factor.get_params())
+    # print(delta_price_volume_fit_factor.get_category())
+    # print(delta_price_volume_fit_factor.get_full_name())
+    # print(delta_price_volume_fit_factor.get_key(5))
+    # print(delta_price_volume_fit_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_price_volume_fit_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_price_volume_fit_factor.get_keys())
+
+    # POSITIVE VOLUME INDICATOR HistLength
+    positive_volume_indicator_factor = PositiveVolumeIndicatorFactor([20])
+    print(positive_volume_indicator_factor.factor_code)
+    print(positive_volume_indicator_factor.version)
+    print(positive_volume_indicator_factor.get_params())
+    print(positive_volume_indicator_factor.get_category())
+    print(positive_volume_indicator_factor.get_full_name())
+    print(positive_volume_indicator_factor.get_key(5))
+    print(positive_volume_indicator_factor.get_keys())
     # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
     print(data.iloc[0:10])
-    data = volume_weighted_ma_over_ma_factor.caculate(data)
+    data = positive_volume_indicator_factor.caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=volume_weighted_ma_over_ma_factor.get_keys())
+    draw_analysis_curve(data, show_signal=True, signal_keys=positive_volume_indicator_factor.get_keys())
+
+    # DELTA POSITIVE VOLUME INDICATOR HistLength DeltaDist
+    delta_positive_volume_indicator_factor = DeltaPositiveVolumeIndicatorFactor([20])
+    print(delta_positive_volume_indicator_factor.factor_code)
+    print(delta_positive_volume_indicator_factor.version)
+    print(delta_positive_volume_indicator_factor.get_params())
+    print(delta_positive_volume_indicator_factor.get_category())
+    print(delta_positive_volume_indicator_factor.get_full_name())
+    print(delta_positive_volume_indicator_factor.get_key(5))
+    print(delta_positive_volume_indicator_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = delta_positive_volume_indicator_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=delta_positive_volume_indicator_factor.get_keys())
+
+    # NEGATIVE VOLUME INDICATOR HistLength
+    negative_volume_indicator_factor = NegativeVolumeIndicatorFactor([20])
+    print(negative_volume_indicator_factor.factor_code)
+    print(negative_volume_indicator_factor.version)
+    print(negative_volume_indicator_factor.get_params())
+    print(negative_volume_indicator_factor.get_category())
+    print(negative_volume_indicator_factor.get_full_name())
+    print(negative_volume_indicator_factor.get_key(5))
+    print(negative_volume_indicator_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = negative_volume_indicator_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=negative_volume_indicator_factor.get_keys())
+
+    # DELTA NEGATIVE VOLUME INDICATOR HistLength DeltaDist
+    delta_negative_volume_indicator_factor = DeltaNegativeVolumeIndicatorFactor([20])
+    print(delta_negative_volume_indicator_factor.factor_code)
+    print(delta_negative_volume_indicator_factor.version)
+    print(delta_negative_volume_indicator_factor.get_params())
+    print(delta_negative_volume_indicator_factor.get_category())
+    print(delta_negative_volume_indicator_factor.get_full_name())
+    print(delta_negative_volume_indicator_factor.get_key(5))
+    print(delta_negative_volume_indicator_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = delta_negative_volume_indicator_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=delta_negative_volume_indicator_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()

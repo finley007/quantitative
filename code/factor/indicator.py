@@ -75,24 +75,15 @@ class WeightedMovingAverage(Indicator):
         return self.key + '.' + self._target + '.' + self._weight + '.' + str(param)
 
     def enrich(self, data):
+        simplifier_data = data[[self._weight, self._target]]
         for param in self._params:
-            data[self.get_key(param)] = data['close'].rolling(param).apply(lambda item: self.caculate(item, data))
+            data[self.get_key(param)] = data['close'].rolling(param).apply(lambda item: self.caculate(item, simplifier_data))
         return data
 
-    def caculate(self, item, data):
-        """
-        这个方法需要优化
-        Parameters
-        ----------
-        item
-        data
-
-        Returns
-        -------
-
-        """
-        target = data.loc[item.index, [self._target]]
-        weight = data.loc[item.index, [self._weight]]
+    def caculate(self, window, data):
+        #TODO: 这里需要优化
+        target = data.loc[window.index, [self._target]]
+        weight = data.loc[window.index, [self._weight]]
         result = (target.values * weight.values).sum()/weight.values.sum()
         return result
 
@@ -237,9 +228,11 @@ class LinearRegression(Indicator):
 
     model = lr()
 
-    def __init__(self, params, target = 'close'):
+    def __init__(self, params, target = 'close', variable = ''):
         self._params = params
         self._target = target
+        #自变量
+        self._variable = variable
 
     def set_caculation_func(self, func):
         self._caculation_func = func
@@ -249,14 +242,18 @@ class LinearRegression(Indicator):
 
     def enrich(self, data):
         for param in self._params:
-            data[self.get_key(param)] = data[self._target].rolling(param).apply(lambda x: self.regression(x, self._caculation_func))
+            data[self.get_key(param)] = data[self._target].rolling(param).apply(lambda x: self.regression(x, data, self._caculation_func))
         return data
 
-    def regression(self, window, func):
-        x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+    def regression(self, window, data, func):
+        if '' == self._variable:
+            x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+        else:
+            # TODO: 这里需要优化
+            x = data.loc[window.index, [self._variable]]
         y = np.array(window.tolist()).reshape(-1, 1)
         self.model.fit(x, y)
-        return func(self.model, window)
+        return func(self.model, window, x)
 
 class PolynomialRegression(Indicator):
     """
@@ -336,8 +333,8 @@ if __name__ == '__main__':
     # data = ExpMovingAverage([10]).enrich(data)
     # print(data)
 
-    data = WeightedMovingAverage([10]).enrich(data)
-    print(data[['close', 'volume', 'weighted_moving_average.close.volume.10']])
+    # data = WeightedMovingAverage([10]).enrich(data)
+    # print(data[['close', 'volume', 'weighted_moving_average.close.volume.10']])
 
     # data = StandardDeviation([10]).enrich(data)
     # print(data)
@@ -357,8 +354,8 @@ if __name__ == '__main__':
     # data = ATR([10]).enrich(data)
     # print(data)
 
-    # data = LinearRegression([10]).enrich(data)
-    # print(data)
+    data = LinearRegression([10]).enrich(data)
+    print(data)
 
     # data = PolynomialRegression([10]).enrich(data)
     # print(data)
