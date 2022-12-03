@@ -10,7 +10,7 @@ from common.visualization import draw_analysis_curve
 from factor.base_factor import Factor
 from common.localio import read_decompress
 from factor.indicator import ATR, MovingAverage, LinearRegression, PolynomialRegression, StandardDeviation, ADX, TR, \
-    Variance, Skewness, Kurtosis, WeightedMovingAverage, Median, Quantile
+    Variance, Skewness, Kurtosis, WeightedMovingAverage, Median, Quantile, OBV, RSI
 
 """量价类因子
 分类编号：01
@@ -113,7 +113,7 @@ class LinearDeviationFactor(Factor):
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
-    def caculation_function(self, model, window):
+    def caculation_function(self, model, window, variable):
         x = np.linspace(0, 1, len(window)).reshape(-1, 1)
         estimated_values = model.predict(x)
         estimated_value = estimated_values[-1]
@@ -1202,6 +1202,117 @@ class NDayWiderFactor(Factor):
                 price_list[-(i + 1)] = cur_price
         return 100*(n-1)/len(window) - 50
 
+
+class OnBalanceVolumeFactor(Factor):
+    """
+    TSSB ON BALANCE VOLUME HistLength 因子
+    """
+
+    factor_code = 'FCT_01_054_ON_BALANCE_VOLUME'
+    version = '1.0'
+
+    def __init__(self):
+        self._obv = OBV()
+
+    def get_key(self):
+        return self.factor_code
+
+    def caculate(self, data):
+        self._obv.enrich(data)
+        for param in self._params:
+            data[self.get_key()] = data[self._obv.get_key()]
+            data.loc[data[self.get_key()].isnull(), self.get_key()] = 0
+        return data
+
+class DeltaOnBalanceVolumeFactor(Factor):
+    """
+    TSSB DELTA ON BALANCE VOLUME HistLength 因子
+    """
+
+    factor_code = 'FCT_01_055_DELTA_ON_BALANCE_VOLUME'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500]):
+        self._params = params
+        self._on_balance_volume_factor = OnBalanceVolumeFactor()
+
+    def get_key(self, param):
+        return self.factor_code + '.' + str(param)
+
+    def caculate(self, data):
+        self._on_balance_volume_factor.caculate(data)
+        for param in self._params:
+            data[self.get_key(param)] = data[self._obv.get_key()] - data[self._obv.get_key()].shift(param)
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+class DetrendedRsiFactor(Factor):
+    """
+    TSSB DETRENDED RSI DetrendedLength DetrenderLength Lookback 因子
+    """
+
+    factor_code = 'FCT_01_056_DETRENDED_RSI'
+    version = '1.0'
+
+    def __init__(self, params = [50]):
+        self._params = params
+        self._multiplier = 2
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        self._rsi = RSI(var_params)
+        self._regression_model = {}
+        for param in self._params:
+            linear_regression = LinearRegression([param], self._rsi.get_key(param), self._rsi.get_key(param * self._multiplier))
+            linear_regression.set_caculation_func(self.caculation_function)
+            self._regression_model['model.' + str(param)] = linear_regression
+
+    def get_key(self, param):
+        return self.factor_code + '.' + str(param)
+
+    def caculate(self, data):
+        data = self._rsi.enrich(data)
+        #这样做会不会有问题？
+        var_params = list(set((np.array(self._params) * self._multiplier).tolist() + self._params))
+        for param in var_params:
+            data.loc[data[self._rsi.get_key(param)].isnull(), self._rsi.get_key(param)] = 0
+        for param in self._params:
+            data = self._regression_model['model.' + str(param)].enrich(data)
+            key = self._regression_model['model.' + str(param)].get_key(param)
+            data[self.get_key(param)] = data[key]
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
+    def caculation_function(self, model, window, variable):
+        estimated_values = model.predict(variable)
+        estimated_value = estimated_values[-1]
+        true_value = window.tolist()[-1]
+        return true_value - estimated_value
+
+class ThresholdRsiFactor(Factor):
+    """
+    TSSB THRESHOLDED RSI LookbackLength UpperThresh LowerThresh 因子
+    """
+
+    factor_code = 'FCT_01_057_THRESHOLDED_RSI'
+    version = '1.0'
+
+    def __init__(self, params = [50, 100, 200, 500], upper = 70, lower = 30):
+        self._params = params
+        self._rsi = RSI(self._params)
+        self._upper = upper
+        self._lower = lower
+
+    def get_key(self, param):
+        return self.factor_code + '.' + str(param)
+
+    def caculate(self, data):
+        data = self._rsi.enrich(data)
+        for param in self._params:
+            data[self.get_key(param)] = 0
+            data.loc[data[self._rsi.get_key(param)] >= self._upper, self.get_key(param)] = 1
+            data.loc[data[self._rsi.get_key(param)] <= self._lower, self.get_key(param)] = -1
+            data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
+        return data
+
 if __name__ == '__main__':
     # 测试数据
     # data = read_decompress(TEST_PATH + 'IC2003.pkl')
@@ -1967,34 +2078,92 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=n_day_low_factor.get_keys())
 
     # N DAY NARROWER HistLength
-    n_day_narrow_factor = NDayNarrowFactor([20])
-    print(n_day_narrow_factor.factor_code)
-    print(n_day_narrow_factor.version)
-    print(n_day_narrow_factor.get_params())
-    print(n_day_narrow_factor.get_category())
-    print(n_day_narrow_factor.get_full_name())
-    print(n_day_narrow_factor.get_key(5))
-    print(n_day_narrow_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = n_day_narrow_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=n_day_narrow_factor.get_keys())
+    # n_day_narrow_factor = NDayNarrowFactor([20])
+    # print(n_day_narrow_factor.factor_code)
+    # print(n_day_narrow_factor.version)
+    # print(n_day_narrow_factor.get_params())
+    # print(n_day_narrow_factor.get_category())
+    # print(n_day_narrow_factor.get_full_name())
+    # print(n_day_narrow_factor.get_key(5))
+    # print(n_day_narrow_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = n_day_narrow_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=n_day_narrow_factor.get_keys())
 
     # N DAY WIDER HistLength
-    n_day_wider_factor = NDayWiderFactor([20])
-    print(n_day_wider_factor.factor_code)
-    print(n_day_wider_factor.version)
-    print(n_day_wider_factor.get_params())
-    print(n_day_wider_factor.get_category())
-    print(n_day_wider_factor.get_full_name())
-    print(n_day_wider_factor.get_key(5))
-    print(n_day_wider_factor.get_keys())
+    # n_day_wider_factor = NDayWiderFactor([20])
+    # print(n_day_wider_factor.factor_code)
+    # print(n_day_wider_factor.version)
+    # print(n_day_wider_factor.get_params())
+    # print(n_day_wider_factor.get_category())
+    # print(n_day_wider_factor.get_full_name())
+    # print(n_day_wider_factor.get_key(5))
+    # print(n_day_wider_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = n_day_wider_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=n_day_wider_factor.get_keys())
+
+    # ON BALANCE VOLUME HistLength
+    # on_balance_volume_factor = OnBalanceVolumeFactor()
+    # print(on_balance_volume_factor.factor_code)
+    # print(on_balance_volume_factor.version)
+    # print(on_balance_volume_factor.get_params())
+    # print(on_balance_volume_factor.get_category())
+    # print(on_balance_volume_factor.get_full_name())
+    # print(on_balance_volume_factor.get_key())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = on_balance_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=on_balance_volume_factor.get_keys())
+
+    # DELTA ON BALANCE VOLUME HistLength DeltaDist
+    # delta_on_balance_volume_factor = DeltaOnBalanceVolumeFactor()
+    # print(delta_on_balance_volume_factor.factor_code)
+    # print(delta_on_balance_volume_factor.version)
+    # print(delta_on_balance_volume_factor.get_params())
+    # print(delta_on_balance_volume_factor.get_category())
+    # print(delta_on_balance_volume_factor.get_full_name())
+    # print(delta_on_balance_volume_factor.get_key())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = delta_on_balance_volume_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=delta_on_balance_volume_factor.get_keys())
+
+    # DETRENDED RSI DetrendedLength DetrenderLength Lookback
+    detrended_rsi_factor = DetrendedRsiFactor()
+    print(detrended_rsi_factor.factor_code)
+    print(detrended_rsi_factor.version)
+    print(detrended_rsi_factor.get_params())
+    print(detrended_rsi_factor.get_category())
+    print(detrended_rsi_factor.get_full_name())
+    print(detrended_rsi_factor.get_key(5))
+    print(detrended_rsi_factor.get_keys())
     # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
     print(data.iloc[0:10])
-    data = n_day_wider_factor.caculate(data)
+    data = detrended_rsi_factor.caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=n_day_wider_factor.get_keys())
+    draw_analysis_curve(data, show_signal=True, signal_keys=detrended_rsi_factor.get_keys())
+
+    # THRESHOLDED RSI LookbackLength UpperThresh LowerThresh
+    threshold_rsi_factor = ThresholdRsiFactor()
+    print(threshold_rsi_factor.factor_code)
+    print(threshold_rsi_factor.version)
+    print(threshold_rsi_factor.get_params())
+    print(threshold_rsi_factor.get_category())
+    print(threshold_rsi_factor.get_full_name())
+    print(threshold_rsi_factor.get_key(5))
+    print(threshold_rsi_factor.get_keys())
+    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    print(data.iloc[0:10])
+    data = threshold_rsi_factor.caculate(data)
+    data.index = pd.DatetimeIndex(data['datetime'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=threshold_rsi_factor.get_keys())
 
     # 测试加载数据
     # data = william_factor.load()

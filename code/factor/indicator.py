@@ -361,6 +361,65 @@ class ADX(Indicator):
             data[self.get_key(param)] = data['DX.' + str(param)].rolling(param).mean()
         return data
 
+class OBV(Indicator):
+    """
+    OBV
+    """
+
+    key = 'obv'
+
+    def get_key(self):
+        return self.key
+
+    def enrich(self, data):
+        data['last_close'] = data['close'].shift(1)
+        data['sign'] = data.apply(lambda x: self.get_trend_indicator(x), axis=1)
+        data['signed_volume'] = data['sign'] * data['volume']
+        signed_vol = np.array(data['signed_volume'])
+        obv = np.cumsum(signed_vol)
+        data[self.get_key()] = obv
+        return data
+
+    def get_trend_indicator(self, x):
+        if (x['close'] > x['last_close']):
+            return 1
+        if (x['close'] < x['last_close']):
+            return -1
+        return 0
+
+class RSI(Indicator):
+    """
+    RSI
+    """
+
+    key = 'rsi'
+
+    def __init__(self, params):
+        self._params = params
+        self._atr = ATR(self._params)
+
+    def get_key(self, param):
+        return self.key + '.' + str(param)
+
+    def enrich(self, data):
+        data['up'] = 0
+        data['down'] = 0
+        data['change'] = data['close'] - data['close'].shift(1)
+        data.loc[data['change'] > 0, 'up'] = data['change']
+        data.loc[data['change'] < 0, 'down'] = -data['change']
+        for param in self._params:
+            data['au.' + str(param)] = data['up'].rolling(param).mean()
+            data['ad.' + str(param)] = data['down'].rolling(param).mean()
+            data[self.get_key(param)] = 100 - (100 / (1 + data['au.' + str(param)] / data['ad.' + str(param)]))
+        return data
+
+    def get_trend_indicator(self, x):
+        if (x['close'] > x['last_close']):
+            return 1
+        if (x['close'] < x['last_close']):
+            return -1
+        return 0
+
 
 if __name__ == '__main__':
     data = read_decompress('/Users/finley/Projects/stock-index-future/data/organised/future/IH/IH2209.pkl')
@@ -386,11 +445,11 @@ if __name__ == '__main__':
     # data = Kurtosis([10]).enrich(data)
     # print(data)
 
-    data = Median([10]).enrich(data)
-    print(data)
-
-    data = Quantile([10]).enrich(data)
-    print(data)
+    # data = Median([10]).enrich(data)
+    # print(data)
+    #
+    # data = Quantile([10]).enrich(data)
+    # print(data)
 
     # data = TR().enrich(data)
     # print(data)
@@ -406,6 +465,12 @@ if __name__ == '__main__':
 
     # data = ADX([14]).enrich(data)
     # print(data)
+
+    # data = OBV().enrich(data)
+    # print(data)
+
+    data = RSI([14]).enrich(data)
+    print(data)
 
 
 
