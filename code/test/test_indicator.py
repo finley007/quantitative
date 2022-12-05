@@ -3,6 +3,7 @@ import os
 import pytest
 
 import pandas as pd
+
 from factor.indicator import MovingAverage
 
 """
