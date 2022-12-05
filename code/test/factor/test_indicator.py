@@ -3,6 +3,7 @@ import os
 import pytest
 
 import pandas as pd
+from factor.indicator import MovingAverage
 
 """
 用来测试基本算子，
@@ -19,8 +20,8 @@ def init_data():
 
 def test_moving_average(init_data):
     data = init_data
+    data = MovingAverage([10]).enrich(data)
     print(data)
-    print('test_moving_average')
 
 def test_exp_moving_average():
     print('test_exp_moving_average')
