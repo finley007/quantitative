@@ -1,6 +1,25 @@
+import os
+
 import pytest
 
-def test_moving_average():
+import pandas as pd
+
+"""
+用来测试基本算子，
+测试文件：%TEST%/indicator_test.csv
+"""
+TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep
+test_filename = 'indicator_test.csv'
+
+@pytest.fixture()
+def init_data():
+    global data
+    return pd.read_csv(TEST_PATH + test_filename)
+
+
+def test_moving_average(init_data):
+    data = init_data
+    print(data)
     print('test_moving_average')
 
 def test_exp_moving_average():
@@ -47,3 +66,8 @@ def test_obv():
 
 def test_rsi():
     print('test_rsi')
+
+
+if __name__ == '__main__':
+   # -s：打印print，-v打印用例执行的详细过程
+   pytest.main(["-s","-v","test_indicator.py"])
