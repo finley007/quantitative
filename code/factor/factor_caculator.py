@@ -131,11 +131,16 @@ if __name__ == '__main__':
     # FactorCaculator().init_instrument_config()
 
     #因子计算
-    william_factor = WilliamFactor()
-    factor_list = [william_factor]
-    FactorCaculator().caculate(factor_list)
+    # william_factor = WilliamFactor()
+    # factor_list = [william_factor]
+    # FactorCaculator().caculate(factor_list)
 
     #生成因子比对文件
     # william_factor = WilliamFactor([10])
     # FactorCaculator().caculate_manually_check(william_factor)
+
+    session = create_session()
+    config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)
+    session.add(config)
+    session.commit()
 

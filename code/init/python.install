@@ -8,3 +8,5 @@ pip3 install mplfinance -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host
 pip3 install requests -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install pillow -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install numba -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install pytest -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install sklearn -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com

@@ -179,6 +179,7 @@ def enrich_stock_tick_data(process_code, include_year_list=[], include_month_lis
                 continue
             elif len(include_month_list) > 0 and months.group()[4:] not in include_month_list:
                 continue
+            # enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder)
             runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list,
                                             year_folder, month_folder))
     time.sleep(100000)
@@ -205,9 +206,17 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
                     continue
                 elif len(include_stock_list) > 0 and stocks.group()[0:6] not in include_stock_list:
                     continue
-                data = read_decompress(
-                    STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
-                data = StockTickDataColumnTransform().process(data)
+                try :
+                    original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
+                    data = read_decompress( original_stock_file_path)
+                except Exception as e:
+                    print('Load file: {0} error'.format(original_stock_file_path))
+                    continue
+                try :
+                    data = StockTickDataColumnTransform().process(data)
+                except Exception as e:
+                    print('Do column transform error for file: {0}'.format(original_stock_file_path))
+                    continue
                 data = StockTickDataCleaner().process(data)
                 if len(data) > data_length_threshold:
                     validation_result = StockTickDataValidator(True).validate(data)
@@ -224,7 +233,7 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
                         session.commit()
                     else:
                         stock_process_record = StockProcessRecord(process_code, stock.split('.')[0], date, 1,
-                                                                  validation_result)
+                                                                  str(validation_result))
                         session.add(stock_process_record)
                         session.commit()
             else:
@@ -511,7 +520,7 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock数据
-    # validate_stock_tick_data('20221109-finley',['2022'])
+    # validate_stock_tick_data('20221128-finley')
 
     # 生成stock数据
     enrich_stock_tick_data('20221111-finley-1')

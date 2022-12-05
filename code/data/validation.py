@@ -266,7 +266,7 @@ class StockTickDataValidator(Validator):
                     result.error_details.append('Invalid {0} value'.format(check_columns[i]))
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix(STOCK_CALL_AUACTION_OPEN_TIME))]) > 0:
+               & (data['time'] > add_milliseconds_suffix('09:25:01'))]) > 0:
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result
@@ -482,7 +482,7 @@ if __name__ == '__main__':
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
-    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202201\\20220104\\300001.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220627\\600037.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
     data = StockTickDataCleaner().process(data)

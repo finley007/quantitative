@@ -10,6 +10,8 @@ int_column  int(10),
 date_column  date,
 datetime_column  datetime,
 time_column  time,
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(varchar_column)
 );
 
@@ -22,6 +24,8 @@ tscode  VARCHAR(10),
 date    VARCHAR(10),
 result  int comment '0-成功，1-失败',
 err_msg  VARCHAR(1024),
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(id)
 );
 
@@ -34,6 +38,8 @@ instrument  VARCHAR(10),
 date    VARCHAR(10),
 status  int comment '0-已生成，1-已归并',
 err_msg  VARCHAR(1024),
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(id)
 );
 
@@ -46,6 +52,8 @@ tscode  VARCHAR(10),
 date    VARCHAR(10),
 status  int comment '0-合法，1-非法',
 invalid_msg  VARCHAR(1024),
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(id)
 );
 
@@ -57,6 +65,8 @@ product VARCHAR(2),
 instrument  VARCHAR(8),
 date    VARCHAR(10),
 is_main  int comment '0-主力合约，1-非主力合约',
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(id)
 );
 
@@ -67,6 +77,8 @@ id VARCHAR(40),
 product VARCHAR(2),
 date    VARCHAR(10),
 tscode  VARCHAR(10),
+created_time datetime,
+modified_time datetime,
 PRIMARY KEY(id),
 UNIQUE (product, date, tscode)
 );
