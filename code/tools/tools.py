@@ -455,6 +455,31 @@ def validate_stock_data_integrity_check(check_original=True):
                             filter_miss_stocks.append(stock_code + 'o')
                     file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, filter_miss_stocks))
 
+def update_stock_suspension_status():
+    """
+    根据https://data.gtimg.cn/flashdata/hushen/daily/更新股票停盘信息
+    Returns
+    -------
+
+    """
+    year_list = ['2017','2018','2019','2020','2021','2022']
+    session = create_session()
+    stock_list = session.execute('select distinct tscode from index_constituent_config order by tscode').fetchall()
+    stock_info_crawler = StockInfoCrawler()
+    for stock in stock_list:
+        date_list = session.execute('select distinct date from index_constituent_config where tscode = :tscode order by date', {'tscode': stock[0]}).fetchall()
+        date_list = list(map(lambda date: date[0], date_list))
+        date_list.sort()
+        for year in year_list:
+            full_stock_code = get_full_stockcode(stock[0])
+            normal_date_list = list(set(stock_info_crawler.get_content(year[2:4], full_stock_code)))
+            normal_date_list = list(map(lambda date: date[0:4] + '-' + date[4:6] + '-' + date[6:8], normal_date_list))
+            all_date_list = list(filter(lambda date: year in date, date_list))
+            suspend_date_list = set(all_date_list).difference(set(normal_date_list))
+            if len(suspend_date_list) > 0:
+                session.execute('update index_constituent_config set status = 1 where tscode = :tscode and date in :dates', {'tscode': stock[0], 'dates' : set(suspend_date_list)})
+                session.commit()
+        print(date_list)
 
 def do_compare(future_file, instrument, product):
     target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
@@ -523,7 +548,7 @@ if __name__ == '__main__':
     # validate_stock_tick_data('20221128-finley')
 
     # 生成stock数据
-    enrich_stock_tick_data('20221111-finley-1')
+    # enrich_stock_tick_data('20221111-finley-1')
     # enrich_stock_tick_data('20221111-finley-1',['2020'],['09'],['28'])
 
     # 检查stock数据
@@ -586,3 +611,6 @@ if __name__ == '__main__':
     # stocks_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks.pkl')
     # print(stocks_500[pd.Timestamp('2021-09-27 00:00:00')])
     # print(stocks_500[pd.Timestamp('2021-09-28 00:00:00')])
+
+    # 生成股票停盘信息
+    update_stock_suspension_status()

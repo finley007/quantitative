@@ -126,13 +126,15 @@ class IndexConstituentConfig(Base):
     product = Column(String(2))
     date = Column(String(10))
     tscode = Column(String(10))
+    status = Column(Integer)
     created_time = Column(DateTime)
     modified_time = Column(DateTime)
 
-    def __init__(self, product, date, tscode):
+    def __init__(self, product, date, tscode, status = 0):
         self.id = uuid.uuid4()
         self.product = product
         self.date = date
         self.tscode = tscode
+        self.status = status
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()

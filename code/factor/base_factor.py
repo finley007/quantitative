@@ -75,6 +75,10 @@ class StockTickFactor(Factor):
             'IH' : self._stocks_abstract_50,
             'IF' : self._stocks_abstract_300
         }
+        self._session = create_session()
+        suspend_list = self._session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
+        self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
+        print(self._suspend_set)
 
     def get_stock_tick_data(self, product, date):
         """获取相关的股票tick数据，
@@ -91,6 +95,9 @@ class StockTickFactor(Factor):
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         for stock in stock_list:
+            if (date + stock) in self._suspend_set:
+                print('The stock {0} is suspended on {1}'.format(stock, date))
+                continue
             print('Handle stock {0}'.format(stock))
             temp_data = read_decompress(file_path + stock + '.pkl')
             temp_data = temp_data.loc[:, columns]

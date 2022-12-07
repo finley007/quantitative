@@ -22,7 +22,8 @@ def init_data():
 def test_moving_average(init_data):
     data = init_data
     data = MovingAverage([10]).enrich(data)
-    print(data)
+    if len(data[data['moving_average'] != data['moving_average.close.10']]) > 0:
+        print(data[data['moving_average'] != data['moving_average.close.10']][['moving_average','moving_average.close.10']])
 
 def test_exp_moving_average():
     print('test_exp_moving_average')

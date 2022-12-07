@@ -11,7 +11,7 @@ from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH
-from common.io import list_files_in_path, save_compress, read_decompress
+from common.localio import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
@@ -19,6 +19,25 @@ from data.process import FutureTickDataColumnTransform, StockTickDataColumnTrans
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
 from framework.concurrent import ProcessRunner
 
+
+def check_issue_data(record_id):
+    session = create_session()
+    check_list = session.execute(
+        'select date, tscode from stock_process_record where id = :id',
+        {'id': record_id}).fetchall()
+    if len(check_list) > 0:
+        date = check_list[0][0]
+        stock = check_list[0][1]
+        print(check_list)
+        original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(date[0:6]) + os.path.sep + date + os.path.sep + stock + '.pkl'
+        data = read_decompress(original_stock_file_path)
+        data = StockTickDataColumnTransform().process(data)
+        data = StockTickDataCleaner().process(data)
+        validation_result = StockTickDataValidator(True).validate(data)
+        print(validation_result)
+
+def add_folder_prefix(folder):
+    return 'stk_tick10_w_' + folder
 
 def fix_stock_tick_data(year, month, date_list=[]):
     root_path = STOCK_TICK_DATA_PATH
@@ -99,4 +118,6 @@ if __name__ == '__main__':
     # fix_stock_tick_data('2017', '05', ['20170531','20170508','20170504','20170502'])
     # fix_stock_tick_data('2017', '03', ['20170307'])
     # fix_stock_tick_data('2017', '02', ['20170203'])
-    fix_stock_tick_data('2017', '01', ['20170113'])
+    # fix_stock_tick_data('2017', '01', ['20170113'])
+
+    check_issue_data('0157a274-f919-42b9-acbd-5003e03f11cf')

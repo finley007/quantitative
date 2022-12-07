@@ -232,6 +232,7 @@ class StockTickDataValidator(Validator):
             result.error_details.append('The data is incomplete and length: {0}'.format(str(len(data))))
         # 检查是否包含开盘时间点的数据
         if time > '09:16:00.000':
+            print(time)
             result.result = RESULT_FAIL
             result.error_details.append('The data is incomplete and miss the opening time data')
         # 检查成交量是否递增
@@ -267,6 +268,8 @@ class StockTickDataValidator(Validator):
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
                & (data['time'] > add_milliseconds_suffix('09:25:01'))]) > 0:
+            print(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
+               & (data['time'] > add_milliseconds_suffix('09:25:01'))][['time','open','close','high','low']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result
