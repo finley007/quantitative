@@ -3,12 +3,14 @@
 import os
 from abc import ABCMeta, abstractmethod
 import pandas as pd
+from datetime import datetime
 
 from scipy.stats import pearsonr
 
 from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH
 from common.localio import read_decompress
 from data.process import StockTickDataColumnTransform
+from common.persistence.dbutils import create_session
 
 
 class Factor(metaclass=ABCMeta):
@@ -78,7 +80,6 @@ class StockTickFactor(Factor):
         self._session = create_session()
         suspend_list = self._session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
         self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
-        print(self._suspend_set)
 
     def get_stock_tick_data(self, product, date):
         """获取相关的股票tick数据，
@@ -101,7 +102,22 @@ class StockTickFactor(Factor):
             print('Handle stock {0}'.format(stock))
             temp_data = read_decompress(file_path + stock + '.pkl')
             temp_data = temp_data.loc[:, columns]
+            temp_data = self.enrich_stock_data(temp_data)
             data = pd.concat([data, temp_data])
+        return data
+
+    def enrich_stock_data(self, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
         return data
 
     def get_columns(self):
@@ -128,6 +144,41 @@ class StockTickFactor(Factor):
             end_date = key.split('_')[1]
             if date >= start_date and date <= end_date:
                 return stock_abstract[key]
+
+    def merge_with_stock_data(self, data, date, df_stock_data_per_date):
+        """
+        和股票数据join，获取现货指标
+        Parameters
+        ----------
+        data
+        date
+        df_stock_data_per_date
+
+        Returns
+        -------
+
+        """
+        df_stock_data_per_date['second_remainder'] = df_stock_data_per_date.apply(lambda item: self.is_aligned(item),
+                                                                                  axis=1)
+        df_stock_data_per_date = df_stock_data_per_date[df_stock_data_per_date['second_remainder'] == 0]
+        df_stock_data_per_date['datetime'] = date + ' ' + df_stock_data_per_date['time'] + '000000'
+        cur_date_data = data[data['date'] == date]
+        cur_date_data = cur_date_data.merge(df_stock_data_per_date, on=['datetime'], how='left')
+        return cur_date_data
+
+    def is_aligned(self, item):
+        '''过滤对齐到3秒线
+
+        Parameters
+        ----------
+        item
+
+        Returns
+        -------
+
+        '''
+        cur_time = datetime.strptime(item['time'], '%H:%M:%S.%f')
+        return cur_time.second % 3
 
 
     # 全局计算因子值
