@@ -3,6 +3,7 @@ import os
 import pytest
 
 import pandas as pd
+import numpy as np
 
 from factor.indicator import MovingAverage
 
@@ -10,7 +11,7 @@ from factor.indicator import MovingAverage
 用来测试基本算子，
 测试文件：%TEST%/indicator_test.csv
 """
-TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep
+TEST_PATH = '/Users/finley/Projects/stock-index-future/code/test/files' + os.path.sep
 test_filename = 'indicator_test.csv'
 
 @pytest.fixture()
@@ -22,8 +23,10 @@ def init_data():
 def test_moving_average(init_data):
     data = init_data
     data = MovingAverage([10]).enrich(data)
-    if len(data[data['moving_average'] != data['moving_average.close.10']]) > 0:
-        print(data[data['moving_average'] != data['moving_average.close.10']][['moving_average','moving_average.close.10']])
+    assert len(data[np.isnan(data['moving_average'])]) == 9
+    data = data.dropna()
+    # print(data[data['moving_average'] != data['moving_average.close.10']].iloc[0:10][['moving_average', 'moving_average.close.10']])
+    assert len(data[data['moving_average'] != data['moving_average.close.10']]) == 0
 
 def test_exp_moving_average():
     print('test_exp_moving_average')

@@ -242,7 +242,6 @@ class RisingStockRatioFactor(StockTickFactor):
         key_columns = []
         for param in self._params:
             key_columns = key_columns + [self.get_key(param)]
-        print(key_columns)
         columns = data.columns.tolist() + key_columns + ['time', 'second_remainder']
         new_data = pd.DataFrame(columns=columns)
         product = data.iloc[0]['product']
@@ -261,7 +260,6 @@ class RisingStockRatioFactor(StockTickFactor):
             stock_data_per_date_group_by['time'] = stock_data_per_date_group_by.index
             # 替换列名
             stock_data_per_date_group_by = stock_data_per_date_group_by.rename(columns = columns_replace)
-            print(stock_data_per_date_group_by)
             # #过滤对齐在3秒线的数据
             cur_date_data = self.merge_with_stock_data(data, date, stock_data_per_date_group_by)
             new_data = pd.concat([new_data, cur_date_data])
