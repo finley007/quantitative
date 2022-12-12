@@ -104,7 +104,7 @@ class ExpMovingAverage(Indicator):
 
     def enrich(self, data):
         for param in self._params:
-            data[self.get_key(param)] = data[self._target].ewm(alpha=2 / (param + 1), adjust=False).mean()
+            data[self.get_key(param)] = data[self._target].ewm(span=param, adjust=False).mean()
         return data
 
 class StandardDeviation(Indicator):
@@ -422,13 +422,14 @@ class RSI(Indicator):
 
 
 if __name__ == '__main__':
-    data = read_decompress('/Users/finley/Projects/stock-index-future/data/organised/future/IH/IH2209.pkl')
+    # data = read_decompress('/Users/finley/Projects/stock-index-future/data/organised/future/IH/IH2209.pkl')
+    data = read_decompress('E:\\data\\organized\\future\\tick\\IH\\IH2209.pkl')
     data = data[(data['datetime'] >= '2022-01-24 09:30:00') & (data['datetime'] <= '2022-01-24 10:30:00')]
     # data = MovingAverage([10]).enrich(data)
     # print(data)
 
-    # data = ExpMovingAverage([10]).enrich(data)
-    # print(data)
+    data = ExpMovingAverage([10]).enrich(data)
+    print(data)
 
     # data = WeightedMovingAverage([10]).enrich(data)
     # print(data[['close', 'volume', 'weighted_moving_average.close.volume.10']])
@@ -469,8 +470,8 @@ if __name__ == '__main__':
     # data = OBV().enrich(data)
     # print(data)
 
-    data = RSI([14]).enrich(data)
-    print(data)
+    # data = RSI([14]).enrich(data)
+    # print(data)
 
 
 
