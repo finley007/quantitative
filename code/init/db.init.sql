@@ -24,6 +24,7 @@ tscode  VARCHAR(10),
 date    VARCHAR(10),
 result  int comment '0-成功，1-失败',
 err_msg  VARCHAR(1024),
+record_count int,
 created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id)

@@ -10,6 +10,7 @@ from scipy.stats import pearsonr
 from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH
 from common.localio import read_decompress
 from data.process import StockTickDataColumnTransform
+from data.access import StockDataAccess
 from common.persistence.dbutils import create_session
 
 
@@ -92,21 +93,21 @@ class StockTickFactor(Factor):
         date ： 日期
         """
         stock_list = self.get_stock_list_by_date(product, date)
-        file_path = self.create_stock_tick_data_path(date)
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
+        stock_data_access = StockDataAccess()
         for stock in stock_list:
             if (date + stock) in self._suspend_set:
                 print('The stock {0} is suspended on {1}'.format(stock, date))
                 continue
             print('Handle stock {0}'.format(stock))
-            temp_data = read_decompress(file_path + stock + '.pkl')
+            temp_data = stock_data_access.access(date, stock)
             temp_data = temp_data.loc[:, columns]
-            temp_data = self.enrich_stock_data(temp_data)
+            temp_data = self.enrich_stock_data(date, stock, temp_data)
             data = pd.concat([data, temp_data])
         return data
 
-    def enrich_stock_data(self, data):
+    def enrich_stock_data(self, date, stock, data):
         """
         时间维度上处理股票数据
 
@@ -122,13 +123,6 @@ class StockTickFactor(Factor):
 
     def get_columns(self):
         return ['tscode','date','time']
-
-    def create_stock_tick_data_path(self, date):
-        file_prefix = 'stk_tick10_w_'
-        date = date.replace('-','')
-        year = date[0:4]
-        month = date[4:6]
-        return STOCK_TICK_ORGANIZED_DATA_PATH + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
 
     def get_stock_list_by_date(self, product, date):
         """获取股票列表

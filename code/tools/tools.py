@@ -154,7 +154,7 @@ def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_
                 data = StockTickDataCleaner().process(data)
                 if len(data) > data_length_threshold:
                     validation_result = StockTickDataValidator().validate(data)
-                    stock_validation_result = StockValidationResult(validate_code, validation_result)
+                    stock_validation_result = StockValidationResult(validate_code, validation_result, len(data))
                     session.add(stock_validation_result)
                     session.commit()
             else:
@@ -545,7 +545,7 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock数据
-    # validate_stock_tick_data('20221128-finley')
+    validate_stock_tick_data('20221213-finley')
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
@@ -613,4 +613,4 @@ if __name__ == '__main__':
     # print(stocks_500[pd.Timestamp('2021-09-28 00:00:00')])
 
     # 生成股票停盘信息
-    update_stock_suspension_status()
+    # update_stock_suspension_status()

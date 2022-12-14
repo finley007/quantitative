@@ -2,9 +2,21 @@
 # -*- coding:utf8 -*-
 from datetime import datetime, timedelta, time
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
+from common.persistence.dao import IndexConstituentConfigDao
 
 def time_advance(str_cur_time, step):
-    #时间步进
+    """
+    时间步进
+
+    Parameters
+    ----------
+    str_cur_time：string 当前时间
+    step：int 步进长度 单位：s
+
+    Returns
+    -------
+
+    """
     cur_time = datetime.strptime(str_cur_time[0:21], "%Y-%m-%d %H:%M:%S.%f")
     if cur_time.time() == time.fromisoformat(OFF_TIME_IN_MORNING): # 处理中午停盘的时间
         cur_time = cur_time + timedelta(seconds=step) + timedelta(hours=1.5)
@@ -14,14 +26,34 @@ def time_advance(str_cur_time, step):
 
 
 def date_alignment(date):
-    # 分秒对齐
+    """
+    毫秒对齐，如果毫秒数再0-4区间内则对齐到0，如果毫秒数在5-9区间内则对齐到5
+    Parameters
+    ----------
+    date：string 待处理时间
+
+    Returns
+    -------
+
+    """
     subsec = 0
     if int(date.split('.')[1][0]) > 4:
         subsec = 5
     return date.split('.')[0] + '.' + str(subsec) + '00000000'
 
 def time_carry(hour, minute, second):
-    # 时间进位
+    """
+    处理时间进位
+    Parameters
+    ----------
+    hour：int 时
+    minute：int 分
+    second：int 秒
+
+    Returns
+    -------
+
+    """
     if second == 60:
         second = 0
         minute = minute + 1
@@ -31,6 +63,16 @@ def time_carry(hour, minute, second):
     return hour, minute, second
 
 def date_format_transform(date):
+    """
+    时间格式转换 2022-12-08 <-> 20221208
+    Parameters
+    ----------
+    date：string 待处理时间
+
+    Returns
+    -------
+
+    """
     if len(date) == 8:
         return date[0:4] + '-' + date[4:6] + '-' + date[6:8]
     else:
@@ -38,11 +80,60 @@ def date_format_transform(date):
 
 
 def add_milliseconds_suffix(time):
+    """
+    增加3位毫秒后缀
+
+    Parameters
+    ----------
+    time：string 待处理时间
+
+    Returns
+    -------
+
+    """
     if len(time) == 8:
         return time + '.000'
     else:
         return time
 
+def get_last_or_next_trading_date(stock, date, range_num = 1, backword=True, date_list=[]):
+    """
+    获取下一个或者上一个交易日，考虑停盘
+
+    Parameters
+    ----------
+    date：string 当前日
+    range：int 时间区间
+    foward：
+
+    Returns
+    -------
+
+    """
+    if len(date_list) == 0:
+        index_constituent_config_dao = IndexConstituentConfigDao()
+        date_list = index_constituent_config_dao.query_trading_date_by_tscode(stock)
+    if len(date_list) > 0 and date in date_list:
+        index = date_list.index(date)
+        for i in range(range_num):
+            if backword:
+                index = index - 1
+                if index < 0:
+                    return ''
+            else:
+                index = index + 1
+                if index == len(date_list):
+                    return ''
+        return date_list[index]
+    else:
+        return ''
+
+
 if __name__ == '__main__':
     print(date_format_transform('20221121'))
     print(date_format_transform('2022-11-21'))
+    IndexConstituentConfigDao().query_trading_date_by_tscode('002642')
+    print(get_last_or_next_trading_date('20221212', range_num=2, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    print(get_last_or_next_trading_date('20221212', range_num=3, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    print(get_last_or_next_trading_date('20221212', range_num=2, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    print(get_last_or_next_trading_date('20221212', range_num=3, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))

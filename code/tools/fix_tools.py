@@ -20,7 +20,7 @@ from data.validation import StockFilterCompressValidator, FutureTickDataValidato
 from framework.concurrent import ProcessRunner
 
 
-def check_issue_data(record_id):
+def check_issue_stock_process_data(record_id):
     session = create_session()
     check_list = session.execute(
         'select date, tscode from stock_process_record where id = :id',
@@ -28,6 +28,23 @@ def check_issue_data(record_id):
     if len(check_list) > 0:
         date = check_list[0][0]
         stock = check_list[0][1]
+        print(check_list)
+        original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(date[0:6]) + os.path.sep + date + os.path.sep + stock + '.pkl'
+        data = read_decompress(original_stock_file_path)
+        data = StockTickDataColumnTransform().process(data)
+        data = StockTickDataCleaner().process(data)
+        validation_result = StockTickDataValidator(True).validate(data)
+        print(validation_result)
+
+def check_issue_stock_validation_data(record_id):
+    session = create_session()
+    check_list = session.execute(
+        'select date, tscode from stock_validation_result where id = :id',
+        {'id': record_id}).fetchall()
+    if len(check_list) > 0:
+        date = check_list[0][0].replace('-','')
+        stock = check_list[0][1]
+        stock = stock.split('.')[0]
         print(check_list)
         original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(date[0:6]) + os.path.sep + date + os.path.sep + stock + '.pkl'
         data = read_decompress(original_stock_file_path)
@@ -120,4 +137,4 @@ if __name__ == '__main__':
     # fix_stock_tick_data('2017', '02', ['20170203'])
     # fix_stock_tick_data('2017', '01', ['20170113'])
 
-    check_issue_data('0157a274-f919-42b9-acbd-5003e03f11cf')
+    check_issue_stock_validation_data('0bf6addb-33a2-46c5-abff-962624eab79b')

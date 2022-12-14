@@ -7,6 +7,8 @@ from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN
 from common.localio import read_decompress
 from common.aop import timing
 from common.visualization import draw_analysis_curve
+from common.timeutils import get_last_or_next_trading_date
+from data.access import StockDataAccess
 
 """现货类因子
 分类编号：02
@@ -460,7 +462,7 @@ class FirstStageCommissionRatioFactor(StockTickFactor):
     version : string
     _params ： list
     """
-    factor_code = 'FCT_02_002_11_FIRST_STAGE_COMMISSION_RATIO'
+    factor_code = 'FCT_02_011_FIRST_STAGE_COMMISSION_RATIO'
     version = '1.0'
 
     def __init__(self):
@@ -512,7 +514,7 @@ class SecondStageCommissionRatioFactor(StockTickFactor):
     version : string
     _params ： list
     """
-    factor_code = 'FCT_02_002_12_SECOND_STAGE_COMMISSION_RATIO'
+    factor_code = 'FCT_02_012_SECOND_STAGE_COMMISSION_RATIO'
     version = '1.0'
 
     def __init__(self):
@@ -553,6 +555,98 @@ class SecondStageCommissionRatioFactor(StockTickFactor):
         for i in range(1, 11):
             sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
         return sum
+
+class AskLargeAmountBillFactor(StockTickFactor):
+    """委买大额挂单因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_013_ASK_LARGE_AMOUNT_BILL'
+    version = '1.0'
+
+    def __init__(self):
+        StockTickFactor.__init__(self)
+        self._data_access = StockDataAccess()
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5',
+                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5']
+        return columns
+
+    def get_key(self):
+        return self.factor_code
+
+    def get_keys(self):
+        return [self.get_key()]
+
+    @timing
+    def caculate(self, data):
+        columns = data.columns.tolist() + [self.get_key()]
+        new_data = pd.DataFrame(columns = columns)
+        product = data.iloc[0]['product']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        for date in date_list:
+            stock_data_per_date = self.get_stock_tick_data(product, date)
+            stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['mean_ask_commission_amount','ask_commission_amount'].mean()
+            print(stock_data_per_date_group_by)
+            df_stock_data_per_date = pd.DataFrame({'mean_ask_commission_amount': stock_data_per_date_group_by['mean_ask_commission_amount'],'ask_commission_amount': stock_data_per_date_group_by['ask_commission_amount'], 'time': stock_data_per_date_group_by.index})
+            print(df_stock_data_per_date)
+            # 过滤对齐在3秒线的数据
+            cur_date_data = self.merge_with_stock_data(data, date, df_stock_data_per_date)
+            cur_date_data[self.get_key()] = 0
+            cur_date_data.loc[cur_date_data['ask_commission_amount'] > cur_date_data['mean_ask_commission_amount'] * 3, self.get_key()] = 1
+            print(cur_date_data[self.get_key()])
+            new_data = pd.concat([new_data, cur_date_data])
+        return new_data
+
+    def enrich_stock_data(self, date, stock, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        #计算时间区间，
+        # 考虑：
+        # 1. 因子是在哪个时间区间计算？所有时间区间：集合竞价和开盘之后
+        # 2. 周期？3天
+        print('Current date: {} and stock: {}'.format(date, stock))
+        temp_data = pd.DataFrame(data.columns)
+        for i in range(3,0,-1):
+            date_before = get_last_or_next_trading_date(stock, date, i)
+            if date_before != '':
+                print('Load date before: {}'.format(date_before))
+                data_before = self._data_access.access(date_before, stock)
+                data_before = data_before[data_before['time'] > STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME] #只需要已成交的数据
+                data_before = data_before[data.columns]
+            temp_data = pd.concat([temp_data, data_before])
+            # print(len(data_before))
+            # print(data_before)
+        data = data[data['time'] > STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME ] #当天也只需要已成交的数据
+        temp_data = pd.concat([temp_data, data])
+        temp_data['ask_commission_amount'] = temp_data.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
+        temp_data['mean_ask_commission_amount'] = temp_data['ask_commission_amount'].rolling(len(data) * 3).mean()
+        data = temp_data[temp_data['date'] == date]
+        return data
+
+    def amount_sum(self, item, type):
+        sum = 0
+        for i in range(1, 6):
+            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        return sum
+
 
 if __name__ == '__main__':
     data = read_decompress(TEST_PATH + '20200928.pkl')
@@ -711,18 +805,32 @@ if __name__ == '__main__':
     #                     signal_keys=first_stage_comission_ratio_factor.get_keys())
 
     # 集合竞价二阶段委比因子
-    second_stage_comission_ratio_factor = SecondStageCommissionRatioFactor()
-    print(second_stage_comission_ratio_factor.factor_code)
-    print(second_stage_comission_ratio_factor.version)
-    print(second_stage_comission_ratio_factor.get_params())
-    print(second_stage_comission_ratio_factor.get_category())
-    print(second_stage_comission_ratio_factor.get_full_name())
+    # second_stage_comission_ratio_factor = SecondStageCommissionRatioFactor()
+    # print(second_stage_comission_ratio_factor.factor_code)
+    # print(second_stage_comission_ratio_factor.version)
+    # print(second_stage_comission_ratio_factor.get_params())
+    # print(second_stage_comission_ratio_factor.get_category())
+    # print(second_stage_comission_ratio_factor.get_full_name())
+    #
+    # data = SecondStageCommissionRatioFactor().caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    # draw_analysis_curve(data, show_signal=True,
+    #                     signal_keys=second_stage_comission_ratio_factor.get_keys())
 
-    data = SecondStageCommissionRatioFactor().caculate(data)
+    # 集合竞价二阶段委比因子
+    ask_large_amount_bill_factor = AskLargeAmountBillFactor()
+    print(ask_large_amount_bill_factor.factor_code)
+    print(ask_large_amount_bill_factor.version)
+    print(ask_large_amount_bill_factor.get_params())
+    print(ask_large_amount_bill_factor.get_category())
+    print(ask_large_amount_bill_factor.get_full_name())
+
+    data = AskLargeAmountBillFactor().caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
     draw_analysis_curve(data, show_signal=True,
-                        signal_keys=second_stage_comission_ratio_factor.get_keys())
+                        signal_keys=ask_large_amount_bill_factor.get_keys())
 
 
 
