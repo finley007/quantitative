@@ -25,17 +25,6 @@ class StockValidationResult(Base):
     created_time = Column(DateTime)
     modified_time = Column(DateTime)
 
-    def __init__(self, validation_code, tscode, date, result, record_count, err_msg=None):
-        self.id = uuid.uuid4()
-        self.validation_code = validation_code
-        self.tscode = tscode
-        self.date = date
-        self.result = result
-        self.record_count = record_count
-        self.err_msg = err_msg
-        self.created_time = datetime.datetime.now()
-        self.modified_time = datetime.datetime.now()
-
     def __init__(self, validation_code, validation_result, record_count):
         self.id = uuid.uuid4()
         self.validation_code = validation_code
@@ -45,9 +34,11 @@ class StockValidationResult(Base):
             self.result = 0
         else:
             self.result = 1
-        self.err_msg = str(validation_result)
+        str_validation_result = str(validation_result)
+        if (len(str_validation_result) > 1020):
+            str_validation_result = str_validation_result[0:1020] + '...'
+        self.err_msg = str_validation_result
         self.record_count = record_count
-
 
 class FutrueProcessRecord(Base):
     """期货处理记录表po：

@@ -49,6 +49,7 @@ class FactorCaculator():
                 data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
                 data['date'] = data['datetime'].str[0:10]
                 data['product'] = product
+                data['instrument'] = instrument
                 for factor in factor_list:
                     data = factor.caculate(data)
                 #截取主力合约区间

@@ -16,7 +16,7 @@ from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
-from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
+from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, StockOrganizedDataValidator
 from framework.concurrent import ProcessRunner
 
 
@@ -102,6 +102,52 @@ def in_date_range(date, str_date_range):
 def extract_tsccode(filename):
     return filename.split('_')[0][2:]
 
+
+def validate_stock_organized_data(validate_code, include_year_list=[]):
+    session = create_session()
+    checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
+    checked_set = set(map(lambda item : item[0], checked_list))
+    runner = ProcessRunner(10)
+    year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
+    for year_folder in year_folder_list:
+        years = re.search('[0-9]{4}', year_folder)
+        if not years:
+            continue
+        elif len(include_year_list) > 0 and years.group() not in include_year_list:
+            continue
+        month_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        for month_folder in month_folder_list:
+            if not re.search('[0-9]{6}', month_folder):
+                continue
+            runner.execute(validate_stock_organized_by_month, args=(validate_code, checked_set, year_folder, month_folder))
+            # validate_stock_organized_by_month(validate_code, checked_set, year_folder, month_folder)
+    time.sleep(100000)
+
+def validate_stock_organized_by_month(validate_code, checked_set, year_folder, month_folder):
+    session = create_session()
+    date_folder_list = list_files_in_path(
+        STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    for date in date_folder_list:
+        if not re.search('[0-9]{8}', date):
+            continue
+        stock_file_list = list_files_in_path(
+            STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        for stock in stock_file_list:
+            if date + stock.split('.')[0] not in checked_set:
+                try:
+                    organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
+                    data = read_decompress(organized_stock_file_path)
+                except Exception as e:
+                    print('Load file: {0} error'.format(organized_stock_file_path))
+                    continue
+                print(date + ':' + stock)
+                validation_result = StockOrganizedDataValidator().validate(data)
+                stock_validation_result = StockValidationResult(validate_code, validation_result, len(data))
+                session.add(stock_validation_result)
+                session.commit()
+            else:
+                print("{0} {1} has been handled".format(date, stock))
+
 if __name__ == '__main__':
     # fix_stock_tick_data('2021', '01', ['20210108','20210111','20210112','20210113','20210114','20210115','20210118','20210119','20210120','20210121','20210122','20210125','20210126','20210127','20210128','20210129'])
     # fix_stock_tick_data('2021', '03', ['20210326','20210329','20210330','20210331'])
@@ -137,4 +183,10 @@ if __name__ == '__main__':
     # fix_stock_tick_data('2017', '02', ['20170203'])
     # fix_stock_tick_data('2017', '01', ['20170113'])
 
-    check_issue_stock_validation_data('0bf6addb-33a2-46c5-abff-962624eab79b')
+    # check_issue_stock_validation_data('0c7cfff7-bbb6-419b-bc5a-02dbdabfa645')
+    # check_issue_stock_validation_data('603775c1-8121-4515-a578-935185249f94')
+    # check_issue_stock_validation_data('89feaeaa-6b07-43e8-977d-7aaea0fdae50')
+    # check_issue_stock_validation_data('081727da-a3ad-43be-b319-21c4f8cb382d')
+
+    #检查已生成股票数据
+    validate_stock_organized_data('20221215-finley')

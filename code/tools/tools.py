@@ -10,7 +10,7 @@ import pandas as pd
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL
 from common.crawler import StockInfoCrawler
 from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter
 from common.persistence.dbutils import create_session
@@ -19,12 +19,12 @@ from common.stockutils import get_full_stockcode
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from common.timeutils import date_format_transform
-from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator
+from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, DtoStockValidationResult
 from framework.concurrent import ProcessRunner
 
 
 @timing
-def filter_stock_data(year, month):
+def filter_stock_data(year, month, date_list=[], stock_file_list=[]):
     """根据期指股票集合过滤股票数据
     --2022
         --202201
@@ -43,8 +43,9 @@ def filter_stock_data(year, month):
     stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
     stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
     month_folder_path = root_path + file_prefix + year + os.path.sep + file_prefix + year + month
-    date_list = list_files_in_path(month_folder_path)
-    date_list = sorted(date_list)
+    if len(date_list) == 0:
+        date_list = list_files_in_path(month_folder_path)
+        date_list = sorted(date_list)
     for date in date_list:
         if not re.match('[0-9]{8}', date):
             continue
@@ -52,15 +53,18 @@ def filter_stock_data(year, month):
         stocks_50 = get_index_stock_list(date, stocks_abstract_50)
         stocks_300 = get_index_stock_list(date, stocks_abstract_300)
         stocks_500 = get_index_stock_list(date, stocks_abstract_500)
-        stock_file_list = list_files_in_path(month_folder_path + os.path.sep + date)
+        if len(stock_file_list) == 0:
+            stock_file_list = list_files_in_path(month_folder_path + os.path.sep + date)
         for stock_file in stock_file_list:
             if os.path.getsize(month_folder_path + os.path.sep + date + os.path.sep + stock_file) > 0:
                 if extract_tsccode(stock_file) in stocks_50 or extract_tsccode(
                         stock_file) in stocks_300 or extract_tsccode(
                         stock_file) in stocks_500:
                     print('Stock %s is in index' % extract_tsccode(stock_file))
-                    data = pd.read_csv(month_folder_path + os.path.sep + date + os.path.sep + stock_file, encoding='gbk')
-                    save_compress(data, month_folder_path + os.path.sep + date + os.path.sep + extract_tsccode(stock_file) + '.pkl')
+                    source_path = month_folder_path + os.path.sep + date + os.path.sep + stock_file
+                    data = pd.read_csv(source_path, encoding='gbk')
+                    target_path = month_folder_path + os.path.sep + date + os.path.sep + extract_tsccode(stock_file) + '.pkl'
+                    save_compress(data, target_path)
                 else:
                     print('Stock %s is not in index' % extract_tsccode(stock_file))
                 os.remove(month_folder_path + os.path.sep + date + os.path.sep + stock_file)
@@ -132,8 +136,9 @@ def validate_stock_tick_data(validate_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            runner.execute(validate_stock_tick_by_month, args=(validate_code, checked_set, year_folder, month_folder))
-    time.sleep(100000)
+            # runner.execute(validate_stock_tick_by_month, args=(validate_code, checked_set, year_folder, month_folder))
+            validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_folder)
+    # time.sleep(100000)
 
 def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_folder):
     session = create_session()
@@ -147,10 +152,20 @@ def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_
             STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
         for stock in stock_file_list:
             if date + stock.split('.')[0] not in checked_set:
-                data = read_decompress(
-                    STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock)
+                try:
+                    original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
+                    data = read_decompress(original_stock_file_path)
+                except Exception as e:
+                    print('Load file: {0} error'.format(original_stock_file_path))
+                    continue
                 print(date + ':' + stock)
-                data = StockTickDataColumnTransform().process(data)
+                try:
+                    data = StockTickDataColumnTransform().process(data)
+                except Exception as e:
+                    stock_validation_result = StockValidationResult(validate_code, DtoStockValidationResult(RESULT_FAIL, [str(e)], stock.split('.')[0], date), len(data))
+                    session.add(stock_validation_result)
+                    session.commit()
+                    continue
                 data = StockTickDataCleaner().process(data)
                 if len(data) > data_length_threshold:
                     validation_result = StockTickDataValidator().validate(data)
@@ -529,8 +544,7 @@ if __name__ == '__main__':
     # print(re.match('[0-9]{8}','20220102'))
 
     # 测试filter_stock_data函数
-    # for month in ['01']:
-    #     filter_stock_data('2017', month)
+    # filter_stock_data('2020', '12', ['20201218'],['sz000860_20201218.csv','sz000869_20201218.csv','sz000876_20201218.csv','sz000877_20201218.csv','sz000878_20201218.csv','sz000883_20201218.csv','sz000887_20201218.csv'])
 
     # 比较压缩数据
     # month_folder_path = '/Users/finley/Projects/stock-index-future/data/original/stock_daily/stk_tick10_w_2017/stk_tick10_w_201701/'
