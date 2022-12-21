@@ -25,6 +25,9 @@ class Indicator(metaclass=ABCMeta):
     def get_key(self, param):
         return self.key + '.' + str(param)
 
+    def get_keys(self):
+        return list(map(lambda param: self.key + '.' + str(param), self._params))
+
     @abstractmethod
     def enrich(self, data):
         """
@@ -396,7 +399,6 @@ class RSI(Indicator):
 
     def __init__(self, params):
         self._params = params
-        self._atr = ATR(self._params)
 
     def get_key(self, param):
         return self.key + '.' + str(param)
@@ -408,17 +410,12 @@ class RSI(Indicator):
         data.loc[data['change'] > 0, 'up'] = data['change']
         data.loc[data['change'] < 0, 'down'] = -data['change']
         for param in self._params:
-            data['au.' + str(param)] = data['up'].rolling(param).mean()
-            data['ad.' + str(param)] = data['down'].rolling(param).mean()
+            # data['au.' + str(param)] = data['up'].rolling(param).mean()
+            # data['ad.' + str(param)] = data['down'].rolling(param).mean()
+            data['au.' + str(param)] = data['up'].ewm(span=param, adjust=False).mean()
+            data['ad.' + str(param)] = data['down'].ewm(span=param, adjust=False).mean()
             data[self.get_key(param)] = 100 - (100 / (1 + data['au.' + str(param)] / data['ad.' + str(param)]))
         return data
-
-    def get_trend_indicator(self, x):
-        if (x['close'] > x['last_close']):
-            return 1
-        if (x['close'] < x['last_close']):
-            return -1
-        return 0
 
 
 if __name__ == '__main__':
