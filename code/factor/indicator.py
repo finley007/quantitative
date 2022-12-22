@@ -336,12 +336,21 @@ class ADX(Indicator):
 
     key = 'adx'
 
-    def __init__(self, params):
+    def __init__(self, params, ext_params=[6]):
         self._params = params
+        self._ext_params = ext_params
         self._atr = ATR(self._params)
+        self._moving_average = MovingAverage(self._ext_params)
 
-    def get_key(self, param):
-        return self.key + '.' + str(param)
+    def get_key(self, param, ext_param):
+        return self.key + '.' + str(param) + '.' + str(ext_param)
+
+    def get_keys(self):
+        keys = []
+        for param in self._params:
+            for ext_param in self._ext_params:
+                keys.append(self.key + '.' + str(param) + '.' + str(ext_param))
+        return keys
 
     def enrich(self, data):
         self._atr.enrich(data)
@@ -354,14 +363,15 @@ class ADX(Indicator):
         data.loc[(data['up'] < data['down']), 'DM-'] = data['down']
         data.loc[(data['up'] < data['down']), 'DM+'] = 0
         for param in self._params:
-            data['DM+.' + str(param)] = data['DM+'].rolling(param).mean()
-            data['DM-.' + str(param)] = data['DM-'].rolling(param).mean()
-            data['DI+.' + str(param)] = data['DM+.' + str(param)] / data[self._atr.get_key(param)]
-            data['DI-.' + str(param)] = data['DM-.' + str(param)] / data[self._atr.get_key(param)]
-            data['DI.SUM.' + str(param)] = data['DI+.' + str(param)] + data['DI-.' + str(param)]
-            data['DI.SUB.' + str(param)] = abs(data['DI+.' + str(param)] - data['DI-.' + str(param)])
-            data['DX.' + str(param)] = (data['DI.SUB.' + str(param)] * 100) / data['DI.SUM.' + str(param)]
-            data[self.get_key(param)] = data['DX.' + str(param)].rolling(param).mean()
+            for ext_param in self._ext_params:
+                data['DM+.' + str(param)] = data['DM+'].rolling(param).mean()
+                data['DM-.' + str(param)] = data['DM-'].rolling(param).mean()
+                data['DI+.' + str(param)] = data['DM+.' + str(param)] / data[self._atr.get_key(param)]
+                data['DI-.' + str(param)] = data['DM-.' + str(param)] / data[self._atr.get_key(param)]
+                data['DI.SUM.' + str(param)] = data['DI+.' + str(param)] + data['DI-.' + str(param)]
+                data['DI.SUB.' + str(param)] = abs(data['DI+.' + str(param)] - data['DI-.' + str(param)])
+                data['DX.' + str(param)] = (data['DI.SUB.' + str(param)] * 100) / data['DI.SUM.' + str(param)]
+                data[self.get_key(param, ext_param)] = data['DX.' + str(param)].rolling(ext_param).mean()
         return data
 
 class OBV(Indicator):

@@ -7,7 +7,7 @@ import numpy as np
 
 from common.localio import read_decompress
 from common.visualization import draw_analysis_curve
-from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, RSI, OBV
+from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, RSI, OBV, ADX
 
 """
 用来测试基本算子，
@@ -138,7 +138,25 @@ def test_polynomial_regression(init_data):
     print('test_polynomial_regression')
 
 def test_adx(init_data):
-    print('test_adx')
+    """
+    中国平安
+    20221201 - 20221220
+    Parameters
+    ----------
+    init_data
+
+    Returns
+    -------
+
+    """
+    data = read_decompress(TEST_PATH + '601318.SH.pkl')
+    data['volume'] = data['vol']
+    adx = ADX([14])
+    data = adx.enrich(data)
+    data = data[(data['trade_date'] >= '20221201') & (data['trade_date'] < '20221220')]
+    print(data[['trade_date'] + adx.get_keys()])
+    data.index = pd.DatetimeIndex(data['trade_date'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=adx.get_keys())
 
 def test_obv():
     """
