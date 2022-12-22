@@ -29,6 +29,8 @@ created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id)
 );
+alter table stock_validation_result add unique (validation_code, tscode, date);
+alter table stock_validation_result add index stock_validation_result_index (result);
 
 -- 期货数据处理结果表
 CREATE TABLE IF NOT EXISTS future_process_record

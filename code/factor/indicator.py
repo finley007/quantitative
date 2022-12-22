@@ -285,7 +285,7 @@ class LinearRegression(Indicator):
 
     def regression(self, window, data, func):
         if '' == self._variable:
-            x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+            x = np.linspace(1, len(window), len(window)).reshape(-1, 1)
         else:
             # TODO: 这里需要优化
             x = data.loc[window.index, [self._variable]]
@@ -319,7 +319,7 @@ class PolynomialRegression(Indicator):
         return data
 
     def regression(self, window, func):
-        x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+        x = np.linspace(1, len(window), len(window)).reshape(-1, 1)
         self.poly.fit(x.reshape(-1, 1))
         X = self.poly.transform(x.reshape(-1, 1))
         y = np.array(window.tolist()).reshape(-1, 1)

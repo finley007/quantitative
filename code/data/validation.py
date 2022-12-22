@@ -336,6 +336,7 @@ class StockOrganizedDataValidator(Validator):
         # 是否有补齐时未清零的数据
         data['delta_daily_accumulated_volume'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
         if len(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)]) > 0:
+            print(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)][['time','delta_daily_accumulated_volume','volume']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid volume should to be fixed')
         return result
@@ -557,7 +558,7 @@ if __name__ == '__main__':
     # data = StockTickDataCleaner().process(data)
     # print(StockTickDataValidator().validate(data))
     # 测试organised股票数据验证
-    path = 'E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202004\\20200409\\000060.pkl'
+    path = 'E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201807\\20180706\\600703.pkl'
     data = read_decompress(path)
     print(StockOrganizedDataValidator().validate(data))
 

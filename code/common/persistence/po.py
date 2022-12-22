@@ -3,7 +3,7 @@
 import uuid
 import datetime
 
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, Date, Time
 from sqlalchemy.ext.declarative import declarative_base
 
 from common.constants import RESULT_SUCCESS
@@ -39,6 +39,8 @@ class StockValidationResult(Base):
             str_validation_result = str_validation_result[0:1020] + '...'
         self.err_msg = str_validation_result
         self.record_count = record_count
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
 
 class FutrueProcessRecord(Base):
     """期货处理记录表po：
@@ -130,5 +132,27 @@ class IndexConstituentConfig(Base):
         self.date = date
         self.tscode = tscode
         self.status = status
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
+class Test(Base):
+    """测试表po：
+    """
+    __tablename__ = "test"
+
+    varchar_column = Column(String(10), primary_key=True)
+    int_column = Column(Integer)
+    date_column = Column(Date)
+    datetime_column = Column(DateTime)
+    time_column = Column(Time)
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, varchar_column, int_column, date_column, datetime_column, time_column):
+        self.varchar_column = varchar_column
+        self.int_column = int_column
+        self.date_column = date_column
+        self.datetime_column = datetime_column
+        self.time_column = time_column
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()

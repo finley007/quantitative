@@ -5,7 +5,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR
+from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, LinearRegression
 
 """
 用来测试基本算子，
@@ -18,7 +18,7 @@ test_filename = 'indicator_test.csv'
 @pytest.fixture()
 def init_data():
     columns = ['datetime','open','close','high','low','volume','interest','moving_average','exp_moving_average','weighted_moving_average','weight', 'standard_deviation','variance'
-               ,'skewness', 'kurtosis','median','quantile','tr_target','atr']
+               ,'skewness', 'kurtosis','median','quantile','tr_target','atr','linear_regression']
     data = pd.read_csv(TEST_PATH + test_filename)
     data = data[columns]
     return data
@@ -130,7 +130,19 @@ def test_atr(init_data):
         data['atr.10'], 2)]) == 0
 
 def test_linear_regression(init_data):
-    print('test_linear_regression')
+    data = init_data
+    regression = LinearRegression([10])
+    regression.set_caculation_func(caculation_function)
+    data = regression.enrich(data)
+    assert len(data[np.isnan(data['linear_regression.close.10'])]) == 9
+    data = data.dropna()
+    # print(data[np.around(data['linear_regression'], 2) != np.around(
+    #     data['linear_regression.close.10'], 2)][['linear_regression','linear_regression.close.10']])
+    assert len(data[np.around(data['linear_regression'], 2) != np.around(
+        data['linear_regression.close.10'], 2)]) == 0
+
+def caculation_function(model, window, variable):
+    return model.coef_
 
 def test_polynomial_regression(init_data):
     print('test_polynomial_regression')

@@ -10,7 +10,7 @@ import pandas as pd
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME
 from common.localio import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
@@ -18,6 +18,7 @@ from data.process import FutureTickDataColumnTransform, StockTickDataColumnTrans
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, StockOrganizedDataValidator
 from framework.concurrent import ProcessRunner
+from common.timeutils import date_alignment, add_milliseconds_suffix
 
 
 def check_issue_stock_process_data(record_id):
@@ -119,9 +120,9 @@ def validate_stock_organized_data(validate_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            runner.execute(validate_stock_organized_by_month, args=(validate_code, checked_set, year_folder, month_folder))
-            # validate_stock_organized_by_month(validate_code, checked_set, year_folder, month_folder)
-    time.sleep(100000)
+            # runner.execute(validate_stock_organized_by_month, args=(validate_code, checked_set, year_folder, month_folder))
+            validate_stock_organized_by_month(validate_code, checked_set, year_folder, month_folder)
+    # time.sleep(100000)
 
 def validate_stock_organized_by_month(validate_code, checked_set, year_folder, month_folder):
     session = create_session()
@@ -147,6 +148,66 @@ def validate_stock_organized_by_month(validate_code, checked_set, year_folder, m
                 session.commit()
             else:
                 print("{0} {1} has been handled".format(date, stock))
+
+
+def fix_stock_organized_data(validation_code, include_year_list=[]):
+    session = create_session()
+    checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode and result = 1', {'vcode': validation_code})
+    checked_set = set(map(lambda item : item[0], checked_list))
+    runner = ProcessRunner(10)
+    year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
+    for year_folder in year_folder_list:
+        years = re.search('[0-9]{4}', year_folder)
+        if not years:
+            continue
+        elif len(include_year_list) > 0 and years.group() not in include_year_list:
+            continue
+        month_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        for month_folder in month_folder_list:
+            if not re.search('[0-9]{6}', month_folder):
+                continue
+            runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
+            # fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder, session)
+    time.sleep(100000)
+
+def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder):
+    session = create_session()
+    date_folder_list = list_files_in_path(
+        STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    for date in date_folder_list:
+        if not re.search('[0-9]{8}', date):
+            continue
+        stock_file_list = list_files_in_path(
+            STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        for stock in stock_file_list:
+            if date + stock.split('.')[0] in checked_set:
+                try:
+                    organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
+                    data = read_decompress(organized_stock_file_path)
+                except Exception as e:
+                    print('Load file: {0} error'.format(organized_stock_file_path))
+                    continue
+                print(date + ':' + stock)
+                data = fix_stock_organized_data_daily(data)
+                save_compress(data, organized_stock_file_path)
+                validation_result = session.query(StockValidationResult).filter(StockValidationResult.validation_code == validation_code, StockValidationResult.tscode == stock.split('.')[0], StockValidationResult.date == date).one()
+                validation_result.result = 2 #2表示修复过
+                validation_result.modified_time = datetime.now()
+                session.commit()
+
+def fix_stock_organized_data_daily(data):
+    # 是否有中午休盘时的数据
+    if len(data[(data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME)) & (
+            data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME))]) > 0:
+        data = data.drop(data.index[(data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME)) & (
+            data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME))])
+    # 是否有补齐时未清零的数据
+    temp_data = data.copy(deep=True)
+    temp_data['delta_daily_accumulated_volume'] = temp_data['daily_accumulated_volume'] - temp_data['daily_accumulated_volume'].shift(1)
+    if len(temp_data[(temp_data['delta_daily_accumulated_volume'] == 0) & (temp_data['volume'] > 0)]) > 0:
+        data.loc[(temp_data['delta_daily_accumulated_volume'] == 0) & (temp_data['volume'] > 0), ['volume','amount','transaction_number']] = 0
+    return data
+
 
 if __name__ == '__main__':
     # fix_stock_tick_data('2021', '01', ['20210108','20210111','20210112','20210113','20210114','20210115','20210118','20210119','20210120','20210121','20210122','20210125','20210126','20210127','20210128','20210129'])
@@ -189,4 +250,12 @@ if __name__ == '__main__':
     # check_issue_stock_validation_data('081727da-a3ad-43be-b319-21c4f8cb382d')
 
     #检查已生成股票数据
-    validate_stock_organized_data('20221215-finley')
+    # validate_stock_organized_data('20221219-finley')
+
+    #修复有问题股票数据
+    fix_stock_organized_data('20221219-finley')
+
+    # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201807\\20180706\\600703.pkl")
+    # fix_stock_organized_data_daily(data)
+    # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202011\\20201111\\600999.pkl")
+    # fix_stock_organized_data_daily(data)

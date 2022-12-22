@@ -12,6 +12,7 @@ from common.localio import read_decompress, save_compress
 from data.process import StockTickDataColumnTransform
 from data.access import StockDataAccess
 from common.persistence.dbutils import create_session
+from common.aop import timing
 
 
 class Factor(metaclass=ABCMeta):
@@ -83,6 +84,7 @@ class StockTickFactor(Factor):
         suspend_list = self._session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
         self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
 
+    @timing
     def get_stock_tick_data(self, product, instrument, date):
         """获取相关的股票tick数据，
         因为一次处理一个股指合约文件，所包含的信息：
@@ -178,6 +180,16 @@ class StockTickFactor(Factor):
     # 全局计算因子值
     @abstractmethod
     def caculate(self, data):
+        """
+        计算因子值，以合约为单位
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
         pass
 
 
@@ -192,6 +204,7 @@ class TimewindowStockTickFactor(StockTickFactor):
         StockTickFactor.__init__(self)
         self._instrument_stock_data = {}
 
+    @timing
     def prepare_timewindow_data(self, instrument):
         """
         按合约生成数据，用于需要时间窗计算的因子

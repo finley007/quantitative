@@ -145,7 +145,7 @@ class QuadraticDeviationFactor(Factor):
         return data
 
     def caculation_function(self, model, poly, window):
-        x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+        x = np.linspace(1, len(window), len(window)).reshape(-1, 1)
         X = poly.transform(x.reshape(-1, 1))
         estimated_values = model.predict(X)
         estimated_value = estimated_values[-1]
@@ -177,7 +177,7 @@ class CubicDeviationFactor(Factor):
         return data
 
     def caculation_function(self, model, poly, window):
-        x = np.linspace(0, 1, len(window)).reshape(-1, 1)
+        x = np.linspace(1, len(window), len(window)).reshape(-1, 1)
         X = poly.transform(x.reshape(-1, 1))
         estimated_values = model.predict(X)
         estimated_value = estimated_values[-1]
