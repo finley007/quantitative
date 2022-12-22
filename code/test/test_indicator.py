@@ -5,14 +5,16 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, LinearRegression
+from common.localio import read_decompress
+from common.visualization import draw_analysis_curve
+from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, LinearRegression, RSI, OBV, ADX
 
 """
 用来测试基本算子，
 测试文件：%TEST%/indicator_test.csv
 """
-# TEST_PATH = '/Users/finley/Projects/stock-index-future/code/test/files' + os.path.sep
-TEST_PATH = 'E:\\data\\test\\' + os.path.sep
+TEST_PATH = '/Users/finley/Projects/stock-index-future/code/test/files' + os.path.sep
+# TEST_PATH = 'E:\\data\\test\\' + os.path.sep
 test_filename = 'indicator_test.csv'
 
 @pytest.fixture()
@@ -148,13 +150,69 @@ def test_polynomial_regression(init_data):
     print('test_polynomial_regression')
 
 def test_adx(init_data):
-    print('test_adx')
+    """
+    中国平安
+    20221201 - 20221220
+    Parameters
+    ----------
+    init_data
 
-def test_obv(init_data):
-    print('test_obv')
+    Returns
+    -------
 
-def test_rsi(init_data):
-    print('test_rsi')
+    """
+    data = read_decompress(TEST_PATH + '601318.SH.pkl')
+    data['volume'] = data['vol']
+    adx = ADX([14])
+    data = adx.enrich(data)
+    data = data[(data['trade_date'] >= '20221201') & (data['trade_date'] < '20221220')]
+    print(data[['trade_date'] + adx.get_keys()])
+    data.index = pd.DatetimeIndex(data['trade_date'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=adx.get_keys())
+
+def test_obv():
+    """
+    中国平安
+    20221201 - 20221220
+    Parameters
+    ----------
+    init_data
+
+    Returns
+    -------
+
+    """
+    data = read_decompress(TEST_PATH + '601318.SH.pkl')
+    data['volume'] = data['vol']
+    obv = OBV()
+    data = obv.enrich(data)
+    data = data[(data['trade_date'] >= '20221201') & (data['trade_date'] < '20221220')]
+    print(data[['trade_date','signed_volume',obv.get_key()]])
+    data.index = pd.DatetimeIndex(data['trade_date'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=obv.get_key())
+
+def test_rsi():
+    """
+    中国平安
+    20221201 - 20221220
+    Parameters
+    ----------
+    init_data
+
+    Returns
+    -------
+
+    """
+    data = read_decompress(TEST_PATH + '601318.SH.pkl')
+    data['volume'] = data['vol']
+    rsi = RSI([24])
+    data = rsi.enrich(data)
+    first_index = data.head(1).index.tolist()[0]
+    data.loc[first_index, 'change'] = 12.99
+    data = data[(data['trade_date'] >= '20221201') & (data['trade_date'] < '20221220')]
+    print(data[['trade_date','close'] + rsi.get_keys()])
+    data.index = pd.DatetimeIndex(data['trade_date'])
+    draw_analysis_curve(data, show_signal=True, signal_keys=rsi.get_keys())
 
 
 if __name__ == '__main__':
