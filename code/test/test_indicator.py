@@ -7,20 +7,20 @@ import numpy as np
 
 from common.localio import read_decompress
 from common.visualization import draw_analysis_curve
-from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, LinearRegression, RSI, OBV, ADX
+from factor.indicator import MovingAverage, ExpMovingAverage, WeightedMovingAverage, StandardDeviation, Variance, Skewness, Kurtosis, Median, Quantile, TR, ATR, LinearRegression, PolynomialRegression, RSI, OBV, ADX
 
 """
 用来测试基本算子，
 测试文件：%TEST%/indicator_test.csv
 """
-TEST_PATH = '/Users/finley/Projects/stock-index-future/code/test/files' + os.path.sep
-# TEST_PATH = 'E:\\data\\test\\' + os.path.sep
+# TEST_PATH = '/Users/finley/Projects/stock-index-future/code/test/files' + os.path.sep
+TEST_PATH = 'E:\\data\\test\\' + os.path.sep
 test_filename = 'indicator_test.csv'
 
 @pytest.fixture()
 def init_data():
     columns = ['datetime','open','close','high','low','volume','interest','moving_average','exp_moving_average','weighted_moving_average','weight', 'standard_deviation','variance'
-               ,'skewness', 'kurtosis','median','quantile','tr_target','atr','linear_regression']
+               ,'skewness', 'kurtosis','median','quantile','tr_target','atr','linear_regression','polynomial_regression']
     data = pd.read_csv(TEST_PATH + test_filename)
     data = data[columns]
     return data
@@ -147,7 +147,23 @@ def caculation_function(model, window, variable):
     return model.coef_
 
 def test_polynomial_regression(init_data):
-    print('test_polynomial_regression')
+    data = init_data
+    regression = PolynomialRegression([10])
+    regression.set_caculation_func(caculation_function_1)
+    data = regression.enrich(data)
+    assert len(data[np.isnan(data['polynomial_regression.close.10'])]) == 9
+    data = data.dropna()
+    print(data[np.around(data['polynomial_regression'], 2) != np.around(
+        data['polynomial_regression.close.10'], 2)][['polynomial_regression','polynomial_regression.close.10']])
+    assert len(data[np.around(data['polynomial_regression'], 2) != np.around(
+        data['polynomial_regression.close.10'], 2)]) == 0
+
+def caculation_function_1(model, poly, window):
+    x = np.linspace(1, len(window), len(window)).reshape(-1, 1)
+    X = poly.transform(x.reshape(-1, 1))
+    estimated_values = model.predict(X)
+    estimated_value = estimated_values[-1]
+    return estimated_value
 
 def test_adx(init_data):
     """
