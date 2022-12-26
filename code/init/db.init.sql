@@ -86,3 +86,33 @@ modified_time datetime,
 PRIMARY KEY(id),
 UNIQUE (product, date, tscode)
 );
+
+-- 因子表
+CREATE TABLE IF NOT EXISTS factor_config
+(
+code VARCHAR(200),
+type  VARCHAR(10),
+type_name VARCHAR(100),
+number VARCHAR(10),
+name    VARCHAR(100),
+parameter  VARCHAR(100),
+version  VARCHAR(10),
+source  VARCHAR(20),
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(code, version)
+);
+
+-- 因子操作表
+CREATE TABLE IF NOT EXISTS factor_operation_history
+(
+id VARCHAR(40),
+target_factor VARCHAR(2000),
+operation int comment '1-生成因子文件, 2-生成统计信息，3-合并因子文件',
+status  int comment '0-成功，1-失败',
+time_cost long,
+err_msg  VARCHAR(1024),
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(id)
+);

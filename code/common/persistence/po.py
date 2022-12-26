@@ -3,10 +3,10 @@
 import uuid
 import datetime
 
-from sqlalchemy import Column, String, Integer, DateTime, Date, Time
+from sqlalchemy import Column, String, Integer, DateTime, Date, Time, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 
-from common.constants import RESULT_SUCCESS
+from common.constants import RESULT_SUCCESS, FACTOR_TYPE_DETAILS
 
 Base = declarative_base()
 
@@ -132,6 +132,79 @@ class IndexConstituentConfig(Base):
         self.date = date
         self.tscode = tscode
         self.status = status
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
+class FactorConfig(Base):
+    """因子表po：
+    code VARCHAR(200),
+    type  VARCHAR(10),
+    type_name VARCHAR(100),
+    number VARCHAR(10),
+    name    VARCHAR(100),
+    parameter  VARCHAR(100),
+    version  VARCHAR(10),
+    created_time datetime,
+    modified_time datetime,
+    """
+    __tablename__ = "factor_config"
+
+    code = Column(String(200), primary_key=True)
+    version = Column(String(10), primary_key=True)
+    type = Column(String(10))
+    type_name = Column(String(100))
+    number = Column(String(10))
+    name = Column(String(100))
+    parameter = Column(String(100))
+    source = Column(String(20))
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, code, version, type, number, name, parameter, source):
+        self.code = code
+        self.version = version
+        self.type = type
+        self.type_name = FACTOR_TYPE_DETAILS[type]['name']
+        self.number = number
+        self.name = name
+        self.parameter = parameter
+        self.source = source
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
+    def get_full_name(self):
+        return self.code + '_' + self.version
+
+class FactorOperationHistory(Base):
+    """因子表po：
+    id VARCHAR(40),
+    target_factor VARCHAR(2000),
+    operation int '1-生成因子文件, 2-生成统计信息，3-合并因子文件',
+    status  int comment '0-成功，1-失败',
+    time_cost long,
+    err_msg  VARCHAR(1024),
+    created_time datetime,
+    modified_time datetime,
+    """
+    __tablename__ = "factor_operation_history"
+
+    id = Column(String(40), primary_key=True)
+    target_factor = Column(String(2000))
+    operation = Column(Integer)
+    status = Column(Integer)
+    time_cost = Column(BigInteger)
+    err_msg = Column(String(1024))
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, target_factor, operation, status, time_cost, err_msg = ''):
+        self.id = uuid.uuid4()
+        self.target_factor = target_factor
+        self.operation = operation
+        self.status = status
+        self.time_cost = time_cost
+        if (len(err_msg) > 1020):
+            self.err_msg = err_msg[0:1020] + '...'
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
 

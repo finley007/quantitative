@@ -154,7 +154,7 @@ def fix_stock_organized_data(validation_code, include_year_list=[]):
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode and result = 1', {'vcode': validation_code})
     checked_set = set(map(lambda item : item[0], checked_list))
-    runner = ProcessRunner(10)
+    runner = ProcessRunner(4)
     year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
     for year_folder in year_folder_list:
         years = re.search('[0-9]{4}', year_folder)

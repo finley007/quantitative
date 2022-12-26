@@ -2136,38 +2136,38 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True, signal_keys=delta_on_balance_volume_factor.get_keys())
 
     # DETRENDED RSI DetrendedLength DetrenderLength Lookback
-    detrended_rsi_factor = DetrendedRsiFactor()
-    print(detrended_rsi_factor.factor_code)
-    print(detrended_rsi_factor.version)
-    print(detrended_rsi_factor.get_params())
-    print(detrended_rsi_factor.get_category())
-    print(detrended_rsi_factor.get_full_name())
-    print(detrended_rsi_factor.get_key(5))
-    print(detrended_rsi_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = detrended_rsi_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=detrended_rsi_factor.get_keys())
+    # detrended_rsi_factor = DetrendedRsiFactor()
+    # print(detrended_rsi_factor.factor_code)
+    # print(detrended_rsi_factor.version)
+    # print(detrended_rsi_factor.get_params())
+    # print(detrended_rsi_factor.get_category())
+    # print(detrended_rsi_factor.get_full_name())
+    # print(detrended_rsi_factor.get_key(5))
+    # print(detrended_rsi_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = detrended_rsi_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=detrended_rsi_factor.get_keys())
 
     # THRESHOLDED RSI LookbackLength UpperThresh LowerThresh
-    threshold_rsi_factor = ThresholdRsiFactor()
-    print(threshold_rsi_factor.factor_code)
-    print(threshold_rsi_factor.version)
-    print(threshold_rsi_factor.get_params())
-    print(threshold_rsi_factor.get_category())
-    print(threshold_rsi_factor.get_full_name())
-    print(threshold_rsi_factor.get_key(5))
-    print(threshold_rsi_factor.get_keys())
-    # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
-    print(data.iloc[0:10])
-    data = threshold_rsi_factor.caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    draw_analysis_curve(data, show_signal=True, signal_keys=threshold_rsi_factor.get_keys())
+    # threshold_rsi_factor = ThresholdRsiFactor()
+    # print(threshold_rsi_factor.factor_code)
+    # print(threshold_rsi_factor.version)
+    # print(threshold_rsi_factor.get_params())
+    # print(threshold_rsi_factor.get_category())
+    # print(threshold_rsi_factor.get_full_name())
+    # print(threshold_rsi_factor.get_key(5))
+    # print(threshold_rsi_factor.get_keys())
+    # # data = data[(data['datetime'] >= '2019-08-28 13:45:00') & (data['datetime'] <= '2019-08-28 13:48:00')]
+    # print(data.iloc[0:10])
+    # data = threshold_rsi_factor.caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # draw_analysis_curve(data, show_signal=True, signal_keys=threshold_rsi_factor.get_keys())
 
     # 测试加载数据
-    # data = william_factor.load()
-    # print(data)
+    data = william_factor.load()
+    print(data)
 
 
 
