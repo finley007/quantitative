@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
+import time
+import xlrd
+
 
 from common.persistence.po import FactorConfig, FactorOperationHistory
 from common.persistence.dao import FactorConfigDao
@@ -36,7 +39,7 @@ def create_factor_files(factor_list=[]):
             if factor_full_name == factor_po.get_full_name():
                 try:
                     t = time.perf_counter()
-                    # factor_caculator.caculate([factor])
+                    factor_caculator.caculate([factor])
                     time_cost = time.perf_counter() - t
                     factor_operation_history = FactorOperationHistory(factor.get_full_name(), 1, 0, time_cost)
                     session.add(factor_operation_history)
@@ -48,6 +51,20 @@ def create_factor_files(factor_list=[]):
                     session.commit()
 
 
+def init_factor_list():
+    data = xlrd.open_workbook('D:\\liuli\\workspace\\quantitative\\docs\\因子\\因子列表.xls')
+    for sheet_name in data.sheet_names():
+        type = sheet_name.split('_')[1]
+        sheet = data.sheet_by_name(sheet_name)
+        for i in range(1, sheet.nrows):
+            session = create_session()
+            factor_config = FactorConfig(sheet.row_values(i)[2], sheet.row_values(i)[6], type, sheet.row_values(i)[0], sheet.row_values(i)[1], sheet.row_values(i)[4], sheet.row_values(i)[5])
+            session.add(factor_config)
+            session.commit()
+            print(str(sheet.row_values(i)))
+
 
 if __name__ == '__main__':
-    create_factor_files()
+    # create_factor_files()
+
+    init_factor_list()

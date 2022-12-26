@@ -46,7 +46,11 @@ class FactorCaculator():
             factor_data = pd.DataFrame()
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
             for instrument in instrument_list:
-                data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
+                target_instrument_file = FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[
+                    0] + '.pkl'
+                print('Handle instrument: {0} for file: {1}'.format(instrument[0], target_instrument_file))
+                data = read_decompress(target_instrument_file)
+                print(len(data))
                 data['date'] = data['datetime'].str[0:10]
                 data['product'] = product
                 data['instrument'] = instrument[0]
@@ -63,7 +67,10 @@ class FactorCaculator():
                     data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
                     factor_data = pd.concat([factor_data, data])
             factor_data = factor_data.reset_index()
-            save_compress(factor_data, FACTOR_PATH + product + '_' + '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list))))
+            target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
+                list(map(lambda factor: factor.get_full_name(), factor_list)))
+            print('Save factor file: {0}'.format(target_factor_file))
+            save_compress(factor_data, target_factor_file)
 
     @timing
     def caculate_manually_check(self, factor):
