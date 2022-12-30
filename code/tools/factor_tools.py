@@ -27,7 +27,7 @@ def create_factor_files(factor_list=[]):
     session = create_session()
     all_factors = factor_config_dto.get_all_factors()
     if len(factor_list) > 0:
-        all_factors = list(map(lambda po: po.get_full_name() in factor_list, all_factors))
+        all_factors = list(filter(lambda po: po.get_full_name() in factor_list, all_factors))
     for factor_po in all_factors:
         print('Create factor file for {0}'.format(factor_po.get_full_name()))
         module_name = FACTOR_TYPE_DETAILS[factor_po.type]['package']
@@ -51,7 +51,14 @@ def create_factor_files(factor_list=[]):
                     session.commit()
 
 
+
 def init_factor_list():
+    """
+    根据因子列表文档，生成因子表数据
+    Returns
+    -------
+
+    """
     data = xlrd.open_workbook('D:\\liuli\\workspace\\quantitative\\docs\\因子\\因子列表.xls')
     for sheet_name in data.sheet_names():
         type = sheet_name.split('_')[1]
@@ -65,6 +72,7 @@ def init_factor_list():
 
 
 if __name__ == '__main__':
-    # create_factor_files()
+    # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
+    create_factor_files(['FCT_02_001_TOTAL_COMMISSION_RATIO_1.0'])
 
-    init_factor_list()
+    # init_factor_list()

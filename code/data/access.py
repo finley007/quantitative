@@ -4,7 +4,7 @@ from abc import abstractmethod, ABCMeta
 import os
 
 from common.localio import read_decompress
-from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, STOCK_TICK_DATA_PATH
 from common.aop import timing
 
 class DataAccess(metaclass=ABCMeta):
@@ -23,7 +23,10 @@ class StockDataAccess(DataAccess):
 
     """
 
-    @timing
+    def __init__(self, check_original=True):
+        self._check_original = check_original
+
+    # @timing
     def access(self, *args):
         """
 
@@ -47,7 +50,12 @@ class StockDataAccess(DataAccess):
         date = date.replace('-','')
         year = date[0:4]
         month = date[4:6]
-        return STOCK_TICK_ORGANIZED_DATA_PATH + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
+        if self._check_original:
+            root_path = STOCK_TICK_DATA_PATH
+        else:
+            root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+        return root_path + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
 
 if __name__ == '__main__':
     print(StockDataAccess().access('20171106', '000021'))
+    print(StockDataAccess(False).access('20171106', '000021'))

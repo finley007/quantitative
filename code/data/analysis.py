@@ -3,15 +3,20 @@
 
 import os
 import sys
+import re
+import time
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir)
 from common import constants
-from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH
+from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_ORGANIZED_DATA_PATH
 from common import localio
 from common.localio import read_decompress, list_files_in_path, save_compress
 from abc import ABCMeta, abstractmethod
 import pandas as pd
+from data.access import StockDataAccess
+from framework.concurrent import ProcessRunner
+from common.aop import timing
 
 class FileNameHandler(metaclass = ABCMeta):
     
@@ -205,6 +210,131 @@ class FutrueOrganizedDataStatisticProducer(FutrueDataStatisticProducer):
     def get_data(self, file, product):
         return read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + file)
 
+@timing
+def traverse_stock_data(interface, is_async=True, check_original=True):
+    traverse_results = []
+    if is_async:
+        process_runner = ProcessRunner(6)
+    if check_original:
+        root_path = STOCK_TICK_DATA_PATH
+    else:
+        root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+    year_folder_list = list_files_in_path(root_path)
+    year_folder_list.sort()
+    for year_folder in year_folder_list:
+        year = re.search('[0-9]{4}', year_folder)
+        if not year:
+            continue
+        if is_async:
+            process_runner.execute(handle_by_year, args=(root_path, year_folder, interface))
+        else:
+            traverse_results = traverse_results + list(set(handle_by_year(root_path, year_folder, interface)))
+    if is_async:
+        results = process_runner.get_results()
+        for result in results:
+            traverse_results = traverse_results + list(set(result.get()))
+        process_runner.close()
+    return traverse_results
+
+def handle_by_year(root_path, year_folder, interface):
+    data_access = StockDataAccess()
+    results = []
+    year_folder_path = root_path + year_folder
+    month_folder_list = list_files_in_path(year_folder_path)
+    month_folder_list.sort()
+    for month_folder in month_folder_list:
+        month = re.search('[0-9]{6}', month_folder)
+        if not month:
+            continue
+        month_folder_path = root_path + year_folder + os.path.sep + month_folder
+        date_list = list_files_in_path(month_folder_path)
+        date_list.sort()
+        for date in date_list:
+            date_regex = re.match('[0-9]{8}', date)
+            if not date_regex:
+                continue
+            stock_list = list_files_in_path(month_folder_path + os.path.sep + date)
+            for stock in stock_list:
+                tscode = stock.split('.')[0]
+                print('Handle {0} {1}'.format(date, tscode))
+                try:
+                    data = data_access.access(date, tscode)
+                except Exception as e:
+                    print(e)
+                    continue
+                result = interface.operate(data)
+                if result:
+                    results.append(result)
+                    if interface.is_search_mode(): #查询模式下立刻返回结果
+                        return results
+    return results
+
+class StockDataTraversalInterface(metaclass=ABCMeta):
+    """
+    提供一个接口，用于遍历操作股票数据
+    """
+    @abstractmethod
+    def operate(self, data):
+        pass
+
+    def is_search_mode(self):
+        return False
+
+class StockClosingCallAuctionAnalysis(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        获取最后一个成交量不为0的记录的时间戳
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if len(data) > 0:
+            try:
+                data = data[data['成交量'] > 0]
+                if len(data) > 0:
+                    time = data.iloc[-1]['时间']
+                    return time
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+
+class StockClosingCallAuctionTimeSearch(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        获取最后一个成交量不为0的记录的时间戳
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if len(data) > 0:
+            try:
+                data = data[data['成交量'] > 0]
+                if len(data) > 0:
+                    time = data.iloc[-1]['时间']
+                    if time == '15:00:11.141':
+                        return str(data.iloc[-1]['交易所代码']) + '|' + str(data.iloc[-1]['自然日']) + '|' + time
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+    def is_search_mode(self):
+        return True
+
+
+
 if __name__ == '__main__':
     # print(get_instrument_by_product('IF'))
     # print(FutureTickerHandler().build('IF2212'))
@@ -215,5 +345,6 @@ if __name__ == '__main__':
     # print(len(get_instrument_transaction_date_list('IF','IF2212')))
     # print(get_instrument_tick_daily_statistic('IF','IF2212'))
     # FutrueDataStatisticProducer().produce()
-    FutrueOrganizedDataStatisticProducer().produce()
-    
+    # FutrueOrganizedDataStatisticProducer().produce()
+    # print(traverse_stock_data(StockClosingCallAuctionAnalysis()))
+    print(traverse_stock_data(StockClosingCallAuctionTimeSearch()))

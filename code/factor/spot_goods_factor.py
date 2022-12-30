@@ -732,6 +732,88 @@ class AskLargeAmountBillFactor(TimewindowStockTickFactor):
             sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
         return sum
 
+class BidLargeAmountBillFactor(TimewindowStockTickFactor):
+    """委卖大额挂单因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_014_BID_LARGE_AMOUNT_BILL'
+    version = '1.0'
+
+    def __init__(self):
+        TimewindowStockTickFactor.__init__(self)
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5',
+                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5']
+        return columns
+
+    def get_key(self):
+        return self.factor_code
+
+    def get_keys(self):
+        return [self.get_key()]
+
+    @timing
+    @profile
+    def caculate(self, data):
+        columns = data.columns.tolist() + [self.get_key()]
+        new_data = pd.DataFrame(columns = columns)
+        product = data.iloc[0]['product']
+        instrument = data.iloc[0]['instrument']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        for date in date_list:
+            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+            stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['mean_bid_commission_amount', 'bid_commission_amount'].mean()
+            df_stock_data_per_date = pd.DataFrame({'mean_bid_commission_amount': stock_data_per_date_group_by['mean_bid_commission_amount'],'bid_commission_amount': stock_data_per_date_group_by['bid_commission_amount'], 'time': stock_data_per_date_group_by.index})
+            print(df_stock_data_per_date)
+            # 过滤对齐在3秒线的数据
+            cur_date_data = self.merge_with_stock_data(data, date, df_stock_data_per_date)
+            cur_date_data[self.get_key()] = 0
+            cur_date_data.loc[cur_date_data['bid_commission_amount'] > cur_date_data['mean_bid_commission_amount'] * 1.5, self.get_key()] = 1
+            new_data = pd.concat([new_data, cur_date_data])
+        return new_data
+
+    @timing
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        #计算时间区间，
+        # 考虑：
+        # 1. 因子是在哪个时间区间计算？所有时间区间：集合竞价和开盘之后
+        # 2. 周期？3天
+        print('Current date: {} and stock: {}'.format(date, stock))
+        instrument_stock_data = self.prepare_timewindow_data(instrument)[stock]
+        three_days_before = get_last_or_next_trading_date(stock, date, 3)
+        instrument_stock_data = instrument_stock_data[(instrument_stock_data['date'] >= three_days_before) & (instrument_stock_data['date'] <= date)]
+        instrument_stock_data = instrument_stock_data[instrument_stock_data['time'] > STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME ] #当天也只需要已成交的数据
+        instrument_stock_data['bid_commission_amount'] = instrument_stock_data.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
+        instrument_stock_data['mean_bid_commission_amount'] = instrument_stock_data['bid_commission_amount'].rolling(len(data) * 3).mean()
+        data = instrument_stock_data[instrument_stock_data['date'] == date]
+        return data
+
+    def amount_sum(self, item, type):
+        sum = 0
+        for i in range(1, 6):
+            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        return sum
+
 class TotalCommissionRatioChangeRateFactor(StockTickFactor):
     """总委比因子变化率，今天和昨天同一时间的总委比因子比值
 
@@ -741,7 +823,7 @@ class TotalCommissionRatioChangeRateFactor(StockTickFactor):
     version : string
     _params ： list
     """
-    factor_code = 'FCT_02_014_TOTAL_COMMISSION_RATIO_CHANGE_RATE'
+    factor_code = 'FCT_02_015_TOTAL_COMMISSION_RATIO_CHANGE_RATE'
     version = '1.0'
 
     def __init__(self):
@@ -961,19 +1043,33 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True,
     #                     signal_keys=ask_large_amount_bill_factor.get_keys())
 
-    # 总委比因子变化率，今天和昨天同一时间的总委比因子比值
-    total_commission_ratio_change_rate_factor = TotalCommissionRatioChangeRateFactor()
-    print(total_commission_ratio_change_rate_factor.factor_code)
-    print(total_commission_ratio_change_rate_factor.version)
-    print(total_commission_ratio_change_rate_factor.get_params())
-    print(total_commission_ratio_change_rate_factor.get_category())
-    print(total_commission_ratio_change_rate_factor.get_full_name())
+    # 委卖大额挂单因子
+    bid_large_amount_bill_factor = BidLargeAmountBillFactor()
+    print(bid_large_amount_bill_factor.factor_code)
+    print(bid_large_amount_bill_factor.version)
+    print(bid_large_amount_bill_factor.get_params())
+    print(bid_large_amount_bill_factor.get_category())
+    print(bid_large_amount_bill_factor.get_full_name())
 
-    data = TotalCommissionRatioChangeRateFactor().caculate(data)
+    data = BidLargeAmountBillFactor().caculate(data)
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
     draw_analysis_curve(data, show_signal=True,
-                        signal_keys=total_commission_ratio_change_rate_factor.get_keys())
+                        signal_keys=bid_large_amount_bill_factor.get_keys())
+
+    # 总委比因子变化率，今天和昨天同一时间的总委比因子比值
+    # total_commission_ratio_change_rate_factor = TotalCommissionRatioChangeRateFactor()
+    # print(total_commission_ratio_change_rate_factor.factor_code)
+    # print(total_commission_ratio_change_rate_factor.version)
+    # print(total_commission_ratio_change_rate_factor.get_params())
+    # print(total_commission_ratio_change_rate_factor.get_category())
+    # print(total_commission_ratio_change_rate_factor.get_full_name())
+    #
+    # data = TotalCommissionRatioChangeRateFactor().caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    # draw_analysis_curve(data, show_signal=True,
+    #                     signal_keys=total_commission_ratio_change_rate_factor.get_keys())
 
 
 

@@ -166,9 +166,9 @@ def fix_stock_organized_data(validation_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
-            # fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder, session)
-    time.sleep(100000)
+            # runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
+            fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder)
+    # time.sleep(100000)
 
 def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder):
     session = create_session()

@@ -12,6 +12,7 @@ from common.localio import read_decompress, save_compress
 from data.process import StockTickDataColumnTransform
 from data.access import StockDataAccess
 from common.persistence.dbutils import create_session
+from common.persistence.po import StockMissingData
 from common.aop import timing
 
 
@@ -79,7 +80,7 @@ class StockTickFactor(Factor):
             'IH' : self._stocks_abstract_50,
             'IF' : self._stocks_abstract_300
         }
-        self._data_access = StockDataAccess()
+        self._data_access = StockDataAccess(False)
         self._session = create_session()
         suspend_list = self._session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
         self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
@@ -99,15 +100,24 @@ class StockTickFactor(Factor):
         stock_list = self.get_stock_list_by_date(product, date)
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
-        for stock in stock_list:
-            if (date + stock) in self._suspend_set:
-                print('The stock {0} is suspended on {1}'.format(stock, date))
-                continue
-            print('Handle stock {0}'.format(stock))
-            temp_data = self._data_access.access(date, stock)
-            temp_data = temp_data.loc[:, columns]
-            temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
-            data = pd.concat([data, temp_data])
+        if stock_list and len(stock_list) > 0:
+            for stock in stock_list:
+                if (date + stock) in self._suspend_set:
+                    print('The stock {0} is suspended on {1}'.format(stock, date))
+                    continue
+                print('Handle stock {0}'.format(stock))
+                try:
+                    temp_data = self._data_access.access(date, stock)
+                except Exception as e:
+                    stock_missing_data = StockMissingData(date, stock)
+                    self._session.add(stock_missing_data)
+                    self._session.commit()
+                    continue
+                temp_data = temp_data.loc[:, columns]
+                temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
+                data = pd.concat([data, temp_data])
+        else:
+            print('Stock data is missing for product: {0} and date: {1}'.format(product, date))
         return data
 
     def enrich_stock_data(self, instrument, date, stock, data):
@@ -155,12 +165,12 @@ class StockTickFactor(Factor):
         -------
 
         """
-        df_stock_data_per_date['second_remainder'] = df_stock_data_per_date.apply(lambda item: self.is_aligned(item),
-                                                                                  axis=1)
-        df_stock_data_per_date = df_stock_data_per_date[df_stock_data_per_date['second_remainder'] == 0]
-        df_stock_data_per_date['datetime'] = date + ' ' + df_stock_data_per_date['time'] + '000000'
         cur_date_data = data[data['date'] == date]
-        cur_date_data = cur_date_data.merge(df_stock_data_per_date, on=['datetime'], how='left')
+        if len(df_stock_data_per_date) > 0:
+            df_stock_data_per_date['second_remainder'] = df_stock_data_per_date.apply(lambda item: self.is_aligned(item), axis=1)
+            df_stock_data_per_date = df_stock_data_per_date[df_stock_data_per_date['second_remainder'] == 0]
+            df_stock_data_per_date['datetime'] = date + ' ' + df_stock_data_per_date['time'] + '000000'
+            cur_date_data = cur_date_data.merge(df_stock_data_per_date, on=['datetime'], how='left')
         return cur_date_data
 
     def is_aligned(self, item):

@@ -413,6 +413,55 @@ def init_index_constituent_config():
             except Exception as e:
                 print('The combination: {0}, {1}, {2}'.format('IC', date, stock[0: 6]))
 
+def create_stock_files_statistics(check_original=True, year_list=[], month_list=[], date_filter=[]):
+    """生成文件数量统计
+    Parameters
+    ----------
+    check_original : boolean 检查原始数据 为true则检查：original/stock/tick目录，如果为false则检查：organized/stock/tick
+    """
+    if check_original:
+        root_path = STOCK_TICK_DATA_PATH
+    else:
+        root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+    year_folder_list = list_files_in_path(root_path)
+    year_folder_list.sort()
+    for year_folder in year_folder_list:
+        year_count = 0
+        year = re.search('[0-9]{4}', year_folder)
+        if not year:
+            continue
+        if len(year_list) > 0 and year.group() not in year_list:
+            continue
+        year_folder_path = root_path + year_folder
+        month_folder_list = list_files_in_path(year_folder_path)
+        month_folder_list.sort()
+        for month_folder in month_folder_list:
+            month_count = 0
+            month = re.search('[0-9]{6}', month_folder)
+            if not month:
+                continue
+            if len(month_list) > 0 and month.group()[4:] not in month_list:
+                continue
+            month_folder_path = root_path + year_folder + os.path.sep + month_folder
+            date_list = list_files_in_path(month_folder_path)
+            date_list.sort()
+            for date in date_list:
+                date_regex = re.match('[0-9]{8}', date)
+                if not date_regex:
+                    continue
+                if len(date_filter) > 0 and date_regex.group()[6:] not in date_filter:
+                    continue
+                checked_stock_list = list(map(lambda stock: stock.split('.')[0], list_files_in_path(month_folder_path + os.path.sep + date)))
+                year_count = year_count + len(checked_stock_list)
+                month_count = month_count + len(checked_stock_list)
+                if len(month_list) > 0:
+                    print(date + ':' + str(len(checked_stock_list)))
+                if len(date_filter) > 0:
+                    print(checked_stock_list)
+            if len(year_list) > 0:
+                print(str(month.group()) + ':' + str(month_count))
+        print(str(year.group()) + ':' + str(year_count))
+
 def validate_stock_data_integrity_check(check_original=True):
     """根据股指合约成分股配置文件生成数据库数据，用于检查股票数据的完整性
     Parameters
@@ -420,6 +469,7 @@ def validate_stock_data_integrity_check(check_original=True):
     check_original : boolean 检查原始数据 为true则检查：original/stock/tick目录，如果为false则检查：organized/stock/tick
     """
     session = create_session()
+    total_file_count = 0
     if check_original:
         file_writer = FileWriter(REPORT_PATH + os.path.sep + "stock\\tick\\report\\origin_amount_check_20221121")
     else:
@@ -454,6 +504,7 @@ def validate_stock_data_integrity_check(check_original=True):
                 stock_list = list(map(lambda stock: stock[0], query_result))
                 stock_list.sort()
                 checked_stock_list = list(map(lambda stock: stock.split('.')[0], list_files_in_path(month_folder_path + os.path.sep + date)))
+                total_file_count = total_file_count + len(checked_stock_list)
                 checked_stock_list.sort()
                 miss_stocks = set(stock_list).difference(set(checked_stock_list))
                 if len(miss_stocks) > 0:
@@ -465,10 +516,12 @@ def validate_stock_data_integrity_check(check_original=True):
                             date_set = set(stock_info_crawler.get_content(year.group()[2:], full_stock_code))
                             stock_cache[cache_key] = date_set
                         if date not in stock_cache[cache_key]:
+                            #停牌
                             filter_miss_stocks.append(stock_code + 'x')
                         else:
                             filter_miss_stocks.append(stock_code + 'o')
                     file_writer.write_file_line('Date: {0} and missing stocks: {1}'.format(date, filter_miss_stocks))
+    file_writer.write_file_line('Total files: {0}'.format(total_file_count))
 
 def update_stock_suspension_status():
     """
@@ -559,15 +612,17 @@ if __name__ == '__main__':
     #                           'IF1905', 'IF1910', 'IF1907', 'IF1908', 'IF1911', 'IF2001', 'IF2002'])
 
     # 检查stock数据
-    validate_stock_tick_data('20221213-finley')
+    # validate_stock_tick_data('20221213-finley')
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    # enrich_stock_tick_data('20221111-finley-1',['2020'],['09'],['28'])
+    enrich_stock_tick_data('20221111-finley-2',['2022'],['06'],['17'],['000333'])
 
     # 检查stock数据
     #初始化表
     # init_index_constituent_config()
+    #核对文件数量
+    # create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
     #检查原始股票数据
     # validate_stock_data_integrity_check()
     #检查已处理股票数据

@@ -208,6 +208,29 @@ class FactorOperationHistory(Base):
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
 
+class StockMissingData(Base):
+    """缺失股票数据表po：
+    id VARCHAR(40),
+    date    VARCHAR(10),
+    tscode  VARCHAR(10),
+    created_time datetime,
+    modified_time datetime,
+    """
+    __tablename__ = "stock_missing_data"
+
+    id = Column(String(40), primary_key=True)
+    date = Column(String(10))
+    tscode = Column(String(10))
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, date, tscode):
+        self.id = uuid.uuid4()
+        self.date = date
+        self.tscode = tscode
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
 class Test(Base):
     """测试表po：
     """

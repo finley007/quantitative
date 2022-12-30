@@ -13,6 +13,7 @@ from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
+from factor.spot_goods_factor import TotalCommissionRatioFactor
 
 class FactorCaculator():
     """因子文件生成类
@@ -141,14 +142,16 @@ if __name__ == '__main__':
     #因子计算
     # william_factor = WilliamFactor()
     # factor_list = [william_factor]
-    # FactorCaculator().caculate(factor_list)
+    total_commission_ratio_factor = TotalCommissionRatioFactor()
+    factor_list = [total_commission_ratio_factor]
+    FactorCaculator().caculate(factor_list)
 
     #生成因子比对文件
     # william_factor = WilliamFactor([10])
     # FactorCaculator().caculate_manually_check(william_factor)
 
-    session = create_session()
-    config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)
-    session.add(config)
-    session.commit()
+    # session = create_session()
+    # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)
+    # session.add(config)
+    # session.commit()
 

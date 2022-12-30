@@ -79,9 +79,10 @@ class StockTickDataCleaner(DataCleaner):
         # 清除多余的列
         data = data.drop(columns=self._ignore_columns)
         # 按时间清除 小于09:15:00，11：30到13：00，大于15：00的数据
-        data = data.drop(data.index[data['time'] < constants.STOCK_START_TIME])
-        data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME])
-        data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME) & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME)])
+        data = data.drop(data.index[data['time'] < constants.STOCK_START_TIME + '.000'])
+        # 清除盘后交易数据
+        data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000') & (data['price'] == 0)])
+        data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME + '.000') & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME + '.000')])
         # 清除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
         # 清除股票的重复成交量为0的数据
@@ -224,6 +225,15 @@ class StockTickDataEnricher(DataProcessor):
                     to_be_removed_index.append(index)
             # if len(to_be_removed_index) > 0: # 这种数据有可能包含有用信息，所以应该保留
             #     data.drop(to_be_removed_index)
+
+        #处理收盘集中竞价
+        temp_data = data[data['volume'] > 0]
+        if len(temp_data) > 0:
+            time = temp_data.iloc[-1]['time']
+            if time > constants.STOCK_TRANSACTION_END_TIME + '.000':
+                data = data.drop(data.index[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000'])
+                data.loc[(data['time']) == time, 'time'] = constants.STOCK_TRANSACTION_END_TIME + '.000'
+                data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000'])
 
         #插值
         miss_data = pd.DataFrame(columns=data.columns.tolist())

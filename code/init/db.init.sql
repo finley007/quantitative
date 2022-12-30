@@ -116,3 +116,14 @@ created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id)
 );
+
+-- 缺失股票数据表
+CREATE TABLE IF NOT EXISTS stock_missing_data
+(
+id VARCHAR(40),
+date    VARCHAR(10),
+tscode  VARCHAR(10),
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(id)
+);
