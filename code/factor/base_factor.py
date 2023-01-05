@@ -65,7 +65,7 @@ class Factor(metaclass=ABCMeta):
 
 
 class StockTickFactor(Factor):
-    """股票Tick因子基类，可以加载股票Tick数据
+    """现货类基类，可以加载股票Tick数据
 
     Parameters
     ----------
@@ -107,7 +107,7 @@ class StockTickFactor(Factor):
                     continue
                 print('Handle stock {0}'.format(stock))
                 try:
-                    temp_data = self._data_access.access(date, stock)
+                    temp_data = self.get_stock_data(date, stock)
                 except Exception as e:
                     stock_missing_data = StockMissingData(date, stock)
                     self._session.add(stock_missing_data)
@@ -119,7 +119,11 @@ class StockTickFactor(Factor):
         else:
             print('Stock data is missing for product: {0} and date: {1}'.format(product, date))
         return data
-
+    @timing
+    def get_stock_data(self, date, stock):
+        temp_data = self._data_access.access(date, stock)
+        return temp_data
+    @timing
     def enrich_stock_data(self, instrument, date, stock, data):
         """
         时间维度上处理股票数据
@@ -136,7 +140,7 @@ class StockTickFactor(Factor):
 
     def get_columns(self):
         return ['tscode','date','time']
-
+    @timing
     def get_stock_list_by_date(self, product, date):
         """获取股票列表
         Parameters
@@ -152,6 +156,7 @@ class StockTickFactor(Factor):
             if date >= start_date and date <= end_date:
                 return stock_abstract[key]
 
+    @timing
     def merge_with_stock_data(self, data, date, df_stock_data_per_date):
         """
         和股票数据join，获取现货指标

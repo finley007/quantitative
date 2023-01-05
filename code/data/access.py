@@ -26,7 +26,6 @@ class StockDataAccess(DataAccess):
     def __init__(self, check_original=True):
         self._check_original = check_original
 
-    # @timing
     def access(self, *args):
         """
 

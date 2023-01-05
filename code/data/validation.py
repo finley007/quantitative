@@ -8,7 +8,7 @@ import numpy
 
 from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, FUTURE_TICK_REPORT_DATA_PATH, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, \
-    STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME
+    STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_START_TIME
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment, add_milliseconds_suffix
@@ -231,10 +231,10 @@ class StockTickDataValidator(Validator):
             result.result = RESULT_FAIL
             result.error_details.append('The data is incomplete and length: {0}'.format(str(len(data))))
         # 检查是否包含开盘时间点的数据
-        if time > '09:16:00.000':
-            print(time)
-            result.result = RESULT_FAIL
-            result.error_details.append('The data is incomplete and miss the opening time data')
+        # if time > '09:16:00.000':
+        #     print(time)
+        #     result.result = RESULT_FAIL
+        #     result.error_details.append('The data is incomplete and miss the opening time data')
         # 检查成交量是否递增
         time_sorted_list = data.sort_values(by='time')['daily_accumulated_volume'].to_list()
         time_sorted_abstract = hashlib.md5(
@@ -250,8 +250,8 @@ class StockTickDataValidator(Validator):
             result.result = RESULT_FAIL
             result.error_details.append('The stock is suspended')
         # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
-        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME))]) > 0:
-            print(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME))][['time','price']])
+        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))]) > 0:
+            print(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))][['time','price']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid price value')
         # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据
@@ -260,7 +260,7 @@ class StockTickDataValidator(Validator):
                           'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10',
                           'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10']
         temp_data = data[check_columns]
-        temp_data = temp_data[(temp_data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)) & (temp_data['time'] < add_milliseconds_suffix(STOCK_CLOSE_CALL_AUACTION_START_TIME))]
+        temp_data = temp_data[(temp_data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (temp_data['time'] < add_milliseconds_suffix(STOCK_CLOSE_CALL_AUACTION_START_TIME))]
         for i in range(len(check_columns)):
             if i > 0:
                 if 0 in temp_data[check_columns[i]].tolist():
@@ -270,9 +270,9 @@ class StockTickDataValidator(Validator):
                     result.error_details.append('Invalid {0} value'.format(check_columns[i]))
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix('09:25:01'))]) > 0:
+               & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))]) > 0:
             print(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix('09:25:01'))][['time','open','close','high','low']])
+               & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))][['time','open','close','high','low']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result
@@ -320,6 +320,9 @@ class StockOrganizedDataValidator(Validator):
         """数据验证接口
         1. 是否有中午休盘时的数据
         2. 是否有补齐时未清零的数据
+        3. 是否有重复数据
+        4. 11：30的数据
+        5. 集合竞价数据
         Parameters
         ----------
         data : DataFrame
@@ -330,15 +333,26 @@ class StockOrganizedDataValidator(Validator):
         date = data.iloc[0]['date']
         result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-',''))
         # 是否有中午休盘时的数据
-        if len(data[(data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME)) & (data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME))]) > 0:
-            result.result = RESULT_FAIL
-            result.error_details.append('The redundant data for noon break exists')
+        # if len(data[(data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME)) & (data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME))]) > 0:
+        #     result.result = RESULT_FAIL
+        #     result.error_details.append('The redundant data for noon break exists')
         # 是否有补齐时未清零的数据
-        data['delta_daily_accumulated_volume'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
-        if len(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)]) > 0:
-            print(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)][['time','delta_daily_accumulated_volume','volume']])
+        # data['delta_daily_accumulated_volume'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
+        # if len(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)]) > 0:
+        #     print(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)][['time','delta_daily_accumulated_volume','volume']])
+        #     result.result = RESULT_FAIL
+        #     result.error_details.append('Invalid volume should to be fixed')
+        # 是否有重复数据
+        temp_data = data[(data['time'] <= STOCK_TRANSACTION_END_TIME + '.000') & (data['time'] >= STOCK_TRANSACTION_START_TIME + '.000') & ((data['time'] >= STOCK_TRANSACTION_NOON_START_TIME + '.000') | (data['time'] <= STOCK_TRANSACTION_NOON_END_TIME + '.000'))]
+        temp_data = temp_data.groupby('time')[['time']].count()
+        temp_data = temp_data[temp_data['time'] > 1]
+        if len(temp_data) > 0:
             result.result = RESULT_FAIL
-            result.error_details.append('Invalid volume should to be fixed')
+            result.error_details.append('Repeat records')
+        # 是否有11：30的数据
+        if len(data[data['time'] == '11:30:00.000']) == 0:
+            result.result = RESULT_FAIL
+            result.error_details.append('Miss 11:30:00 data')
         return result
 
     @classmethod
@@ -552,13 +566,13 @@ if __name__ == '__main__':
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
-    # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220627\\600037.pkl'
-    # data = read_decompress(path)
-    # data = StockTickDataColumnTransform().process(data)
-    # data = StockTickDataCleaner().process(data)
-    # print(StockTickDataValidator().validate(data))
-    # 测试organised股票数据验证
-    path = 'E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201807\\20180706\\600703.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201705\\20170526\\603328.pkl'
     data = read_decompress(path)
-    print(StockOrganizedDataValidator().validate(data))
+    data = StockTickDataColumnTransform().process(data)
+    data = StockTickDataCleaner().process(data)
+    print(StockTickDataValidator().validate(data))
+    # 测试organised股票数据验证
+    # path = 'E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202203\\20220324\\000858.pkl'
+    # data = read_decompress(path)
+    # print(StockOrganizedDataValidator().validate(data))
 

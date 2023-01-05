@@ -85,9 +85,22 @@ class StockTickDataCleaner(DataCleaner):
         data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME + '.000') & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME + '.000')])
         # 清除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
-        # 清除股票的重复成交量为0的数据
+        # 清除股票的重复成交量为0的数据，如果多行的成交量都为0，保留一行
         data['count'] = data.groupby(['time'])['time'].transform('count')
-        data = data.drop(data.index[(data['count'] > 1) & (data['volume'] == 0) & (data['time'] >= constants.STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)])
+        # 处理有成交量记录不为0的数据
+        index_to_be_serverd = data.index[(data['count'] > 1) & (data['volume'] > 0) & (data['time'] >= constants.STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
+        for index in index_to_be_serverd:
+            time_to_handled = data.loc[index]['time']
+            data = data.drop(data.index[(data['time'] == time_to_handled) & (data['volume'] == 0)])
+        # 处理没有成交量记录不为0的数据
+        data['count'] = data.groupby(['time'])['time'].transform('count')
+        index_to_be_removed = data.index[(data['count'] > 1) & (data['volume'] == 0) & ( data['time'] >= constants.STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
+        handled_time_set = set()
+        for index in index_to_be_removed:
+            cur_time = data.loc[index]['time']
+            if cur_time not in handled_time_set:
+                data = data.drop(index)
+                handled_time_set.add(cur_time)
         return data
 
 
@@ -230,7 +243,9 @@ class StockTickDataEnricher(DataProcessor):
         temp_data = data[data['volume'] > 0]
         if len(temp_data) > 0:
             time = temp_data.iloc[-1]['time']
+            # 收盘集合竞价的时间戳大于15：00：00
             if time > constants.STOCK_TRANSACTION_END_TIME + '.000':
+                # 删除15：00：00的数据，将最后集合竞价成交的tick时间改为15：00：00，清楚之后所有的数据（盘后交易数据）
                 data = data.drop(data.index[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000'])
                 data.loc[(data['time']) == time, 'time'] = constants.STOCK_TRANSACTION_END_TIME + '.000'
                 data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000'])

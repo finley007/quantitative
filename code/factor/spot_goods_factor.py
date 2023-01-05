@@ -858,27 +858,27 @@ class TotalCommissionRatioChangeRateFactor(StockTickFactor):
         return 0
 
 if __name__ == '__main__':
-    data = read_decompress(TEST_PATH + '20200928.pkl')
+    data = read_decompress(TEST_PATH + 'IF1703.pkl')
     data['product'] = 'IF'
-    data['instrument'] = 'IF2010'
+    data['instrument'] = 'IF1703'
     data['date'] = data['datetime'].str[0:10]
 
     print(data)
     print(data.columns)
 
     #总委比因子
-    # total_commision = TotalCommissionRatioFactor()
-    # print(total_commision.factor_code)
-    # print(total_commision.version)
-    # print(total_commision.get_params())
-    # print(total_commision.get_category())
-    # print(total_commision.get_full_name())
-    #
-    # data = TotalCommissionRatioFactor().caculate(data)
-    # print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
-    # data.index = pd.DatetimeIndex(data['datetime'])
-    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    # draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
+    total_commision = TotalCommissionRatioFactor()
+    print(total_commision.factor_code)
+    print(total_commision.version)
+    print(total_commision.get_params())
+    print(total_commision.get_category())
+    print(total_commision.get_full_name())
+
+    data = TotalCommissionRatioFactor().caculate(data)
+    print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
+    data.index = pd.DatetimeIndex(data['datetime'])
+    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
 
     # 10档委比因子
     # ten_grade_total_commision = TenGradeCommissionRatioFactor()
@@ -1044,18 +1044,18 @@ if __name__ == '__main__':
     #                     signal_keys=ask_large_amount_bill_factor.get_keys())
 
     # 委卖大额挂单因子
-    bid_large_amount_bill_factor = BidLargeAmountBillFactor()
-    print(bid_large_amount_bill_factor.factor_code)
-    print(bid_large_amount_bill_factor.version)
-    print(bid_large_amount_bill_factor.get_params())
-    print(bid_large_amount_bill_factor.get_category())
-    print(bid_large_amount_bill_factor.get_full_name())
-
-    data = BidLargeAmountBillFactor().caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    draw_analysis_curve(data, show_signal=True,
-                        signal_keys=bid_large_amount_bill_factor.get_keys())
+    # bid_large_amount_bill_factor = BidLargeAmountBillFactor()
+    # print(bid_large_amount_bill_factor.factor_code)
+    # print(bid_large_amount_bill_factor.version)
+    # print(bid_large_amount_bill_factor.get_params())
+    # print(bid_large_amount_bill_factor.get_category())
+    # print(bid_large_amount_bill_factor.get_full_name())
+    #
+    # data = BidLargeAmountBillFactor().caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    # draw_analysis_curve(data, show_signal=True,
+    #                     signal_keys=bid_large_amount_bill_factor.get_keys())
 
     # 总委比因子变化率，今天和昨天同一时间的总委比因子比值
     # total_commission_ratio_change_rate_factor = TotalCommissionRatioChangeRateFactor()

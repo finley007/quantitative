@@ -15,7 +15,7 @@ from common.localio import read_decompress, list_files_in_path, save_compress
 from abc import ABCMeta, abstractmethod
 import pandas as pd
 from data.access import StockDataAccess
-from framework.concurrent import ProcessRunner
+from framework.localconcurrent import ProcessRunner
 from common.aop import timing
 
 class FileNameHandler(metaclass = ABCMeta):
@@ -212,6 +212,19 @@ class FutrueOrganizedDataStatisticProducer(FutrueDataStatisticProducer):
 
 @timing
 def traverse_stock_data(interface, is_async=True, check_original=True):
+    """
+    遍历股票数据
+
+    Parameters
+    ----------
+    interface：遍历执行检查逻辑
+    is_async：同步还是异步执行
+    check_original：检查原始数据还是生成数据
+
+    Returns
+    -------
+
+    """
     traverse_results = []
     if is_async:
         process_runner = ProcessRunner(6)
@@ -237,6 +250,19 @@ def traverse_stock_data(interface, is_async=True, check_original=True):
     return traverse_results
 
 def handle_by_year(root_path, year_folder, interface):
+    """
+    按年执行查询逻辑，主要是并发多进程执行
+
+    Parameters
+    ----------
+    root_path
+    year_folder
+    interface
+
+    Returns
+    -------
+
+    """
     data_access = StockDataAccess()
     results = []
     year_folder_path = root_path + year_folder
@@ -323,7 +349,7 @@ class StockClosingCallAuctionTimeSearch(StockDataTraversalInterface):
                 data = data[data['成交量'] > 0]
                 if len(data) > 0:
                     time = data.iloc[-1]['时间']
-                    if time == '15:00:11.141':
+                    if time == '14:42:25.000':
                         return str(data.iloc[-1]['交易所代码']) + '|' + str(data.iloc[-1]['自然日']) + '|' + time
             except Exception as e:
                 print(e)

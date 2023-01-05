@@ -20,7 +20,7 @@ from data.process import FutureTickDataColumnTransform, StockTickDataColumnTrans
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from common.timeutils import date_format_transform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, DtoStockValidationResult
-from framework.concurrent import ProcessRunner
+from framework.localconcurrent import ProcessRunner
 
 
 @timing
@@ -616,7 +616,7 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    enrich_stock_tick_data('20221111-finley-2',['2022'],['06'],['17'],['000333'])
+    enrich_stock_tick_data('20221111-finley-2',['2022'],['05'],['06'],['689009'])
 
     # 检查stock数据
     #初始化表
