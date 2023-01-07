@@ -22,7 +22,7 @@ class ProcessRunner():
 
     def execute(self, runner, args=()):
         if self._is_async:
-            print('Execute job with async mode')
+            # print('Execute job with async mode')
             self._results.append(self._ps.apply_async(runner, args=args))
         else:
             print('Execute job with sync mode')

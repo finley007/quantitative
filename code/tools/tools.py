@@ -616,13 +616,13 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    enrich_stock_tick_data('20221111-finley-2',['2022'],['05'],['06'],['689009'])
+    # enrich_stock_tick_data('20221111-finley-2',['2022'],['06'],['17'],['000333'])
 
     # 检查stock数据
     #初始化表
     # init_index_constituent_config()
     #核对文件数量
-    # create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
+    create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
     #检查原始股票数据
     # validate_stock_data_integrity_check()
     #检查已处理股票数据

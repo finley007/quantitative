@@ -5,7 +5,7 @@ from memory_profiler import profile
 
 from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor
 from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME
-from common.localio import read_decompress
+from common.localio import read_decompress, save_compress
 from common.aop import timing
 from common.visualization import draw_analysis_curve
 from common.timeutils import get_last_or_next_trading_date
@@ -858,9 +858,9 @@ class TotalCommissionRatioChangeRateFactor(StockTickFactor):
         return 0
 
 if __name__ == '__main__':
-    data = read_decompress(TEST_PATH + 'IF1703.pkl')
+    data = read_decompress(TEST_PATH + 'IF1810.pkl')
     data['product'] = 'IF'
-    data['instrument'] = 'IF1703'
+    data['instrument'] = 'IF1810'
     data['date'] = data['datetime'].str[0:10]
 
     print(data)
@@ -875,6 +875,7 @@ if __name__ == '__main__':
     print(total_commision.get_full_name())
 
     data = TotalCommissionRatioFactor().caculate(data)
+    save_compress(data, 'E:\\data\\test\\IF1803.concurrent.10.1.pkl')
     print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]

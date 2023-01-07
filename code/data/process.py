@@ -13,7 +13,7 @@ from common import constants
 from common.aop import timing
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME
 from common.localio import read_decompress, save_compress
-from common.timeutils import time_advance, date_alignment, time_carry
+from common.timeutils import datetime_advance, date_alignment, time_carry, time_advance
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -264,7 +264,7 @@ class StockTickDataEnricher(DataProcessor):
             item = data.loc[index]
             str_cur_time = item['time']
             while step < delta_time_sec:
-                item['time'] = self.time_advance(str_cur_time, step)
+                item['time'] = time_advance(str_cur_time, step)
                 item['volume'] = 0
                 item['amount'] = 0
                 item['transaction_number'] = 0
@@ -284,13 +284,7 @@ class StockTickDataEnricher(DataProcessor):
         else:
             return seconds
 
-    def time_advance(self, str_cur_time, step):
-        cur_time = datetime.strptime(str_cur_time, "%H:%M:%S.%f")
-        if cur_time.time() == time.fromisoformat(OFF_TIME_IN_MORNING): # 处理中午停盘的时间
-            cur_time = cur_time + timedelta(seconds=step) + timedelta(hours=1.5)
-        else:
-            cur_time = cur_time + timedelta(seconds=step)
-        return datetime.strftime(cur_time, "%H:%M:%S") + '.000'
+
 
 class FutureTickDataColumnTransform(DataProcessor):
     """更改Tick数据的列名，去掉合约信息：
@@ -359,7 +353,7 @@ class FutureTickDataEnricher(DataProcessor):
                 item = data.loc[index]
                 str_cur_time = item['datetime']
                 while step < delta_time_sec:
-                    item['datetime'] = time_advance(str_cur_time, step)
+                    item['datetime'] = datetime_advance(str_cur_time, step)
                     miss_data = miss_data.append(item)
                     step = step + constants.FUTURE_TICK_SAMPLE_INTERVAL
         data = data.append(miss_data)
@@ -403,10 +397,10 @@ class FutureTickDataProcessorPhase1(DataProcessor):
         organized_data = pd.DataFrame(columns=self._columns)
         while cur_time < end_time:
             if is_open: #判断是否开盘, 如果是开盘从9：29：00 - 9：30：03时间间隔是63秒
-                next_time = time_advance(cur_time, 63)
+                next_time = datetime_advance(cur_time, 63)
                 is_open = False
             else:
-                next_time = time_advance(cur_time, 3)
+                next_time = datetime_advance(cur_time, 3)
             temp_data = data[(data['datetime'] >= cur_time) & (data['datetime'] < next_time)]
             last_record = None
             # 该时间区间内无交易处理

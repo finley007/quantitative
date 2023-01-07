@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, time
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.persistence.dao import IndexConstituentConfigDao
 
-def time_advance(str_cur_time, step):
+def datetime_advance(str_cur_time, step):
     """
-    时间步进
+    日期时间步进
 
     Parameters
     ----------
@@ -23,6 +23,26 @@ def time_advance(str_cur_time, step):
     else:
         cur_time = cur_time + timedelta(seconds=step)
     return datetime.strftime(cur_time, "%Y-%m-%d %H:%M:%S.%f000")
+
+
+def time_advance(str_cur_time, step):
+    """
+    时间步进
+    Parameters
+    ----------
+    str_cur_time：string 当前时间
+    step：int 步进长度 单位：s
+
+    Returns
+    -------
+
+    """
+    cur_time = datetime.strptime(str_cur_time, "%H:%M:%S.%f")
+    if cur_time.time() == time.fromisoformat(OFF_TIME_IN_MORNING): # 处理中午停盘的时间
+        cur_time = cur_time + timedelta(seconds=step) + timedelta(hours=1.5)
+    else:
+        cur_time = cur_time + timedelta(seconds=step)
+    return datetime.strftime(cur_time, "%H:%M:%S") + '.000'
 
 
 def date_alignment(date):

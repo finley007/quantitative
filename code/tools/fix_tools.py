@@ -3,7 +3,7 @@
 import os
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 
@@ -19,7 +19,7 @@ from data.process import FutureTickDataColumnTransform, StockTickDataColumnTrans
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, StockOrganizedDataValidator, Validator, DtoStockValidationResult
 from framework.localconcurrent import ProcessRunner
-from common.timeutils import date_alignment, add_milliseconds_suffix
+from common.timeutils import date_alignment, add_milliseconds_suffix, datetime_advance, time_advance
 
 
 def check_issue_stock_process_data(record_id):
@@ -240,9 +240,9 @@ def fix_stock_organized_data(validation_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
-            # fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder)
-    time.sleep(100000)
+            # runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
+            fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder)
+    # time.sleep(100000)
 
 def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder):
     """
@@ -308,60 +308,86 @@ def fix_stock_organized_data_daily(data):
     #     data.loc[(temp_data['delta_daily_accumulated_volume'] == 0) & (temp_data['volume'] > 0), ['volume','amount','transaction_number']] = 0
 
     # 是否有11：30：00的数据
-    if len(data[data['time'] == '11:30:00.000']) == 0:
-        date = data.iloc[0]['date'].replace('-','')
-        tscode = data.iloc[0]['tscode'][0:6]
-        original_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(date[0:6]) + os.path.sep + date + os.path.sep + tscode + '.pkl'
-        original_data = read_decompress(original_path)
-        original_data = StockTickDataColumnTransform().process(original_data)
-        if len(original_data[original_data['time'] == '11:30:00.000']) > 0:
-            temp_data = original_data[(original_data['time'] == '11:30:00.000') & (original_data['volume'] > 0)]
-            if len(temp_data) > 0:
-                # 如果时间点有多条记录优先选择有成交量的
-                print(temp_data)
-                data.append(temp_data.iloc[0])
-            else:
-                temp_data = original_data[(original_data['time'] == '11:30:00.000')]
-                if len(temp_data) > 0:
-                    data = data.append(temp_data.iloc[0])
+    # if len(data[data['time'] == '11:30:00.000']) == 0:
+    #     date = data.iloc[0]['date'].replace('-','')
+    #     tscode = data.iloc[0]['tscode'][0:6]
+    #     original_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(date[0:6]) + os.path.sep + date + os.path.sep + tscode + '.pkl'
+    #     original_data = read_decompress(original_path)
+    #     original_data = StockTickDataColumnTransform().process(original_data)
+    #     if len(original_data[original_data['time'] == '11:30:00.000']) > 0:
+    #         temp_data = original_data[(original_data['time'] == '11:30:00.000') & (original_data['volume'] > 0)]
+    #         if len(temp_data) > 0:
+    #             # 如果时间点有多条记录优先选择有成交量的
+    #             print(temp_data)
+    #             data.append(temp_data.iloc[0])
+    #         else:
+    #             temp_data = original_data[(original_data['time'] == '11:30:00.000')]
+    #             if len(temp_data) > 0:
+    #                 data = data.append(temp_data.iloc[0])
 
     # 处理重复数据
-    data = data.reset_index(drop=True)
-    temp_data = data[(data['time'] <= STOCK_TRANSACTION_END_TIME + '.000') & (
-                data['time'] >= STOCK_TRANSACTION_START_TIME + '.000') & (
-                                 (data['time'] >= STOCK_TRANSACTION_NOON_START_TIME + '.000') | (
-                                     data['time'] <= STOCK_TRANSACTION_NOON_END_TIME + '.000'))]
-    temp_data = temp_data.groupby('time')[['time']].count()
-    temp_data = temp_data[temp_data['time'] > 1]
-    if len(temp_data) > 0:
-        for index_time in temp_data.index:
-            tdata = data[data['time'] == index_time]
-            if len(tdata) > 0:
-                for index in tdata.index:
-                    cur_daily_accumulated_volume = data.loc[index]['daily_accumulated_volume']
-                    if type(cur_daily_accumulated_volume) != int:
-                        cur_daily_accumulated_volume = cur_daily_accumulated_volume.tolist()[0]
-                    min_index = min(data[data['daily_accumulated_volume'] == cur_daily_accumulated_volume].index)
-                    if min_index != index:
-                        data = data.drop(index)
+    # data = data.reset_index(drop=True)
+    # temp_data = data[(data['time'] <= STOCK_TRANSACTION_END_TIME + '.000') & (
+    #             data['time'] >= STOCK_TRANSACTION_START_TIME + '.000') & (
+    #                              (data['time'] >= STOCK_TRANSACTION_NOON_START_TIME + '.000') | (
+    #                                  data['time'] <= STOCK_TRANSACTION_NOON_END_TIME + '.000'))]
+    # temp_data = temp_data.groupby('time')[['time']].count()
+    # temp_data = temp_data[temp_data['time'] > 1]
+    # if len(temp_data) > 0:
+    #     for index_time in temp_data.index:
+    #         tdata = data[data['time'] == index_time]
+    #         if len(tdata) > 0:
+    #             for index in tdata.index:
+    #                 cur_daily_accumulated_volume = data.loc[index]['daily_accumulated_volume']
+    #                 if type(cur_daily_accumulated_volume) != int:
+    #                     cur_daily_accumulated_volume = cur_daily_accumulated_volume.tolist()[0]
+    #                 min_index = min(data[data['daily_accumulated_volume'] == cur_daily_accumulated_volume].index)
+    #                 if min_index != index:
+    #                     data = data.drop(index)
 
     # 处理收盘集合竞价
     # 从原始数据获取收盘集合竞价成交记录
-    # date = data.iloc[0]['date'].replace('-', '')
-    # tscode = data.iloc[0]['tscode'][0:6]
-    # original_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(
-    #     date[0:6]) + os.path.sep + date + os.path.sep + tscode + '.pkl'
-    # original_data = read_decompress(original_path)
-    # original_data = StockTickDataColumnTransform().process(original_data)
-    # original_data = original_data[original_data['volume'] > 0]
-    # if len(original_data) > 0:
-    #     closing_call_action_record = original_data.iloc[-1]
-    #     if len(data[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000']) > 0:
-    #         data = data.drop(data.index[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000'])
-    #     closing_call_action_record['time'] = constants.STOCK_TRANSACTION_END_TIME + '.000'
-    #     data = data.append(closing_call_action_record)
-    #     data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000'])
-
+    date = data.iloc[0]['date'].replace('-', '')
+    tscode = data.iloc[0]['tscode'][0:6]
+    original_path = STOCK_TICK_DATA_PATH + os.path.sep + add_folder_prefix(date[0:4]) + os.path.sep + add_folder_prefix(
+        date[0:6]) + os.path.sep + date + os.path.sep + tscode + '.pkl'
+    original_data = read_decompress(original_path)
+    original_data = StockTickDataColumnTransform().process(original_data)
+    original_data = StockTickDataCleaner().process(original_data)
+    original_data = original_data[original_data['volume'] > 0]
+    if len(original_data) > 0:
+        closing_call_action_record = original_data.iloc[-1]
+        need_insert = True
+        if len(data[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000']) > 0:
+            data = data.drop(data.index[data['time'] == constants.STOCK_TRANSACTION_END_TIME + '.000'])
+            need_insert = False # 已有15：00：00的记录 无需插值
+        closing_call_action_record['time'] = constants.STOCK_TRANSACTION_END_TIME + '.000'
+        data = data.append(closing_call_action_record)
+        print(data.columns.tolist())
+        data = data.drop(data.index[data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000'])
+        # 插值
+        if need_insert:
+            miss_data = pd.DataFrame(columns=data.columns.tolist())
+            print(miss_data.columns.tolist())
+            str_last_time = data[data['time'] < constants.STOCK_TRANSACTION_END_TIME + '.000']['time'].max()
+            last_time = datetime.strptime(str_last_time, "%H:%M:%S.%f")
+            final_time = datetime.strptime(constants.STOCK_TRANSACTION_END_TIME + '.000', "%H:%M:%S.%f")
+            time_interval = (final_time - last_time).total_seconds()
+            step = 3
+            while step < time_interval:
+                item = data[data['time'] == str_last_time].iloc[0]
+                str_cur_time = item['time']
+                time = time_advance(str_cur_time, step)
+                item['time'] = time
+                item['volume'] = 0
+                item['amount'] = 0
+                item['transaction_number'] = 0
+                item['realtime'] = datetime.strptime(time, "%H:%M:%S.%f")
+                item['delta_time'] = timedelta(seconds = 3)
+                item['delta_time_sec'] = 3
+                miss_data = miss_data.append(item)
+                step = step + constants.STOCK_TICK_SAMPLE_INTERVAL
+            data = data.append(miss_data)
 
     data = data.sort_values(by=['time'])
     data = data.reset_index(drop=True)
@@ -398,9 +424,9 @@ def validate_stock_original_data(validate_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            runner.execute(validate_stock_original_by_month, args=(validate_code, checked_set, year_folder, month_folder))
-            # validate_stock_original_by_month(validate_code, checked_set, year_folder, month_folder)
-    time.sleep(100000)
+            # runner.execute(validate_stock_original_by_month, args=(validate_code, checked_set, year_folder, month_folder))
+            validate_stock_original_by_month(validate_code, checked_set, year_folder, month_folder)
+    # time.sleep(100000)
 
 
 def validate_stock_original_by_month(validate_code, checked_set, year_folder, month_folder):
@@ -528,11 +554,11 @@ if __name__ == '__main__':
     #检查已生成股票数据
     # validate_stock_organized_data('20221231-finley')
 
-    #检查原始数据
-    validate_stock_original_data('20230105-finley')
+    #检查原始股票数据
+    # validate_stock_original_data('20230105-finley')
 
     #修复有问题股票数据
-    # fix_stock_organized_data('20221231-finley')
+    fix_stock_organized_data('20230105-finley')
 
     #检查收盘集合竞价数据是不是来迟了
     # data = read_decompress("E:\\data\\fix\\4th\\000333-20220617\\000333.original.pkl")
@@ -543,5 +569,7 @@ if __name__ == '__main__':
 
     # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2019\\stk_tick10_w_201909\\20190906\\002081.pkl")
     # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202203\\20220324\\000858.pkl")
+    # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220617\\000333.pkl")
+    # data = read_decompress("E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202009\\20200922\\300059.pkl")
     # data = fix_stock_organized_data_daily(data)
-    # save_compress(data, 'E:\\data\\fix\\3rd\\000858-20220324\\000858.fix.pkl')
+    # save_compress(data, 'E:\\data\\fix\\4th\\300059-20200922\\300059.fix.pkl')

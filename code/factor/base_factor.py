@@ -14,6 +14,7 @@ from data.access import StockDataAccess
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockMissingData
 from common.aop import timing
+from framework.localconcurrent import ThreadRunner
 
 
 class Factor(metaclass=ABCMeta):
@@ -81,9 +82,42 @@ class StockTickFactor(Factor):
             'IF' : self._stocks_abstract_300
         }
         self._data_access = StockDataAccess(False)
-        self._session = create_session()
-        suspend_list = self._session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
+        session = create_session()
+        suspend_list = session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
         self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
+
+    # @timing
+    # def get_stock_tick_data(self, product, instrument, date):
+    #     """获取相关的股票tick数据，
+    #     因为一次处理一个股指合约文件，所包含的信息：
+    #     日期，品种
+    #     TODO 这部分可以预处理
+    #     Parameters
+    #     ----------
+    #     product ： 品种
+    #     instrument ： 合约
+    #     date ： 日期
+    #     """
+    #     stock_list = self.get_stock_list_by_date(product, date)
+    #     columns = self.get_columns()
+    #     data = pd.DataFrame(columns=columns)
+    #     if stock_list and len(stock_list) > 0:
+    #         stock_list = list(filter(lambda stock: (date + stock) not in self._suspend_set, stock_list))
+    #         for stock in stock_list:
+    #             print('Handle stock {0}'.format(stock))
+    #             try:
+    #                 temp_data = self.get_stock_data(date, stock)
+    #             except Exception as e:
+    #                 stock_missing_data = StockMissingData(date, stock)
+    #                 self._session.add(stock_missing_data)
+    #                 self._session.commit()
+    #                 continue
+    #             temp_data = temp_data.loc[:, columns]
+    #             temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
+    #             data = pd.concat([data, temp_data])
+    #     else:
+    #         print('Stock data is missing for product: {0} and date: {1}'.format(product, date))
+    #     return data
 
     @timing
     def get_stock_tick_data(self, product, instrument, date):
@@ -101,24 +135,35 @@ class StockTickFactor(Factor):
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         if stock_list and len(stock_list) > 0:
-            for stock in stock_list:
-                if (date + stock) in self._suspend_set:
-                    print('The stock {0} is suspended on {1}'.format(stock, date))
-                    continue
-                print('Handle stock {0}'.format(stock))
-                try:
-                    temp_data = self.get_stock_data(date, stock)
-                except Exception as e:
-                    stock_missing_data = StockMissingData(date, stock)
-                    self._session.add(stock_missing_data)
-                    self._session.commit()
-                    continue
-                temp_data = temp_data.loc[:, columns]
-                temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
-                data = pd.concat([data, temp_data])
+            stock_list = list(filter(lambda stock: (date + stock) not in self._suspend_set, stock_list))
+            stock_date_list = list(map(lambda stock: [instrument, date, stock], stock_list))
+            stock_data_list = ThreadRunner(10).execute(self.get_stock_tick_data_by_stock, stock_date_list)
+            for stock_data in stock_data_list:
+                if len(stock_data) > 0:
+                    data = pd.concat([data, stock_data])
         else:
             print('Stock data is missing for product: {0} and date: {1}'.format(product, date))
         return data
+
+    def get_stock_tick_data_by_stock(self, info):
+        instrument = info[0]
+        date = info[1]
+        stock = info[2]
+        columns = self.get_columns()
+        temp_data = pd.DataFrame(columns=columns)
+        print('Handle stock {0}'.format(stock))
+        try:
+            temp_data = self.get_stock_data(date, stock)
+        except Exception as e:
+            session = create_session()
+            stock_missing_data = StockMissingData(date, stock)
+            session.add(stock_missing_data)
+            session.commit()
+            return temp_data
+        temp_data = temp_data.loc[:, columns]
+        temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
+        return temp_data
+
     @timing
     def get_stock_data(self, date, stock):
         temp_data = self._data_access.access(date, stock)
