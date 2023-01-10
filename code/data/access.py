@@ -55,6 +55,30 @@ class StockDataAccess(DataAccess):
             root_path = STOCK_TICK_ORGANIZED_DATA_PATH
         return root_path + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
 
+class StockDailyDataAccess(StockDataAccess):
+
+    def __init__(self):
+        StockDataAccess.__init__(self, False)
+
+    def access(self, *args):
+        """
+
+        Parameters
+        ----------
+        args: tuple
+            args[0]: date
+            args[1]: tscode
+
+        Returns
+        -------
+
+        """
+        date = args[0]
+        file_path = self.create_stock_tick_data_path(date)
+        date = date.replace('-', '')
+        return read_decompress(file_path + date + '.pkl')
+
 if __name__ == '__main__':
-    print(StockDataAccess().access('20171106', '000021'))
-    print(StockDataAccess(False).access('20171106', '000021'))
+    # print(StockDataAccess().access('20171106', '000021'))
+    # print(StockDataAccess(False).access('20171106', '000021'))
+    print(len(StockDailyDataAccess().access('2020-09-22')))

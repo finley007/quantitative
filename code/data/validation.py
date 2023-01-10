@@ -13,6 +13,7 @@ from common.exception.exception import ValidationFailed, InvalidStatus
 from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment, add_milliseconds_suffix
 from data.process import StockTickDataColumnTransform, StockTickDataCleaner
+from common.persistence.dao import IndexConstituentConfigDao
 
 
 class ValidationResult:
@@ -226,6 +227,14 @@ class StockTickDataValidator(Validator):
         date = data.iloc[0]['date']
         time = data.iloc[0]['time']
         result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-',''))
+        # 检查是否停盘，如果停盘直接终止检查
+        # if 'price' in data.loc[:, (data == 0).all()].columns.tolist():
+        index_constituent_config_dao = IndexConstituentConfigDao()
+        suspend_set = index_constituent_config_dao.get_suspend_list()
+        if (date + tscode[0:6]) in suspend_set:
+            result.result = RESULT_FAIL
+            result.error_details.append('The stock is suspended')
+            return result
         # 检查tick是否完整
         if self._ignore_length_check and len(data) < 4800:
             result.result = RESULT_FAIL
@@ -245,34 +254,30 @@ class StockTickDataValidator(Validator):
         if time_sorted_abstract != volume_sorted_abstract:
             result.result = RESULT_FAIL
             result.error_details.append('The volume has reverse order')
-        # 检查是否停盘
-        if 'price' in data.loc[:, (data == 0).all()].columns.tolist():
-            result.result = RESULT_FAIL
-            result.error_details.append('The stock is suspended')
         # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
-        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))]) > 0:
-            print(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))][['time','price']])
+        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
+            print(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','price']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid price value')
-        # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据
-        check_columns = ['time', 'bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5', 'bid_price6', 'bid_price7', 'bid_price8', 'bid_price9', 'bid_price10',
-                          'bid_volume1', 'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5', 'bid_volume6', 'bid_volume7', 'bid_volume8', 'bid_volume9', 'bid_volume10',
-                          'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10',
-                          'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10']
-        temp_data = data[check_columns]
-        temp_data = temp_data[(temp_data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (temp_data['time'] < add_milliseconds_suffix(STOCK_CLOSE_CALL_AUACTION_START_TIME))]
-        for i in range(len(check_columns)):
-            if i > 0:
-                if 0 in temp_data[check_columns[i]].tolist():
-                    index = temp_data[check_columns[i]].tolist().index(0)
-                    print(temp_data.iloc[index][check_columns])
-                    result.result = RESULT_FAIL
-                    result.error_details.append('Invalid {0} value'.format(check_columns[i]))
+        # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据 - 不需要这个检查
+        # check_columns = ['time', 'bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5', 'bid_price6', 'bid_price7', 'bid_price8', 'bid_price9', 'bid_price10',
+        #                   'bid_volume1', 'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5', 'bid_volume6', 'bid_volume7', 'bid_volume8', 'bid_volume9', 'bid_volume10',
+        #                   'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10',
+        #                   'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10']
+        # temp_data = data[check_columns]
+        # temp_data = temp_data[(temp_data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (temp_data['time'] < add_milliseconds_suffix(STOCK_CLOSE_CALL_AUACTION_START_TIME))]
+        # for i in range(len(check_columns)):
+        #     if i > 0:
+        #         if 0 in temp_data[check_columns[i]].tolist():
+        #             index = temp_data[check_columns[i]].tolist().index(0)
+        #             print(temp_data.iloc[index][check_columns])
+        #             result.result = RESULT_FAIL
+        #             result.error_details.append('Invalid {0} value'.format(check_columns[i]))
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))]) > 0:
+               & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
             print(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME))][['time','open','close','high','low']])
+               & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','open','close','high','low']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result
@@ -566,7 +571,7 @@ if __name__ == '__main__':
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
-    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201705\\20170526\\603328.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201809\\20180913\\600155.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
     data = StockTickDataCleaner().process(data)

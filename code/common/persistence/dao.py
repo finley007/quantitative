@@ -26,7 +26,12 @@ class IndexConstituentConfigDao(BaseDao):
         """
         result_list = self._session.execute('select distinct date from index_constituent_config where tscode = :tscode and status = 0 order by date', {'tscode' : tscode}).fetchall()
         result_list = list(map(lambda date: date[0], result_list))
-        return result_list
+        return
+
+    def get_suspend_list(self):
+        suspend_list = self._session.execute(
+            'select distinct date, tscode from index_constituent_config where status = 1').fetchall()
+        return set(list(map(lambda suspend: suspend[0] + suspend[1], suspend_list)))
 
 class FactorConfigDao(BaseDao):
 

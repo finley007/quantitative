@@ -13,6 +13,7 @@ from data.process import StockTickDataColumnTransform
 from data.access import StockDataAccess
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockMissingData
+from common.persistence.dao import IndexConstituentConfigDao
 from common.aop import timing
 from framework.localconcurrent import ThreadRunner
 
@@ -82,9 +83,8 @@ class StockTickFactor(Factor):
             'IF' : self._stocks_abstract_300
         }
         self._data_access = StockDataAccess(False)
-        session = create_session()
-        suspend_list = session.execute('select distinct date, tscode from index_constituent_config where status = 1').fetchall()
-        self._suspend_set = set(list(map(lambda suspend : suspend[0] + suspend[1], suspend_list)))
+        index_constituent_config_dao = IndexConstituentConfigDao()
+        self._suspend_set = index_constituent_config_dao.get_suspend_list()
 
     # @timing
     # def get_stock_tick_data(self, product, instrument, date):

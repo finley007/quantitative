@@ -121,6 +121,17 @@ def compare_future_tick_data(exclude_product=[], exclude_instument=[], include_i
 
 # @time
 def validate_stock_tick_data(validate_code, include_year_list=[]):
+    """
+    检查股票数据
+    Parameters
+    ----------
+    validate_code： string 一次批量检查的唯一标识
+    include_year_list：list 年过滤条件
+
+    Returns
+    -------
+
+    """
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
@@ -141,6 +152,20 @@ def validate_stock_tick_data(validate_code, include_year_list=[]):
     # time.sleep(100000)
 
 def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_folder):
+    """
+    按月检查股票数据，主要为了多进程并行执行
+
+    Parameters
+    ----------
+    validate_code
+    checked_set
+    year_folder
+    month_folder
+
+    Returns
+    -------
+
+    """
     session = create_session()
     data_length_threshold = 100
     date_folder_list = list_files_in_path(
@@ -176,6 +201,20 @@ def validate_stock_tick_by_month(validate_code, checked_set, year_folder, month_
                 print("{0} {1} has been handled".format(date, stock))
 
 def enrich_stock_tick_data(process_code, include_year_list=[], include_month_list=[], include_date_list=[], include_stock_list=[]):
+    """
+    处理股票数据，从original数据集生成organized数据集
+    Parameters
+    ----------
+    process_code：string 一次批量处理的唯一标识
+    include_year_list：list 年过滤
+    include_month_list：list 月过滤
+    include_date_list：list 日过滤
+    include_stock_list：list 股票过滤
+
+    Returns
+    -------
+
+    """
     runner = ProcessRunner(20)
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_process_record where process_code = :pcode', {'pcode': process_code})
@@ -195,13 +234,27 @@ def enrich_stock_tick_data(process_code, include_year_list=[], include_month_lis
             elif len(include_month_list) > 0 and months.group()[4:] not in include_month_list:
                 continue
             # enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder)
-            runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list,
-                                            year_folder, month_folder))
+            runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder))
     time.sleep(100000)
 
 
 def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list,
                                     year_folder, month_folder):
+    """
+    按月处理股票数据，主要是为了多进程并行执行
+    Parameters
+    ----------
+    checked_set
+    process_code
+    include_date_list
+    include_stock_list
+    year_folder
+    month_folder
+
+    Returns
+    -------
+
+    """
     data_length_threshold = 100
     session = create_session()
     date_folder_list = list_files_in_path(
@@ -254,6 +307,76 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
             else:
                 print("{0} {1} has been handled".format(date, stock))
 
+def combine_stock_tick_data(process_code, include_year_list=[], include_month_list=[], include_date_list=[]):
+    """
+    按天合并股票数据
+
+    Parameters
+    ----------
+    process_code
+    include_year_list
+    include_month_list
+    include_date_list
+
+    Returns
+    -------
+
+    """
+    runner = ProcessRunner(20)
+    session = create_session()
+    checked_list = session.execute('select concat(date, tscode) from stock_process_record where process_code = :pcode', {'pcode': process_code})
+    checked_set = set(map(lambda item: item[0], checked_list))
+    year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
+    for year_folder in year_folder_list:
+        years = re.search('[0-9]{4}', year_folder)
+        if not years:
+            continue
+        elif len(include_year_list) > 0 and years.group() not in include_year_list:
+            continue
+        month_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        for month_folder in month_folder_list:
+            months = re.search('[0-9]{6}', month_folder)
+            if not months:
+                continue
+            elif len(include_month_list) > 0 and months.group()[4:] not in include_month_list:
+                continue
+            combine_stock_tick_data_by_month(checked_set, process_code, include_date_list, year_folder, month_folder)
+            # runner.execute(combine_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, year_folder, month_folder))
+    # time.sleep(100000)
+
+def combine_stock_tick_data_by_month(checked_set, process_code, include_date_list,  year_folder, month_folder):
+    default_tscode = '000000'
+    session = create_session()
+    date_folder_list = list_files_in_path(
+        STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    for date in date_folder_list:
+        if date + default_tscode not in checked_set:
+            days = re.search('[0-9]{8}', date)
+            if not days:
+                continue
+            elif len(include_date_list) > 0 and days.group()[6:] not in include_date_list:
+                continue
+            stock_file_list = list_files_in_path(
+                STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+            stock_file_list.sort()
+            combined_data = pd.DataFrame()
+            for stock in stock_file_list:
+                stocks = re.search('[0-9]{6}', stock)
+                if not stocks:
+                    continue
+                try :
+                    organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
+                    data = read_decompress(organized_stock_file_path)
+                except Exception as e:
+                    print('Load file: {0} error'.format(original_stock_file_path))
+                    continue
+                combined_data = pd.concat([combined_data, data])
+            save_compress(combined_data, STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + date + '.pkl')
+            stock_process_record = StockProcessRecord(process_code, default_tscode, date, 0)
+            session.add(stock_process_record)
+            session.commit()
+        else:
+            print("{0} has been combined".format(date))
 
 @timing
 def create_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
@@ -616,13 +739,16 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    # enrich_stock_tick_data('20221111-finley-2',['2022'],['06'],['17'],['000333'])
+    # enrich_stock_tick_data('20221111-finley-2',['2018'],['09'],['12'],['600155'])
+
+    #合并股票数据
+    combine_stock_tick_data('20230109-finley-1',['2020'],['09'],['22'])
 
     # 检查stock数据
     #初始化表
     # init_index_constituent_config()
     #核对文件数量
-    create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
+    # create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
     #检查原始股票数据
     # validate_stock_data_integrity_check()
     #检查已处理股票数据

@@ -13,7 +13,7 @@ from common import constants
 from common.aop import timing
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME
 from common.localio import read_decompress, save_compress
-from common.timeutils import datetime_advance, date_alignment, time_carry, time_advance
+from common.timeutils import datetime_advance, date_alignment, time_carry, time_advance, add_milliseconds_suffix
 from data.analysis import FutureTickerHandler, StockTickerHandler
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -221,6 +221,20 @@ class StockTickDataEnricher(DataProcessor):
     @timing
     def process(self, data):
         pre_data = data[data['time'] < STOCK_TRANSACTION_START_TIME]
+
+        print(data[['time', 'price', 'open', 'high', 'low', 'close']])
+        #处理开盘数据缺失
+        last_close = data[data['close'] > 0].iloc[0]['close']
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['price'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['price'] == 0), 'price'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['open'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['open'] == 0), 'open'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['high'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['high'] == 0), 'high'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['low'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['low'] == 0), 'low'] = last_close
+
+        print(data[['time','price','open','high','low','close']])
 
         #对齐
         data = data[data['time'] >= STOCK_TRANSACTION_START_TIME]
