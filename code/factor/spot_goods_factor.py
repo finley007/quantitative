@@ -10,7 +10,10 @@ from common.localio import read_decompress, save_compress
 from common.aop import timing
 from common.visualization import draw_analysis_curve
 from common.timeutils import get_last_or_next_trading_date
+from framework.pagination import Pagination
 from data.access import StockDataAccess
+from framework.localconcurrent import ProcessRunner
+from common.log import get_logger
 
 """现货类因子
 分类编号：02
@@ -49,20 +52,41 @@ class TotalCommissionRatioFactor(StockTickFactor):
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
-        for date in date_list:
-            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-            stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
-            stock_data_per_date['ask_commission_amount'] = stock_data_per_date['total_ask_volume'] * stock_data_per_date['weighted_average_ask_price']
-            stock_data_per_date['bid_commission_amount'] = stock_data_per_date['total_bid_volume'] * stock_data_per_date['weighted_average_bid_price']
-            stock_data_per_date['total_commission_amount'] = stock_data_per_date['ask_commission_amount'] + stock_data_per_date['bid_commission_amount']
-            stock_data_per_date[self.get_key()] = stock_data_per_date.apply(lambda x: 0 if x['total_commission_amount'] == 0 else x['ask_commission_amount']/x['total_commission_amount'], axis=1)
-            stock_data_per_date = stock_data_per_date.rename(columns={'time':'cur_time'})
-            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_key()].mean()
-            df_stock_data_per_date = pd.DataFrame({self.get_key() : stock_data_per_date_group_by, 'time' : stock_data_per_date_group_by.index})
-            #过滤对齐在3秒线的数据
-            cur_date_data = self.merge_with_stock_data(data, date, df_stock_data_per_date)
-            new_data = pd.concat([new_data, cur_date_data])
+        pagination = Pagination(date_list, page_size=20)
+        runner = ProcessRunner(10)
+        while pagination.has_next():
+            date_list = pagination.next()
+            for date in date_list:
+                runner.execute(self.caculate_by_date, args=(date, instrument, product))
+            results = runner.get_results()
+            temp_cache = {}
+            for result in results:
+                result_data = result.get()
+                cur_date_data = self.merge_with_stock_data(data, result_data[0], result_data[1])
+                temp_cache[result_data[0]] = cur_date_data
+            for date in date_list:
+                new_data = pd.concat([new_data, temp_cache[date]])
         return new_data
+
+    def caculate_by_date(self, date, instrument, product):
+        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+        stock_data_per_date['ask_commission_amount'] = stock_data_per_date['total_ask_volume'] * stock_data_per_date[
+            'weighted_average_ask_price']
+        stock_data_per_date['bid_commission_amount'] = stock_data_per_date['total_bid_volume'] * stock_data_per_date[
+            'weighted_average_bid_price']
+        stock_data_per_date['total_commission_amount'] = stock_data_per_date['ask_commission_amount'] + \
+                                                         stock_data_per_date['bid_commission_amount']
+        stock_data_per_date[self.get_key()] = stock_data_per_date.apply(
+            lambda x: 0 if x['total_commission_amount'] == 0 else x['ask_commission_amount'] / x[
+                'total_commission_amount'], axis=1)
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_key()].mean()
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by, 'time': stock_data_per_date_group_by.index})
+        # 过滤对齐在3秒线的数据
+        return date, df_stock_data_per_date
 
 
 class TenGradeCommissionRatioFactor(StockTickFactor):
@@ -878,7 +902,7 @@ if __name__ == '__main__':
     t = time.perf_counter()
     data = TotalCommissionRatioFactor().caculate(data)
     print(f'cost time: {time.perf_counter() - t:.8f} s')
-    save_compress(data, 'E:\\data\\test\\IF1803.single3.pkl')
+    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.pkl')
     print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
