@@ -18,6 +18,7 @@ FUTURE_TICK_ORGANIZED_DATA_PATH = 'E:\\data\\' + 'organized' + os.path.sep + 'fu
 STOCK_TICK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/tick/'
 STOCK_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + '/temp/stock/tick/'
 STOCK_TICK_ORGANIZED_DATA_PATH = 'E:\\data\\' + 'organized' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
+STOCK_TICK_COMBINED_DATA_PATH = 'G:\\data\\' + 'organized' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
 TEMP_PATH = config.get('common', 'data_path') + os.path.sep + 'temp' + os.path.sep
 # TEST_PATH = config.get('common', 'data_path') + os.path.sep + 'test' + os.path.sep
 TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep

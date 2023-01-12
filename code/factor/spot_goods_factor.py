@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
 import pandas as pd
+import time
 from memory_profiler import profile
 
 from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor
@@ -874,8 +875,10 @@ if __name__ == '__main__':
     print(total_commision.get_category())
     print(total_commision.get_full_name())
 
+    t = time.perf_counter()
     data = TotalCommissionRatioFactor().caculate(data)
-    save_compress(data, 'E:\\data\\test\\IF1803.concurrent.10.1.pkl')
+    print(f'cost time: {time.perf_counter() - t:.8f} s')
+    save_compress(data, 'E:\\data\\test\\IF1803.single3.pkl')
     print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]

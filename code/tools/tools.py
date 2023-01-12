@@ -10,7 +10,7 @@ import pandas as pd
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL, STOCK_TICK_COMBINED_DATA_PATH
 from common.crawler import StockInfoCrawler
 from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter
 from common.persistence.dbutils import create_session
@@ -322,7 +322,7 @@ def combine_stock_tick_data(process_code, include_year_list=[], include_month_li
     -------
 
     """
-    runner = ProcessRunner(20)
+    runner = ProcessRunner(10)
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_process_record where process_code = :pcode', {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
@@ -368,10 +368,13 @@ def combine_stock_tick_data_by_month(checked_set, process_code, include_date_lis
                     organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress(organized_stock_file_path)
                 except Exception as e:
-                    print('Load file: {0} error'.format(original_stock_file_path))
+                    print('Load file: {0} error'.format(organized_stock_file_path))
                     continue
                 combined_data = pd.concat([combined_data, data])
-            save_compress(combined_data, STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + date + '.pkl')
+            date_path = STOCK_TICK_COMBINED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date
+            if not os.path.exists(date_path):
+                os.makedirs(date_path)
+            save_compress(combined_data, date_path + os.path.sep + date + '.pkl')
             stock_process_record = StockProcessRecord(process_code, default_tscode, date, 0)
             session.add(stock_process_record)
             session.commit()
@@ -739,10 +742,10 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    # enrich_stock_tick_data('20221111-finley-2',['2018'],['09'],['12'],['600155'])
+    # enrich_stock_tick_data('20221111-finley-2',['2018'],['10'],['10'],['600705'])
 
     #合并股票数据
-    combine_stock_tick_data('20230109-finley-1',['2020'],['09'],['22'])
+    combine_stock_tick_data('20230109-finley-1',['2018'],['08', '09', '10'])
 
     # 检查stock数据
     #初始化表
