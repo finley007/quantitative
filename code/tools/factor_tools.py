@@ -10,6 +10,7 @@ from common.persistence.dbutils import create_session
 from common.constants import FACTOR_TYPE_DETAILS
 from common.reflection import get_all_class, create_instance
 from factor.factor_caculator import FactorCaculator
+from common.log import get_logger
 
 def create_factor_files(factor_list=[]):
     """
@@ -29,7 +30,7 @@ def create_factor_files(factor_list=[]):
     if len(factor_list) > 0:
         all_factors = list(filter(lambda po: po.get_full_name() in factor_list, all_factors))
     for factor_po in all_factors:
-        print('Create factor file for {0}'.format(factor_po.get_full_name()))
+        get_logger().info('Create factor file for {0}'.format(factor_po.get_full_name()))
         module_name = FACTOR_TYPE_DETAILS[factor_po.type]['package']
         all_class = get_all_class(module_name)
         filter_class = list(filter(lambda clz: module_name in str(clz), all_class))
@@ -49,7 +50,6 @@ def create_factor_files(factor_list=[]):
                     factor_operation_history = FactorOperationHistory(factor.get_full_name(), 1, 0, time_cost, str(e))
                     session.add(factor_operation_history)
                     session.commit()
-
 
 
 def init_factor_list():

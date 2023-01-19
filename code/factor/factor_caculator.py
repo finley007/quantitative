@@ -14,6 +14,9 @@ from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor
+from common.log import get_logger
+from framework.pagination import Pagination
+from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 
 class FactorCaculator():
     """因子文件生成类
@@ -24,9 +27,8 @@ class FactorCaculator():
 
     _manually_check_file_count = 10
 
-    # @timing
-    def caculate(self, factor_list
-                 ):
+    @timing
+    def caculate(self, factor_list, include_instrument_list=[]):
         '''
         生成因子文件
 
@@ -46,32 +48,62 @@ class FactorCaculator():
             # factor_data = pd.DataFrame(columns=columns)
             factor_data = pd.DataFrame()
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
-            for instrument in instrument_list:
-                target_instrument_file = FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[
-                    0] + '.pkl'
-                print('Handle instrument: {0} for file: {1}'.format(instrument[0], target_instrument_file))
-                data = read_decompress(target_instrument_file)
-                print(len(data))
-                data['date'] = data['datetime'].str[0:10]
-                data['product'] = product
-                data['instrument'] = instrument[0]
-                for factor in factor_list:
-                    data = factor.caculate(data)
-                #截取主力合约区间
-                date_range = session.execute(
-                    'select min(date), max(date) from future_instrument_config where product = :product and instrument = :instrument and is_main = 0',
-                    {'product': product, 'instrument': instrument[0]})
-                if date_range.rowcount > 0:
-                    date_range_query_result = date_range.fetchall()
-                    start_date = date_range_query_result[0][0]
-                    end_date = date_range_query_result[0][1]
-                    data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
-                    factor_data = pd.concat([factor_data, data])
+            instrument_list = list(filter(lambda instrument:len(include_instrument_list) > 0 and instrument[0] in include_instrument_list, instrument_list))
+            instrument_list = list(map(lambda instrument: instrument[0], instrument_list))
+            pagination = Pagination(instrument_list, page_size=10)
+            while pagination.has_next():
+                sub_instrument_list = pagination.next()
+                params_list = list(map(lambda instrument: [factor_list, instrument, product], sub_instrument_list ))
+                results = ProcessExcecutor(3).execute(self.caculate_by_instrument, params_list)
+                temp_cache = {}
+                for result in results:
+                    temp_cache[result[0]] = result[1]
+                for instrument in sub_instrument_list:
+                    factor_data = pd.concat([factor_data, temp_cache[instrument]])
             factor_data = factor_data.reset_index()
-            target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
+            # target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
+            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
+            target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list)))
-            print('Save factor file: {0}'.format(target_factor_file))
+            get_logger().info('Save factor file: {0}'.format(target_factor_file))
             save_compress(factor_data, target_factor_file)
+    def caculate_by_instrument(self, *args):
+        """
+        按合约计算因子值，主要为了并行化
+
+        Parameters
+        ----------
+        factor_list
+        instrument
+        product
+        session
+
+        Returns
+        -------
+
+        """
+        factor_list = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
+        session = create_session()
+        target_instrument_file = FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl'
+        get_logger().info('Handle instrument: {0} for file: {1}'.format(instrument, target_instrument_file))
+        data = read_decompress(target_instrument_file)
+        data['date'] = data['datetime'].str[0:10]
+        data['product'] = product
+        data['instrument'] = instrument
+        for factor in factor_list:
+            data = factor.caculate(data)
+        # 截取主力合约区间
+        date_range = session.execute(
+            'select min(date), max(date) from future_instrument_config where product = :product and instrument = :instrument and is_main = 0',
+            {'product': product, 'instrument': instrument})
+        if date_range.rowcount > 0:
+            date_range_query_result = date_range.fetchall()
+            start_date = date_range_query_result[0][0]
+            end_date = date_range_query_result[0][1]
+            data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
+        return instrument, data
 
     @timing
     def caculate_manually_check(self, factor):
@@ -144,7 +176,8 @@ if __name__ == '__main__':
     # factor_list = [william_factor]
     total_commission_ratio_factor = TotalCommissionRatioFactor()
     factor_list = [total_commission_ratio_factor]
-    FactorCaculator().caculate(factor_list)
+    # FactorCaculator().caculate(factor_list, ['IF1810','IF1811'])
+    FactorCaculator().caculate(factor_list, ['IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'])
 
     #生成因子比对文件
     # william_factor = WilliamFactor([10])

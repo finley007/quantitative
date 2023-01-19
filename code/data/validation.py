@@ -14,6 +14,7 @@ from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment, add_milliseconds_suffix
 from data.process import StockTickDataColumnTransform, StockTickDataCleaner
 from common.persistence.dao import IndexConstituentConfigDao
+from common.log import get_logger
 
 
 class ValidationResult:
@@ -252,11 +253,13 @@ class StockTickDataValidator(Validator):
         volume_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), volume_sorted_list))).encode('gbk')).hexdigest()
         if time_sorted_abstract != volume_sorted_abstract:
+            data['accumulated_volume_change'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
+            get_logger().debug(data[data['accumulated_volume_change'] < 0][['time','accumulated_volume_change']])
             result.result = RESULT_FAIL
             result.error_details.append('The volume has reverse order')
         # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
         if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
-            print(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','price']])
+            get_logger().debug(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','price']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid price value')
         # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据 - 不需要这个检查
@@ -276,7 +279,7 @@ class StockTickDataValidator(Validator):
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
                & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
-            print(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
+            get_logger().debug(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
                & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','open','close','high','low']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
@@ -571,7 +574,9 @@ if __name__ == '__main__':
     # FutureTickDataValidator().compare_validate(target_data, compare_data, 'IF1705')
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
-    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201809\\20180913\\600155.pkl'
+    # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201809\\20180913\\600155.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210722\\688599.pkl'
+    # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202108\\20210803\\600787.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
     data = StockTickDataCleaner().process(data)

@@ -12,7 +12,7 @@ from common.visualization import draw_analysis_curve
 from common.timeutils import get_last_or_next_trading_date
 from framework.pagination import Pagination
 from data.access import StockDataAccess
-from framework.localconcurrent import ProcessRunner
+from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 from common.log import get_logger
 
 """现货类因子
@@ -53,22 +53,22 @@ class TotalCommissionRatioFactor(StockTickFactor):
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
         pagination = Pagination(date_list, page_size=20)
-        runner = ProcessRunner(10)
         while pagination.has_next():
             date_list = pagination.next()
-            for date in date_list:
-                runner.execute(self.caculate_by_date, args=(date, instrument, product))
-            results = runner.get_results()
+            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            results = ProcessExcecutor(8).execute(self.caculate_by_date, params_list)
             temp_cache = {}
             for result in results:
-                result_data = result.get()
-                cur_date_data = self.merge_with_stock_data(data, result_data[0], result_data[1])
-                temp_cache[result_data[0]] = cur_date_data
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
             for date in date_list:
                 new_data = pd.concat([new_data, temp_cache[date]])
         return new_data
 
-    def caculate_by_date(self, date, instrument, product):
+    def caculate_by_date(self, *args):
+        date = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
         get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
         stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
@@ -902,7 +902,7 @@ if __name__ == '__main__':
     t = time.perf_counter()
     data = TotalCommissionRatioFactor().caculate(data)
     print(f'cost time: {time.perf_counter() - t:.8f} s')
-    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.pkl')
+    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.new.pkl')
     print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
     data.index = pd.DatetimeIndex(data['datetime'])
     data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]

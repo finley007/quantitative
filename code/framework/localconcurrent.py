@@ -3,7 +3,7 @@
 import os
 import time
 from multiprocessing import Pool
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 
 from common.aop import timing
 
@@ -35,6 +35,24 @@ class ProcessRunner():
 
     def get_results(self):
         return self._results
+
+class ProcessExcecutor():
+    """
+    异步进程执行框架2
+    """
+
+    def __init__(self, pool_size, is_async=True):
+        print('Init process executor for {0}'.format(pool_size))
+        self._pool_size = pool_size
+
+    def execute(self, task, list):
+        with ProcessPoolExecutor(max_workers=self._pool_size) as executor:
+            ans = [executor.submit(task, i) for i in list]
+            results = []
+            for res in as_completed(ans):
+                results.append(res.result())
+            return results
+
 
 class ThreadRunner():
     """
@@ -73,7 +91,7 @@ if __name__ == '__main__':
     # print(runner.execute(worker, args=('e', 'E')))
     # print(runner.execute(worker, args=('f', 'F')))
     # runner.close()
-
+    #
     # runner = ProcessRunner(5)
     # runner.execute(worker, args=('a', 'A'))
     # runner.execute(worker, args=('b', 'B'))
@@ -86,6 +104,8 @@ if __name__ == '__main__':
     #     print(result.get())
     # runner.close()
 
+    print(ProcessExcecutor(5).execute(task, [0,1,2,3,4,5,6,7,8,9]))
+
     # 多线程测试
-    print(ThreadRunner(5).execute(task, [0,1,2,3,4,5,6,7,8,9]))
+    # print(ThreadRunner(5).execute(task, [0,1,2,3,4,5,6,7,8,9]))
 

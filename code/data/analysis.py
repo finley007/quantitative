@@ -19,6 +19,9 @@ from framework.localconcurrent import ProcessRunner
 from common.aop import timing
 
 class FileNameHandler(metaclass = ABCMeta):
+    """
+    文件名称处理接口
+    """
     
     @classmethod
     @abstractmethod
@@ -31,6 +34,9 @@ class FileNameHandler(metaclass = ABCMeta):
         pass
     
 class FutureTickerHandler(FileNameHandler):
+    """
+    期货tick数据文件名称处理，有前缀CFFEX
+    """
     
     PREFIX = 'CFFEX.'
     
@@ -42,6 +48,9 @@ class FutureTickerHandler(FileNameHandler):
 
 
 class StockTickerHandler(FileNameHandler):
+    """
+    股票tick数据文件名称处理：sz000333_20220616.csv
+    """
 
     def __init__(self, date):
         self._date = date

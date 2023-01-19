@@ -98,9 +98,12 @@ factor_caculate级别并行化
   按股指的的思路分成两步：
   1. 因子按合约计算中间结果，保存为临时文件
   2. 拼接临时文件
-
-
-
+10个合约：'IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'
+g. 串行执行：3375.20317620 s
+AssertionError: daemonic processes are not allowed to have children
+h. 并行执行3 * 6：2965.52812560 s
+   并行执行2 * 10：2894.79140340 s
+   并行执行3 * 8
 
 
 
