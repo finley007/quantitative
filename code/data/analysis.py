@@ -5,18 +5,21 @@ import os
 import sys
 import re
 import time
+from abc import ABCMeta, abstractmethod
+import pandas as pd
+import numpy as np
+
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir)
 from common import constants
-from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_ORGANIZED_DATA_PATH
+from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_END_TIME
 from common import localio
 from common.localio import read_decompress, list_files_in_path, save_compress
-from abc import ABCMeta, abstractmethod
-import pandas as pd
 from data.access import StockDataAccess
 from framework.localconcurrent import ProcessRunner
 from common.aop import timing
+from common.timeutils import add_milliseconds_suffix
 
 class FileNameHandler(metaclass = ABCMeta):
     """
@@ -220,7 +223,7 @@ class FutrueOrganizedDataStatisticProducer(FutrueDataStatisticProducer):
         return read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + file)
 
 @timing
-def traverse_stock_data(interface, is_async=True, check_original=True):
+def traverse_stock_data(interface, is_async=True, check_original=True,  include_year_list=[], include_month_list=[], include_date_list=[], include_stock_list=[]):
     """
     遍历股票数据
 
@@ -247,18 +250,27 @@ def traverse_stock_data(interface, is_async=True, check_original=True):
         year = re.search('[0-9]{4}', year_folder)
         if not year:
             continue
+        elif len(include_year_list) > 0 and year.group() not in include_year_list:
+            continue
         if is_async:
-            process_runner.execute(handle_by_year, args=(root_path, year_folder, interface))
+            process_runner.execute(handle_by_year, args=(root_path, year_folder, interface, include_month_list, include_date_list, include_stock_list))
         else:
-            traverse_results = traverse_results + list(set(handle_by_year(root_path, year_folder, interface)))
+            result_list = handle_by_year(root_path, year_folder, interface, include_month_list, include_date_list, include_stock_list)
+            try:
+                traverse_results = traverse_results + list(set(result_list))
+            except Exception as e:
+                traverse_results = traverse_results + result_list
     if is_async:
         results = process_runner.get_results()
         for result in results:
-            traverse_results = traverse_results + list(set(result.get()))
+            try:
+                traverse_results = traverse_results + list(set(result.get()))
+            except Exception as e:
+                traverse_results = traverse_results + result.get()
         process_runner.close()
     return traverse_results
 
-def handle_by_year(root_path, year_folder, interface):
+def handle_by_year(root_path, year_folder, interface, include_month_list=[], include_date_list=[], include_stock_list=[]):
     """
     按年执行查询逻辑，主要是并发多进程执行
 
@@ -281,6 +293,8 @@ def handle_by_year(root_path, year_folder, interface):
         month = re.search('[0-9]{6}', month_folder)
         if not month:
             continue
+        elif len(include_month_list) > 0 and month.group()[4:] not in include_month_list:
+            continue
         month_folder_path = root_path + year_folder + os.path.sep + month_folder
         date_list = list_files_in_path(month_folder_path)
         date_list.sort()
@@ -288,9 +302,13 @@ def handle_by_year(root_path, year_folder, interface):
             date_regex = re.match('[0-9]{8}', date)
             if not date_regex:
                 continue
+            elif len(include_date_list) > 0 and date_regex.group()[6:] not in include_date_list:
+                continue
             stock_list = list_files_in_path(month_folder_path + os.path.sep + date)
             for stock in stock_list:
                 tscode = stock.split('.')[0]
+                if len(include_stock_list) > 0 and tscode not in include_stock_list:
+                    continue
                 print('Handle {0} {1}'.format(date, tscode))
                 try:
                     data = data_access.access(date, tscode)
@@ -299,7 +317,10 @@ def handle_by_year(root_path, year_folder, interface):
                     continue
                 result = interface.operate(data)
                 if result:
-                    results.append(result)
+                    if isinstance(result, list):
+                        results = results + result
+                    else:
+                        results.append(result)
                     if interface.is_search_mode(): #查询模式下立刻返回结果
                         return results
     return results
@@ -369,6 +390,29 @@ class StockClosingCallAuctionTimeSearch(StockDataTraversalInterface):
         return True
 
 
+class StockVolumeAfterCloseTimeSearch(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        查找收盘事件之后所有成交量不为0的记录
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if len(data) > 0:
+            try:
+                data = data[(data['成交量'] > 0) & (data['时间'] >= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))][['交易所代码','自然日','时间','成交量','成交额','成交笔数','当日累计成交量']]
+                if len(data) > 0:
+                    return np.array(data).tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
 
 if __name__ == '__main__':
     # print(get_instrument_by_product('IF'))
@@ -382,4 +426,5 @@ if __name__ == '__main__':
     # FutrueDataStatisticProducer().produce()
     # FutrueOrganizedDataStatisticProducer().produce()
     # print(traverse_stock_data(StockClosingCallAuctionAnalysis()))
-    print(traverse_stock_data(StockClosingCallAuctionTimeSearch()))
+    # print(traverse_stock_data(StockClosingCallAuctionTimeSearch()))
+    pd.DataFrame(traverse_stock_data(StockVolumeAfterCloseTimeSearch())).to_csv('E:\\data\\test\\volume_after_close_time.csv')

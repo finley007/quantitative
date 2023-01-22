@@ -13,7 +13,7 @@ from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
-from factor.spot_goods_factor import TotalCommissionRatioFactor
+from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor
 from common.log import get_logger
 from framework.pagination import Pagination
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
@@ -47,24 +47,24 @@ class FactorCaculator():
         for product in STOCK_INDEX_PRODUCTS:
             # factor_data = pd.DataFrame(columns=columns)
             factor_data = pd.DataFrame()
-            instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product})
-            instrument_list = list(filter(lambda instrument:len(include_instrument_list) > 0 and instrument[0] in include_instrument_list, instrument_list))
+            instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product}).fetchall()
+            instrument_list = list(filter(lambda instrument : len(include_instrument_list) == 0 or instrument[0] in include_instrument_list, instrument_list))
             instrument_list = list(map(lambda instrument: instrument[0], instrument_list))
             pagination = Pagination(instrument_list, page_size=10)
             while pagination.has_next():
                 sub_instrument_list = pagination.next()
                 params_list = list(map(lambda instrument: [factor_list, instrument, product], sub_instrument_list ))
-                results = ProcessExcecutor(3).execute(self.caculate_by_instrument, params_list)
+                results = ProcessExcecutor(2).execute(self.caculate_by_instrument, params_list)
                 temp_cache = {}
                 for result in results:
                     temp_cache[result[0]] = result[1]
                 for instrument in sub_instrument_list:
                     factor_data = pd.concat([factor_data, temp_cache[instrument]])
             factor_data = factor_data.reset_index()
-            # target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
-            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
-            target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+            target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list)))
+            # target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
             get_logger().info('Save factor file: {0}'.format(target_factor_file))
             save_compress(factor_data, target_factor_file)
     def caculate_by_instrument(self, *args):
@@ -174,10 +174,13 @@ if __name__ == '__main__':
     #因子计算
     # william_factor = WilliamFactor()
     # factor_list = [william_factor]
-    total_commission_ratio_factor = TotalCommissionRatioFactor()
-    factor_list = [total_commission_ratio_factor]
+    # total_commission_ratio_factor = TotalCommissionRatioFactor()
+    # factor_list = [total_commission_ratio_factor]
+    ten_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
+    factor_list = [ten_grade_commission_ratio_factor]
+    FactorCaculator().caculate(factor_list)
     # FactorCaculator().caculate(factor_list, ['IF1810','IF1811'])
-    FactorCaculator().caculate(factor_list, ['IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'])
+    # FactorCaculator().caculate(factor_list, ['IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'])
 
     #生成因子比对文件
     # william_factor = WilliamFactor([10])

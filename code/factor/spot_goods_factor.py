@@ -124,20 +124,41 @@ class TenGradeCommissionRatioFactor(StockTickFactor):
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
-        for date in date_list:
-            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-            stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
-            stock_data_per_date['10_grade_ask_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
-            stock_data_per_date['10_grade_bid_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
-            stock_data_per_date['10_grade_total_commission_amount'] = stock_data_per_date['10_grade_ask_commission_amount'] + stock_data_per_date['10_grade_bid_commission_amount']
-            stock_data_per_date[self.get_key()] = stock_data_per_date.apply(lambda x: 0 if x['10_grade_total_commission_amount'] == 0 else x['10_grade_ask_commission_amount']/x['10_grade_total_commission_amount'], axis=1)
-            stock_data_per_date = stock_data_per_date.rename(columns={'time':'cur_time'})
-            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_key()].mean()
-            df_stock_data_per_date = pd.DataFrame({self.get_key() : stock_data_per_date_group_by, 'time' : stock_data_per_date_group_by.index})
-            # #过滤对齐在3秒线的数据
-            cur_date_data = self.merge_with_stock_data(data, date, df_stock_data_per_date)
-            new_data = pd.concat([new_data, cur_date_data])
+        pagination = Pagination(date_list, page_size=20)
+        while pagination.has_next():
+            date_list = pagination.next()
+            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
+            temp_cache = {}
+            for result in results:
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
+            for date in date_list:
+                new_data = pd.concat([new_data, temp_cache[date]])
         return new_data
+
+    def caculate_by_date(self, *args):
+        date = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
+        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+        stock_data_per_date['10_grade_ask_commission_amount'] = stock_data_per_date.apply(
+            lambda item: self.amount_sum(item, 'ask'), axis=1)
+        stock_data_per_date['10_grade_bid_commission_amount'] = stock_data_per_date.apply(
+            lambda item: self.amount_sum(item, 'bid'), axis=1)
+        stock_data_per_date['10_grade_total_commission_amount'] = stock_data_per_date[
+                                                                      '10_grade_ask_commission_amount'] + \
+                                                                  stock_data_per_date['10_grade_bid_commission_amount']
+        stock_data_per_date[self.get_key()] = stock_data_per_date.apply(
+            lambda x: 0 if x['10_grade_total_commission_amount'] == 0 else x['10_grade_ask_commission_amount'] / x[
+                '10_grade_total_commission_amount'], axis=1)
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_key()].mean()
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by, 'time': stock_data_per_date_group_by.index})
+        return date, df_stock_data_per_date
 
     def amount_sum(self, item, type):
         sum = 0
@@ -892,35 +913,38 @@ if __name__ == '__main__':
     print(data.columns)
 
     #总委比因子
-    total_commision = TotalCommissionRatioFactor()
-    print(total_commision.factor_code)
-    print(total_commision.version)
-    print(total_commision.get_params())
-    print(total_commision.get_category())
-    print(total_commision.get_full_name())
-
-    t = time.perf_counter()
-    data = TotalCommissionRatioFactor().caculate(data)
-    print(f'cost time: {time.perf_counter() - t:.8f} s')
-    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.new.pkl')
-    print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
-    data.index = pd.DatetimeIndex(data['datetime'])
-    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
-
-    # 10档委比因子
-    # ten_grade_total_commision = TenGradeCommissionRatioFactor()
-    # print(ten_grade_total_commision.factor_code)
-    # print(ten_grade_total_commision.version)
-    # print(ten_grade_total_commision.get_params())
-    # print(ten_grade_total_commision.get_category())
-    # print(ten_grade_total_commision.get_full_name())
+    # total_commision = TotalCommissionRatioFactor()
+    # print(total_commision.factor_code)
+    # print(total_commision.version)
+    # print(total_commision.get_params())
+    # print(total_commision.get_category())
+    # print(total_commision.get_full_name())
     #
-    # data = TenGradeCommissionRatioFactor().caculate(data)
-    # print(data[['datetime', TenGradeCommissionRatioFactor.factor_code]])
+    # t = time.perf_counter()
+    # data = TotalCommissionRatioFactor().caculate(data)
+    # print(f'cost time: {time.perf_counter() - t:.8f} s')
+    # save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.new.pkl')
+    # print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
     # data.index = pd.DatetimeIndex(data['datetime'])
     # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    # draw_analysis_curve(data, show_signal=True, signal_keys=ten_grade_total_commision.get_keys())
+    # draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
+
+    # 10档委比因子
+    ten_grade_total_commision = TenGradeCommissionRatioFactor()
+    print(ten_grade_total_commision.factor_code)
+    print(ten_grade_total_commision.version)
+    print(ten_grade_total_commision.get_params())
+    print(ten_grade_total_commision.get_category())
+    print(ten_grade_total_commision.get_full_name())
+
+    t = time.perf_counter()
+    data = TenGradeCommissionRatioFactor().caculate(data)
+    print(f'cost time: {time.perf_counter() - t:.8f} s')
+    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.10_GRADE_COMMISSION_RATIO.pkl')
+    print(data[['datetime', TenGradeCommissionRatioFactor.factor_code]])
+    data.index = pd.DatetimeIndex(data['datetime'])
+    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    draw_analysis_curve(data, show_signal=True, signal_keys=ten_grade_total_commision.get_keys())
 
     # 10档加权委比因子
     # ten_grade_weighted_total_commision = TenGradeWeightedCommissionRatioFactor()
