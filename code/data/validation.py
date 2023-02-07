@@ -8,7 +8,8 @@ import numpy
 
 from common.aop import timing
 from common.constants import RESULT_SUCCESS, RESULT_FAIL, FUTURE_TICK_REPORT_DATA_PATH, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, \
-    STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_START_TIME
+    STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, \
+    STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_START_TIME, STOCK_VALID_DATA_STARTTIME
 from common.exception.exception import ValidationFailed, InvalidStatus
 from common.localio import FileWriter, read_decompress
 from common.timeutils import date_alignment, add_milliseconds_suffix
@@ -246,20 +247,21 @@ class StockTickDataValidator(Validator):
         #     result.result = RESULT_FAIL
         #     result.error_details.append('The data is incomplete and miss the opening time data')
         # 检查成交量是否递增
-        time_sorted_list = data.sort_values(by='time')['daily_accumulated_volume'].to_list()
+        time_sorted_list = data.sort_values(by=['time','daily_accumulated_volume'])['daily_accumulated_volume'].to_list()
         time_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), time_sorted_list))).encode('gbk')).hexdigest()
         volume_sorted_list = data.sort_values(by='daily_accumulated_volume')['daily_accumulated_volume'].to_list()
         volume_sorted_abstract = hashlib.md5(
             '|'.join(list(map(lambda item: str(item), volume_sorted_list))).encode('gbk')).hexdigest()
         if time_sorted_abstract != volume_sorted_abstract:
-            data['accumulated_volume_change'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
-            get_logger().debug(data[data['accumulated_volume_change'] < 0][['time','accumulated_volume_change']])
+            get_logger().debug(time_sorted_list)
+            get_logger().debug(volume_sorted_list)
             result.result = RESULT_FAIL
             result.error_details.append('The volume has reverse order')
         # 检查除开盘集合竞价时间段之外是否有成交价为0的数据，属于非法数据
-        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
-            get_logger().debug(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','price']])
+        valid_data_start_time = STOCK_VALID_DATA_STARTTIME #检查合法数据的开始时间
+        if len(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(valid_data_start_time))]) > 0:
+            get_logger().debug(data[(data['price'] == 0) & (data['time'] > add_milliseconds_suffix(valid_data_start_time))][['time', 'price']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid price value')
         # 检查除集合竞价时间段之外是否有报价为0的数据，属于非法数据 - 不需要这个检查
@@ -278,9 +280,9 @@ class StockTickDataValidator(Validator):
         #             result.error_details.append('Invalid {0} value'.format(check_columns[i]))
         # 检查除开盘集合竞价时间段之外是否有OCHL为0的数据，属于非法数据
         if len(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix('09:31:00'))]) > 0:
+               & (data['time'] > add_milliseconds_suffix(valid_data_start_time))]) > 0:
             get_logger().debug(data[((data['open'] == 0) | (data['close'] == 0) | (data['high'] == 0) | (data['low'] == 0))
-               & (data['time'] > add_milliseconds_suffix('09:31:00'))][['time','open','close','high','low']])
+                                    & (data['time'] > add_milliseconds_suffix(valid_data_start_time))][['time', 'open', 'close', 'high', 'low']])
             result.result = RESULT_FAIL
             result.error_details.append('Invalid OCHL value')
         return result
@@ -575,8 +577,10 @@ if __name__ == '__main__':
     # 测试股票tick数据验证
     # path = '/Users/finley/Projects/stock-index-future/data/original/stock/tick/stk_tick10_w_2017/stk_tick10_w_201701/20170126/600917.pkl'
     # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201809\\20180913\\600155.pkl'
-    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210722\\688599.pkl'
+    # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210722\\688599.pkl'
     # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202108\\20210803\\600787.pkl'
+    # path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201809\\20180914\\603806.pkl'
+    path = 'D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201707\\20170725\\603806.pkl'
     data = read_decompress(path)
     data = StockTickDataColumnTransform().process(data)
     data = StockTickDataCleaner().process(data)

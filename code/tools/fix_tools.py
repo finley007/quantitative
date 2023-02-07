@@ -11,7 +11,7 @@ from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
-    STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, STOCK_TRANSACTION_START_TIME, RESULT_FAIL
+    STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, STOCK_TRANSACTION_START_TIME, RESULT_FAIL, STOCK_FILE_PREFIX
 from common.localio import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
@@ -78,7 +78,7 @@ def check_issue_stock_validation_data(record_id):
         print(validation_result)
 
 def add_folder_prefix(folder):
-    return 'stk_tick10_w_' + folder
+    return STOCK_FILE_PREFIX + folder
 
 def fix_stock_tick_data(year, month, date_list=[]):
     """
@@ -95,7 +95,7 @@ def fix_stock_tick_data(year, month, date_list=[]):
 
     """
     root_path = STOCK_TICK_DATA_PATH
-    file_prefix = 'stk_tick10_w_'
+    file_prefix = STOCK_FILE_PREFIX
     stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
     stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
     stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')

@@ -6,7 +6,7 @@ import time
 from functools import lru_cache
 
 from common.localio import read_decompress
-from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_COMBINED_DATA_PATH
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_COMBINED_DATA_PATH, STOCK_FILE_PREFIX
 from common.aop import timing
 from common.stockutils import get_full_stockcode_for_stock
 
@@ -57,7 +57,7 @@ class StockDataAccess(DataAccess):
             return read_decompress(file_path + stock + '.pkl')
 
     def create_stock_tick_data_path(self, date):
-        file_prefix = 'stk_tick10_w_'
+        file_prefix = STOCK_FILE_PREFIX
         date = date.replace('-','')
         year = date[0:4]
         month = date[4:6]
@@ -101,6 +101,32 @@ def read_date_combined_file(date, file_path):
     date = date.replace('-', '')
     return read_decompress(file_path + date + '.pkl')
 
+def create_stock_file_path(year, month, day, stock='', is_original=True):
+    """
+    生成股票数据文件完整路径
+
+    Parameters
+    ----------
+    year
+    month
+    day
+    stock
+    is_original
+
+    Returns
+    -------
+
+    """
+    file_prefix = STOCK_FILE_PREFIX
+    if is_original:
+        root_path = STOCK_TICK_DATA_PATH
+    else:
+        root_path = STOCK_TICK_ORGANIZED_DATA_PATH
+    full_path = root_path + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + (year+month+day) + os.path.sep
+    if stock != '':
+        full_path = full_path + stock
+    return full_path
+
 
 if __name__ == '__main__':
     #测试加载股票原始文件
@@ -114,14 +140,18 @@ if __name__ == '__main__':
     # print(f'cost time: {time.perf_counter() - t:.8f} s')
     #
     # #测试加载日期文件和缓存
-    t = time.perf_counter()
-    print(StockDataAccess(False, True).access('20171106', '000021'))
-    print(f'cost time: {time.perf_counter() - t:.8f} s')
-
-    t = time.perf_counter()
-    print(StockDataAccess(False, True).access('20171106', '000001'))
-    print(f'cost time: {time.perf_counter() - t:.8f} s')
+    # t = time.perf_counter()
+    # print(StockDataAccess(False, True).access('20171106', '000021'))
+    # print(f'cost time: {time.perf_counter() - t:.8f} s')
+    #
+    # t = time.perf_counter()
+    # print(StockDataAccess(False, True).access('20171106', '000001'))
+    # print(f'cost time: {time.perf_counter() - t:.8f} s')
 
     #测试加载日期文件
     # print(len(StockDailyDataAccess().access('2020-09-22')))
+
+    #测试股票数据完整路径生成
+    print(create_stock_file_path('2022','01','15'))
+    print(create_stock_file_path('2022','01','15','000001'))
 

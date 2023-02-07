@@ -4,13 +4,16 @@ import os
 import re
 import time
 from datetime import datetime
+import random
 
 import pandas as pd
 
 from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
-    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL, STOCK_TICK_COMBINED_DATA_PATH
+    STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
+    STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL, STOCK_TICK_COMBINED_DATA_PATH, YEAR_LIST, STOCK_FILE_PREFIX, \
+    STOCK_TICK_COMPARE_DATA_PATH
 from common.crawler import StockInfoCrawler
 from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter
 from common.persistence.dbutils import create_session
@@ -21,6 +24,7 @@ from data.process import FutureTickDataColumnTransform, StockTickDataColumnTrans
 from common.timeutils import date_format_transform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, DtoStockValidationResult
 from framework.localconcurrent import ProcessRunner
+from data.access import create_stock_file_path
 
 
 @timing
@@ -38,7 +42,7 @@ def filter_stock_data(year, month, date_list=[], stock_file_list=[]):
 
     """
     root_path = STOCK_TICK_DATA_PATH
-    file_prefix = 'stk_tick10_w_'
+    file_prefix = STOCK_FILE_PREFIX
     stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
     stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
     stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
@@ -656,7 +660,7 @@ def update_stock_suspension_status():
     -------
 
     """
-    year_list = ['2017','2018','2019','2020','2021','2022']
+    year_list = YEAR_LIST
     session = create_session()
     stock_list = session.execute('select distinct tscode from index_constituent_config order by tscode').fetchall()
     stock_info_crawler = StockInfoCrawler()
@@ -707,6 +711,51 @@ def get_index_stock_list(date, abstract):
             return abstract[date_range]
 
 
+def create_stock_manually_check_files(compare_count = 10):
+    """
+    生成股票数据人工对比文件
+
+    Parameters
+    ----------
+    compare_count
+
+    Returns
+    -------
+
+    """
+    while compare_count > 0:
+        year = YEAR_LIST[random.randint(0, 5)]
+        month = list(range(1, 13, 1))[random.randint(0, 11)]
+        if month == 2:
+            day = list(range(1, 29, 1))[random.randint(0, 27)]
+        elif month in [1, 3, 5, 7, 8, 10, 12]:
+            day = list(range(1, 32, 1))[random.randint(0, 30)]
+        else:
+            day = list(range(1, 31, 1))[random.randint(0, 29)]
+        if month < 10:
+            month = '0' + str(month)
+        else:
+            month = str(month)
+        if day < 10:
+            day = '0' + str(day)
+        else:
+            day = str(day)
+        original_file_path = create_stock_file_path(year, month, day)
+        try:
+            stock_file_list = list_files_in_path(original_file_path)
+        except Exception as e:
+            continue
+        stock_file_list.sort()
+        stock = stock_file_list[random.randint(0, len(stock_file_list) - 1)]
+        original_data = read_decompress(create_stock_file_path(year, month, day, stock))
+        organized_data = read_decompress(create_stock_file_path(year, month, day, stock, is_original=False))
+        target_path = STOCK_TICK_COMPARE_DATA_PATH + datetime.now().strftime("%Y%m%d") + os.path.sep
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
+        original_data.to_csv(target_path + year + month + day + '_' + stock + '_original.csv')
+        organized_data.to_csv(target_path + year + month + day + '_' + stock + '_organized.csv')
+        compare_count = compare_count - 1
+
 
 
 if __name__ == '__main__':
@@ -745,7 +794,7 @@ if __name__ == '__main__':
     # enrich_stock_tick_data('20221111-finley-2',['2018'],['10'],['10'],['600705'])
 
     #合并股票数据
-    combine_stock_tick_data('20230109-finley-1',['2018'],['08', '09', '10'])
+    # combine_stock_tick_data('20230109-finley-1',['2018'],['08', '09', '10'])
 
     # 检查stock数据
     #初始化表
@@ -812,3 +861,8 @@ if __name__ == '__main__':
 
     # 生成股票停盘信息
     # update_stock_suspension_status()
+
+    # 生成股票数据人工对比文件
+    # create_stock_manually_check_files(10)
+
+    print(len(read_decompress("E:/data/factor/IC_FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE-1.0[200,500,1000,1500]")))

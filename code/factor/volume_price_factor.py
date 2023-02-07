@@ -230,7 +230,7 @@ class AdxFactor(Factor):
     def caculate(self, data):
         data = self._adx.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._adx.get_key(param)]
+            data[self.get_key(param)] = data[self._adx.get_key(param, self._adx._ext_params[0])]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -249,7 +249,7 @@ class MinAdxFactor(Factor):
     def caculate(self, data):
         data = self._adx.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).min()
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0], self._adx._ext_params[0])].rolling(param).min()
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -268,7 +268,7 @@ class ResidualMinAdxFactor(Factor):
     def caculate(self, data):
         data = self._adx.enrich(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0])] - data[self._adx.get_key(self._adx.get_params()[0])].rolling(param).min()
+            data[self.get_key(param)] = data[self._adx.get_key(self._adx.get_params()[0], self._adx._ext_params[0])] - data[self._adx.get_key(self._adx.get_params()[0], self._adx._ext_params[0])].rolling(param).min()
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -831,7 +831,7 @@ class DiffVolumeWeightedMaOverMaFactor(Factor):
     def caculate(self, data):
         data = self._volume_weighted_ma_over_ma_factor.caculate(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._volume_weighted_ma_over_ma.get_key(param)] - data[self._volume_weighted_ma_over_ma.get_key(param * self._multiplier)]
+            data[self.get_key(param)] = data[self._volume_weighted_ma_over_ma_factor.get_key(param)] - data[self._volume_weighted_ma_over_ma_factor.get_key(param * self._multiplier)]
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
@@ -1219,9 +1219,8 @@ class OnBalanceVolumeFactor(Factor):
 
     def caculate(self, data):
         self._obv.enrich(data)
-        for param in self._params:
-            data[self.get_key()] = data[self._obv.get_key()]
-            data.loc[data[self.get_key()].isnull(), self.get_key()] = 0
+        data[self.get_key()] = data[self._obv.get_key()]
+        data.loc[data[self.get_key()].isnull(), self.get_key()] = 0
         return data
 
 class DeltaOnBalanceVolumeFactor(Factor):
@@ -1242,7 +1241,7 @@ class DeltaOnBalanceVolumeFactor(Factor):
     def caculate(self, data):
         self._on_balance_volume_factor.caculate(data)
         for param in self._params:
-            data[self.get_key(param)] = data[self._obv.get_key()] - data[self._obv.get_key()].shift(param)
+            data[self.get_key(param)] = data[self._on_balance_volume_factor.get_key()] - data[self._on_balance_volume_factor.get_key()].shift(param)
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 

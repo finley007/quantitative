@@ -27,4 +27,4 @@ class StockInfoCrawler(Crawler):
         return content
 
 if __name__ == '__main__':
-    print(StockInfoCrawler().get_content('21', "sh600845"))
+    print(StockInfoCrawler().get_content('20', "sh601456"))

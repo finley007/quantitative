@@ -6,6 +6,8 @@ select count(1) from (select distinct date from future_instrument_config where i
 select instrument, min(date), max(date) from future_instrument_config group by instrument order by instrument;
 --查询主力合约起始天
 select instrument, min(date), max(date) from future_instrument_config where is_main = 0 group by instrument order by instrument;
+--查询合约的股票日期
+select t2.tscode, t2.date from future_instrument_config t1, index_constituent_config t2 where t1.date = t2.date and t1.product = t2.product and t2.status = 0 and t1.instrument = 'IF1712';
 
 --查询股票数据处理执行记录
 select count(1), process_code from stock_process_record group by process_code;
@@ -18,6 +20,7 @@ select count(1), status from stock_process_record where process_code = '20221111
 |    60000 |      1 |
 --列出错误类别
 select distinct invalid_msg from stock_process_record where process_code = '20221111-finley-1' and status = 1;
+select distinct invalid_msg from stock_process_record where process_code = '20221111-finley-1' and status = 1 and invalid_msg not like '%suspended%'; 
 --列出某一类具体错误
 select id, date, tscode, invalid_msg from stock_process_record where process_code = '20221111-finley-1' and status = 1 and invalid_msg like '%Invalid OCHL value%' order by date, tscode limit 10;
 --根据record id查询date和tscode

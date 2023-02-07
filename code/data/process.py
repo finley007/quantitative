@@ -82,6 +82,7 @@ class StockTickDataCleaner(DataCleaner):
         data = data.drop(data.index[data['time'] < constants.STOCK_START_TIME + '.000'])
         # 清除盘后交易数据
         data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000') & (data['price'] == 0)])
+        data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_END_TIME + '.000') & (data['transaction_number'] == 0)])
         data = data.drop(data.index[(data['time'] > constants.STOCK_TRANSACTION_NOON_END_TIME + '.000') & (data['time'] < constants.STOCK_TRANSACTION_NOON_START_TIME + '.000')])
         # 清除000028.SZ               28  2017-01-05         0::.0    0.0       0
         data = data.drop(data.index[data['time'] == '0::.0'])
@@ -225,14 +226,22 @@ class StockTickDataEnricher(DataProcessor):
         print(data[['time', 'price', 'open', 'high', 'low', 'close']])
         #处理开盘数据缺失
         last_close = data[data['close'] > 0].iloc[0]['close']
-        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['price'] == 0)]) > 0:
-            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['price'] == 0), 'price'] = last_close
-        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['open'] == 0)]) > 0:
-            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['open'] == 0), 'open'] = last_close
-        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['high'] == 0)]) > 0:
-            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['high'] == 0), 'high'] = last_close
-        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['low'] == 0)]) > 0:
-            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix('09:31:00')) & (data['low'] == 0), 'low'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['price'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['price'] == 0), 'price'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['open'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['open'] == 0), 'open'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['high'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['high'] == 0), 'high'] = last_close
+        if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['low'] == 0)]) > 0:
+            data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
+                STOCK_VALID_DATA_STARTTIME)) & (data['low'] == 0), 'low'] = last_close
 
         print(data[['time','price','open','high','low','close']])
 

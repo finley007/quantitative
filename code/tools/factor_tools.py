@@ -2,12 +2,15 @@
 # -*- coding:utf8 -*-
 import time
 import xlrd
-
+import uuid
+import pandas as pd
+import datetime
+import os
 
 from common.persistence.po import FactorConfig, FactorOperationHistory
-from common.persistence.dao import FactorConfigDao
+from common.persistence.dao import FactorConfigDao, FutureConfigDao
 from common.persistence.dbutils import create_session
-from common.constants import FACTOR_TYPE_DETAILS
+from common.constants import FACTOR_TYPE_DETAILS, REPORT_PATH
 from common.reflection import get_all_class, create_instance
 from factor.factor_caculator import FactorCaculator
 from common.log import get_logger
@@ -39,10 +42,11 @@ def create_factor_files(factor_list=[]):
             factor_full_name = factor.factor_code + '_' + factor.version
             if factor_full_name == factor_po.get_full_name():
                 try:
+                    id = uuid.uuid4()
                     t = time.perf_counter()
-                    factor_caculator.caculate([factor])
+                    factor_caculator.caculate(id, [factor])
                     time_cost = time.perf_counter() - t
-                    factor_operation_history = FactorOperationHistory(factor.get_full_name(), 1, 0, time_cost)
+                    factor_operation_history = FactorOperationHistory(id, factor.get_full_name(), 1, 0, time_cost)
                     session.add(factor_operation_history)
                     session.commit()
                 except Exception as e:
@@ -70,9 +74,59 @@ def init_factor_list():
             session.commit()
             print(str(sheet.row_values(i)))
 
+def create_factor_single_instrument_performance_report(instrument, factor_list=[]):
+    """
+    生成单合约因子性能测试文件
+    路径：E:\data\report\factor\performance
+    文件格式：csv
+    文件名：合约_合约日期范围_时间.csv
+    列名：分类编码 分类名称 因子编码 因子版本 因子参数 执行时间
+    Returns
+    -------
+
+    """
+    factor_config_dao = FactorConfigDao()
+    factor_caculator = FactorCaculator()
+    future_config_dao = FutureConfigDao()
+    all_factors = factor_config_dao.get_all_factors()
+    if len(factor_list) > 0:
+        all_factors = list(filter(lambda po: po.get_full_name() in factor_list, all_factors))
+    get_logger().info('Create single instrument performance report for instrument {0} for {1} factors'.format(instrument, str(len(all_factors))))
+    result_list = []
+    handled_factors = set()
+    for factor_po in all_factors:
+        get_logger().info('Handle factor for {0}'.format(factor_po.get_full_name()))
+        module_name = FACTOR_TYPE_DETAILS[factor_po.type]['package']
+        all_class = get_all_class(module_name)
+        filter_class = list(filter(lambda clz: module_name in str(clz), all_class))
+        for clz in filter_class:
+            factor = create_instance(module_name, clz.__name__)
+            factor_full_name = factor.factor_code + '_' + factor.version
+            if factor_full_name == factor_po.get_full_name() and factor_full_name not in handled_factors:
+                t = time.perf_counter()
+                process_code = uuid.uuid4()
+                factor_caculator.caculate(process_code, [factor], [instrument])
+                time_cost = time.perf_counter() - t
+                factor_type = factor.get_category()
+                params = '|'.join(list(map(lambda param: str(param), factor.get_params())))
+                result = [str(factor_type), str(FACTOR_TYPE_DETAILS[factor_type]['name']), factor.factor_code, factor.version, params, str(time_cost)]
+                result_list.append(result)
+                handled_factors.add(factor_full_name)
+    report = pd.DataFrame(result_list, columns=['category_code', 'category_name', 'factor_code', 'factor_version', 'factor_params', 'time_cost'])
+    start_date = future_config_dao.get_start_end_date_by_instrument(instrument)[0]
+    end_date = future_config_dao.get_start_end_date_by_instrument(instrument)[0]
+    cur_time = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+    file_name = instrument + '_' + start_date + '_' + end_date + '_' + cur_time + '_single_instrument_performance.csv'
+    report.to_csv(REPORT_PATH + 'factor' + os.path.sep + 'performance' + os.path.sep + file_name, encoding='gbk')
+
 
 if __name__ == '__main__':
     # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
-    create_factor_files(['FCT_02_001_TOTAL_COMMISSION_RATIO_1.0'])
+    # create_factor_files(['FCT_02_001_TOTAL_COMMISSION_RATIO_1.0'])
 
     # init_factor_list()
+
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_01_038_DIFF_VOLUME_WEIGHTED_MA_OVER_MA_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_01_001_WILLIAM_1.0','FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0','FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0','FCT_01_007_PRICE_MOMENTUM_1.0','FCT_01_008_ADX_1.0','FCT_01_009_MIN_ADX_1.0','FCT_01_010_RESIDUAL_MIN_ADX_1.0','FCT_01_015_INTRADAY_INTENSITY_1.0','FCT_01_016_DELTA_INTRADAY_INTENSITY_1.0','FCT_01_017_PRICE_VARIANCE_RATIO_1.0','FCT_01_018_MIN_PRICE_VARIANCE_RATIO_1.0','FCT_01_019_MAX_PRICE_VARIANCE_RATIO_1.0','FCT_01_020_CHANGE_VARIANCE_RATIO_1.0','FCT_01_021_MIN_CHANGE_VARIANCE_RATIO_1.0','FCT_01_022_MAX_CHANGE_VARIANCE_RATIO_1.0','FCT_01_023_ATR_RATIO_1.0','FCT_01_024_DELTA_PRICE_VARIANCE_RATIO_1.0','FCT_01_025_DELTA_CHANGE_VARIANCE_RATIO_1.0','FCT_01_026_DELTA_ATR_RATIO_1.0','FCT_01_027_PRICE_SKEWNESS_1.0','FCT_01_028_CHANGE_SKEWNESS_1.0','FCT_01_029_PRICE_KURTOSIS_1.0','FCT_01_030_CHANGE_KURTOSIS_1.0','FCT_01_031_DELTA_PRICE_SKEWNESS_1.0','FCT_01_032_DELTA_CHANGE_SKEWNESS_1.0','FCT_01_033_DELTA_PRICE_KURTOSIS_1.0','FCT_01_034_DELTA_CHANGE_KURTOSIS_1.0','FCT_01_035_VOLUME_MOMENTUM_1.0','FCT_01_036_DELTA_VOLUME_MOMENTUM_1.0','FCT_01_037_VOLUME_WEIGHTED_MA_OVER_MA_1.0','FCT_01_038_DIFF_VOLUME_WEIGHTED_MA_OVER_MA_1.0','FCT_01_039_PRICE_VOLUME_FIT_1.0','FCT_01_040_DIFF_PRICE_VOLUME_FIT_1.0','FCT_01_041_DELTA_PRICE_VOLUME_FIT_1.0','FCT_01_042_POSITIVE_VOLUME_INDICATOR_1.0','FCT_01_043_DELTA_POSITIVE_VOLUME_INDICATOR_1.0','FCT_01_044_NEGATIVE_VOLUME_INDICATOR_1.0','FCT_01_045_DELTA_NEGATIVE_VOLUME_INDICATOR_1.0','FCT_01_046_PRODUCT_PRICE_VOLUME_1.0','FCT_01_047_SUM_PRICE_VOLUME_1.0','FCT_01_048_DELTA_PRODUCT_PRICE_VOLUME_1.0','FCT_01_049_DELTA_SUM_PRICE_VOLUME_1.0','FCT_01_050_N_DAY_HIGH_1.0','FCT_01_051_N_DAY_LOW_1.0','FCT_01_052_N_DAY_NARROWER_1.0','FCT_01_053_N_DAY_WIDER_1.0','FCT_01_054_ON_BALANCE_VOLUME_1.0','FCT_01_055_DELTA_ON_BALANCE_VOLUME_1.0','FCT_01_056_DETRENDED_RSI_1.0','FCT_01_057_THRESHOLDED_RSI_1.0','FCT_02_001_TOTAL_COMMISSION_RATIO_1.0','FCT_02_002_10_GRADE_COMMISSION_RATIO_1.0','FCT_02_003_10_GRADE_WEIGHTED_COMMISSION_RATIO_1.0','FCT_02_004_5_GRADE_COMMISSION_RATIO_1.0','FCT_02_005_5_GRADE_WEIGHTED_COMMISSION_RATIO_1.0','FCT_02_006_RISING_STOCK_RATIO_1.0','FCT_02_007_SPREAD_1.0','FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE_1.0','FCT_02_009_TWO_CALL_AUCTION_STAGE_DIFFERENCE_1.0','FCT_02_010_CALL_AUCTION_SECOND_STAGE_RETURN_VOLATILITY_1.0','FCT_02_011_FIRST_STAGE_COMMISSION_RATIO_1.0','FCT_02_012_SECOND_STAGE_COMMISSION_RATIO_1.0','FCT_02_013_ASK_LARGE_AMOUNT_BILL_1.0','FCT_02_014_BID_LARGE_AMOUNT_BILL_1.0','FCT_02_015_TOTAL_COMMISSION_RATIO_CHANGE_RATE_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0', 'FCT_01_003_LINEAR_PER_ATR_1.0', 'FCT_01_004_LINEAR_DEVIATION_1.0', 'FCT_01_005_QUADRATIC_DEVIATION_1.0', 'FCT_01_006_CUBIC_DEVIATION_1.0', 'FCT_01_007_PRICE_MOMENTUM_1.0', 'FCT_01_008_ADX_1.0', 'FCT_01_009_MIN_ADX_1.0', 'FCT_01_010_RESIDUAL_MIN_ADX_1.0'])
+    create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_001_TOTAL_COMMISSION_RATIO_1.0'])

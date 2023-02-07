@@ -197,8 +197,8 @@ class FactorOperationHistory(Base):
     created_time = Column(DateTime)
     modified_time = Column(DateTime)
 
-    def __init__(self, target_factor, operation, status, time_cost, err_msg = ''):
-        self.id = uuid.uuid4()
+    def __init__(self, id, target_factor, operation, status, time_cost, err_msg = ''):
+        self.id = id
         self.target_factor = target_factor
         self.operation = operation
         self.status = status
@@ -230,6 +230,30 @@ class StockMissingData(Base):
         self.tscode = tscode
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
+
+class FactorProcessRecord(Base):
+    """缺失股票数据表po：
+    id VARCHAR(40),
+    process_code VARCHAR(40) comment '关联factor_operation_history表',
+    instrument  VARCHAR(10),
+    created_time datetime,
+    modified_time datetime,
+    """
+    __tablename__ = "factor_process_record"
+
+    id = Column(String(40), primary_key=True)
+    process_code = Column(String(40))
+    instrument = Column(String(10))
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, process_code, instrument):
+        self.id = uuid.uuid4()
+        self.process_code = process_code
+        self.instrument = instrument
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
 
 class Test(Base):
     """测试表po：

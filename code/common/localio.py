@@ -67,6 +67,8 @@ def save_compress(data, path):
         file_object.write(serialized)
 
 
+
+
 class FileWriter:
 
     def __init__(self, path):

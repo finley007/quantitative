@@ -17,6 +17,8 @@ from common.persistence.dao import IndexConstituentConfigDao
 from common.aop import timing
 from framework.localconcurrent import ThreadRunner
 from common.log import get_logger
+from framework.pagination import Pagination
+from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 
 
 class Factor(metaclass=ABCMeta):
@@ -74,6 +76,8 @@ class StockTickFactor(Factor):
     ----------
     """
 
+    _stock_filter = []
+
     def __init__(self):
         self._stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
         self._stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
@@ -88,6 +92,9 @@ class StockTickFactor(Factor):
         index_constituent_config_dao = IndexConstituentConfigDao()
         self._suspend_set = index_constituent_config_dao.get_suspend_list()
 
+    def set_stock_filter(self, stock_filter):
+        self._stock_filter = stock_filter
+
     @timing
     def get_stock_tick_data(self, product, instrument, date):
         """获取相关的股票tick数据，
@@ -101,6 +108,8 @@ class StockTickFactor(Factor):
         date ： 日期
         """
         stock_list = self.get_stock_list_by_date(product, date)
+        if len(self._stock_filter) > 0: #用于生成人工检测文件
+            stock_list = self._stock_filter
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         if stock_list and len(stock_list) > 0:
@@ -119,7 +128,7 @@ class StockTickFactor(Factor):
                 temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
                 data = pd.concat([data, temp_data])
         else:
-            get_logger.warning('Stock data is missing for product: {0} and date: {1}'.format(product, date))
+            get_logger().warning('Stock data is missing for product: {0} and date: {1}'.format(product, date))
         return data
         # return self._daily_data_access.access(date)
 
@@ -187,7 +196,23 @@ class StockTickFactor(Factor):
         """
         return data
 
+    def get_factor_columns(self, data):
+        """
+        获取因子文件的列
+        Returns
+        -------
+
+        """
+        columns = data.columns.tolist() + [self.get_key(), 'time', 'second_remainder']
+        return columns
+
     def get_columns(self):
+        """
+        需要获取股票tick数据的列
+        Returns
+        -------
+
+        """
         return ['tscode','date','time']
     @timing
     def get_stock_list_by_date(self, product, date):
@@ -241,9 +266,30 @@ class StockTickFactor(Factor):
         cur_time = datetime.strptime(item['time'], '%H:%M:%S.%f')
         return cur_time.second % 3
 
+    @timing
+    def caculate(self, data):
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        instrument = data.iloc[0]['instrument']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        pagination = Pagination(date_list, page_size=20)
+        while pagination.has_next():
+            date_list = pagination.next()
+            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            results = ProcessExcecutor(20).execute(self.caculate_by_date, params_list)
+            temp_cache = {}
+            for result in results:
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
+            for date in date_list:
+                new_data = pd.concat([new_data, temp_cache[date]])
+        return new_data
+
     # 全局计算因子值
     @abstractmethod
-    def caculate(self, data):
+    def caculate_by_date(self, *args):
         """
         计算因子值，以合约为单位
         Parameters
@@ -277,12 +323,15 @@ class TimewindowStockTickFactor(StockTickFactor):
         ----------
         instrument ： 合约
         """
-        if instrument in self._instrument_stock_data:
-            return self._instrument_stock_data[instrument]
-        result_list = self._session.execute(
+        # 一级内存缓存 多进程手写缓存会溢出，考虑用框架
+        # if instrument in self._instrument_stock_data:
+        #     return self._instrument_stock_data[instrument]
+        session = create_session()
+        result_list = session.execute(
             'select t2.tscode, t2.date from future_instrument_config t1, index_constituent_config t2 '
-            'where t1.date = t2.date and t1.product = t2.product and t1.is_main = 0 and t2.status = 0 and t1.instrument = :instrument '
+            'where t1.date = t2.date and t1.product = t2.product and t2.status = 0 and t1.instrument = :instrument '
             'order by t2.product, t2.tscode, t2.date', {'instrument': instrument}).fetchall()
+        # stock -> datelist
         stock_date_map = {}
         for item in result_list:
             if item[0] in stock_date_map:
@@ -291,18 +340,23 @@ class TimewindowStockTickFactor(StockTickFactor):
                 stock_date_map[item[0]] = [item[1]]
         stock_data = {}
         for stock in stock_date_map.keys():
+            #二级磁盘缓存
             file_path = TEMP_PATH + os.path.sep + 'stock' + os.path.sep + instrument + '_' + stock + '.pkl'
             if os.path.exists(file_path):
                 data = read_decompress(file_path)
             else:
                 instrument_stock_data = pd.DataFrame()
                 for date in stock_date_map[stock]:
-                    temp_data = self._data_access.access(date, stock)
+                    try:
+                        temp_data = self._data_access.access(date, stock)
+                    except Exception as e:
+                        get_logger().error('Access date: {0} and stock: {1} error'.format(date, stock)) #对于有些缺失的数据先忽略，比如2017.12.01，在计算日期跨度也会忽略这天的数据
+                        continue
                     instrument_stock_data = pd.concat([instrument_stock_data, temp_data])
                 data = instrument_stock_data
                 save_compress(data, file_path)
             stock_data[stock] = data
-        self._instrument_stock_data[instrument] = stock_data
+        # self._instrument_stock_data[instrument] = stock_data
         return stock_data
 
     def enrich_stock_data(self, date, stock, data):

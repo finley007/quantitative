@@ -19,6 +19,7 @@ STOCK_TICK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/tick
 STOCK_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + '/temp/stock/tick/'
 STOCK_TICK_ORGANIZED_DATA_PATH = 'E:\\data\\' + 'organized' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
 STOCK_TICK_COMBINED_DATA_PATH = 'G:\\data\\' + 'organized' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
+STOCK_TICK_COMPARE_DATA_PATH = 'E:\\data\\' + 'compare' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
 TEMP_PATH = config.get('common', 'data_path') + os.path.sep + 'temp' + os.path.sep
 # TEST_PATH = config.get('common', 'data_path') + os.path.sep + 'test' + os.path.sep
 TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep
@@ -48,9 +49,12 @@ STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME = '09:25:00'
 STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME = '09:15:00'
 STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME = '09:20:00'
 STOCK_CLOSE_CALL_AUACTION_START_TIME = '14:57:00'
+STOCK_VALID_DATA_STARTTIME = '09:32:00'
 
 #业务信息和数据字典
 STOCK_INDEX_PRODUCTS = ['IC', 'IH', 'IF']
+YEAR_LIST = ['2017','2018','2019','2020','2021','2022']
+STOCK_FILE_PREFIX = 'stk_tick10_w_'
 
 FILE_TYPE_CSV = '.csv'
 

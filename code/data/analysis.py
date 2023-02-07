@@ -13,7 +13,8 @@ import numpy as np
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir)
 from common import constants
-from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_END_TIME
+from common.constants import STOCK_INDEX_PRODUCTS, FUTURE_TICK_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_END_TIME, STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME\
+
 from common import localio
 from common.localio import read_decompress, list_files_in_path, save_compress
 from data.access import StockDataAccess
@@ -413,6 +414,97 @@ class StockVolumeAfterCloseTimeSearch(StockDataTraversalInterface):
         else:
             print('Invalid data')
 
+class RepeatDataSearch(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        查找重复且成交量不为0的数据
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if len(data) > 0:
+            try:
+                data = data[data['成交量'] > 0]
+                data['count'] = data.groupby(['时间'])['时间'].transform('count')
+                index_to_be_handled = data.index[(data['count'] > 1) & (data['时间'] >= constants.STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
+                index_set_to_be_handled = set(index_to_be_handled.tolist())
+                new_index_set = set()
+                for index in index_set_to_be_handled:
+                    if index + 1 not in index_set_to_be_handled:
+                        new_index_set.add(index + 1)
+                index_set_to_be_handled = index_set_to_be_handled | new_index_set
+                data = data.loc[index_set_to_be_handled, ['代码','自然日','时间','成交价','成交量']]
+                if len(data) > 0:
+                    return np.array(data).tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+
+class RecordWithVolumeBetweenNoon(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        查找11：30到13：00之间成交量不为0的数据
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if len(data) > 0:
+            try:
+                last_record_before_noon_list = data[(data['时间'] <= '11:30:00.000') & (data['时间'] > '11:29:57.000')]['成交量'].tolist()
+                can_be_fixed = True #这里过滤出能修复的，也就是11：30这个时间上没有成交量
+                if len(last_record_before_noon_list) > 0:
+                    for volume in last_record_before_noon_list:
+                        if volume > 0:
+                            can_be_fixed = False
+                data = data[(data['成交量'] > 0) & (data['时间'] > '11:30:00.000') & (data['时间'] < '13:00:00.000')]
+                data = data[['代码','自然日','时间','成交价','成交量']]
+                if len(data) > 0 and can_be_fixed:
+                    return np.array(data).tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+class NoonClosingDataMissing(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        缺少11：30的数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+
+        if len(data) > 0:
+            try:
+                first_item = data.iloc[0][['代码','自然日']]
+                print(first_item.tolist())
+                if len(data[(data['时间'] == '11:30:00.000')] == 0):
+                    return first_item.tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+
+
 
 if __name__ == '__main__':
     # print(get_instrument_by_product('IF'))
@@ -427,4 +519,17 @@ if __name__ == '__main__':
     # FutrueOrganizedDataStatisticProducer().produce()
     # print(traverse_stock_data(StockClosingCallAuctionAnalysis()))
     # print(traverse_stock_data(StockClosingCallAuctionTimeSearch()))
-    pd.DataFrame(traverse_stock_data(StockVolumeAfterCloseTimeSearch())).to_csv('E:\\data\\test\\volume_after_close_time.csv')
+    # pd.DataFrame(traverse_stock_data(StockVolumeAfterCloseTimeSearch())).to_csv('E:\\data\\test\\volume_after_close_time.csv')
+
+    # data = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202108\\20210803\\600787.pkl')
+    # print(RepeatDataSearch().operate(data))
+
+    # pd.DataFrame(traverse_stock_data(RepeatDataSearch())).to_csv(
+    #     'E:\\data\\test\\repeat_data.csv')
+
+    # pd.DataFrame(traverse_stock_data(RecordWithVolumeBetweenNoon())).to_csv(
+    #     'E:\\data\\test\\volume_between_noon_can_be_fixed.csv')
+
+    pd.DataFrame(traverse_stock_data(NoonClosingDataMissing())).to_csv(
+        'E:\\data\\test\\noon_closing_data_missing.csv')
+
