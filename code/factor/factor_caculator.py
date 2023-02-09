@@ -14,7 +14,8 @@ from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
-from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor
+from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
+    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingVolumeRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, RollingAccumulatedLargeOrderRatioFactor
 from factor.base_factor import StockTickFactor
 from common.log import get_logger
 from framework.pagination import Pagination
@@ -29,8 +30,6 @@ class FactorCaculator():
     Parameters
     ----------
     """
-
-    _manually_check_file_count = 2
 
     @timing
     def caculate(self, process_code, factor_list, include_instrument_list=[]):
@@ -49,7 +48,8 @@ class FactorCaculator():
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
         session = create_session()
-        for product in STOCK_INDEX_PRODUCTS:
+        # for product in STOCK_INDEX_PRODUCTS:
+        for product in ['IF']:
             # factor_data = pd.DataFrame(columns=columns)
             temp_file = 'E:\\data\\temp\\' + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
@@ -62,14 +62,15 @@ class FactorCaculator():
             instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product}).fetchall()
             instrument_list = list(filter(lambda instrument : len(include_instrument_list) == 0 or instrument[0] in include_instrument_list, instrument_list))
             instrument_list = list(map(lambda instrument: instrument[0], instrument_list))
-            pagination = Pagination(instrument_list, page_size=10)
+            pagination = Pagination(instrument_list, page_size=5)
             skip = False
             while pagination.has_next():
                 sub_instrument_list = pagination.next()
-                if current_instrument in sub_instrument_list: #已经处理的最后一页，下一页开始要处理了
+                get_logger().info('Start to handle instrument list: {}'.format(sub_instrument_list))
+                if current_instrument in sub_instrument_list: #已经处理过的最后一页，下一页开始要处理了
                     skip = True
                     continue
-                if current_instrument and current_instrument not in sub_instrument_list and not skip:
+                if current_instrument and current_instrument not in sub_instrument_list and not skip: #已经处理过的页面
                     continue
                 params_list = list(map(lambda instrument: [factor_list, instrument, product], sub_instrument_list))
                 results = ProcessExcecutor(1).execute(self.caculate_by_instrument, params_list)
@@ -80,13 +81,15 @@ class FactorCaculator():
                     factor_data = pd.concat([factor_data, temp_cache[instrument]])
                     factor_process_record = FactorProcessRecord(process_code, instrument)
                     session.add(factor_process_record)
+                # 每一个分页结束保存临时文件并提交
+                get_logger().info('Save temp file for instrument list: {}'.format(sub_instrument_list))
                 session.commit()
                 save_compress(factor_data, temp_file)
             factor_data = factor_data.reset_index()
-            # target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
-            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
-            target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+            target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list)))
+            # target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
             get_logger().info('Save factor file: {0}'.format(target_factor_file))
             save_compress(factor_data, target_factor_file)
             if os.path.exists(temp_file):
@@ -131,7 +134,7 @@ class FactorCaculator():
         return instrument, data
 
     @timing
-    def caculate_manually_check(self, factor):
+    def caculate_manually_check(self, factor, stock_count = 2, manually_check_file_count = 2, is_accumulated = False):
         '''
         生成用于检测的因子文件
 
@@ -150,7 +153,7 @@ class FactorCaculator():
             instrument_list = session.execute(
                 'select distinct instrument from future_instrument_config where product = :product order by instrument',
                 {'product': product}).fetchall()
-            for i in range(self._manually_check_file_count):
+            for i in range(manually_check_file_count):
                 rdm_number = random.randint(0, len(instrument_list) - 1)
                 instrument = instrument_list[rdm_number]
                 date_list = session.execute('select date from future_instrument_config where instrument = :instrument and is_main = 0 order by date', {'instrument' : instrument[0]}).fetchall()
@@ -163,7 +166,6 @@ class FactorCaculator():
                 filter_stocks = []
                 if isinstance(factor, StockTickFactor):
                     stock_list = factor.get_stock_list_by_date(product, date)
-                    stock_count = 2
                     while stock_count > 0:
                         rdm_number = random.randint(0, len(stock_list) - 1)
                         stock = stock_list[rdm_number]
@@ -176,16 +178,16 @@ class FactorCaculator():
                     daily_data = daily_data.reset_index()
                     rdm_index = random.randint(0, len(daily_data) - window_size)
                     daily_data = daily_data.loc[rdm_index: rdm_index + window_size]
-                    if len(filter_stocks) > 0:
+                    if len(filter_stocks) > 0: #如果加了股票过滤，截取相应股票数据并且移动到当前目录，便于检查
                         daily_data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + '-'.join(filter_stocks) + '_' + str(i) + '.csv')
                         daily_data['time'] = daily_data['datetime'].apply(lambda dt: add_milliseconds_suffix(dt[11:19]))
-                        print(daily_data)
                         for stock in filter_stocks:
                             data_access = StockDataAccess(False)
                             stock_data = data_access.access(date, stock)
-                            min_time = daily_data['time'].min()
-                            max_time = daily_data['time'].max()
-                            stock_data = stock_data[(stock_data['time'] >= min_time) & (stock_data['time'] <= max_time)]
+                            if not is_accumulated: #如果不是累加型因子，截取时间段
+                                min_time = daily_data['time'].min()
+                                max_time = daily_data['time'].max()
+                                stock_data = stock_data[(stock_data['time'] >= min_time) & (stock_data['time'] <= max_time)]
                             stock_data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + stock + '.csv')
                     else:
                         daily_data.to_csv(
@@ -237,9 +239,17 @@ if __name__ == '__main__':
     #生成因子比对文件
     # factor = WilliamFactor([10])
     # factor = TotalCommissionRatioFactor()
-    factor = TenGradeCommissionRatioFactor()
+    # factor = TenGradeCommissionRatioFactor()
+    # factor = FiveGradeCommissionRatioFactor()
     # factor = AmountAndCommissionRatioFactor()
-    FactorCaculator().caculate_manually_check(factor)
+    # factor = TenGradeWeightedCommissionRatioFactor()
+    # factor = FiveGradeCommissionRatioFactor()
+    # factor = AmountAndCommissionRatioFactor()
+    # factor = RisingFallingVolumeRatioFactor()
+    # factor = UntradedStockRatioFactor()
+    # factor = DailyAccumulatedLargeOrderRatioFactor()
+    factor = RollingAccumulatedLargeOrderRatioFactor([10])
+    FactorCaculator().caculate_manually_check(factor, 2)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

@@ -12,7 +12,7 @@ def log_config():
 
     """
     logger.remove()
-    handler_id = logger.add(sys.stdout, level="DEBUG")
+    handler_id = logger.add(sys.stdout, level="INFO")
 
 def get_logger():
     log_config()

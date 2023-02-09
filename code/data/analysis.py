@@ -503,7 +503,60 @@ class NoonClosingDataMissing(StockDataTraversalInterface):
         else:
             print('Invalid data')
 
+class CollectionBiddingDuplicateData(StockDataTraversalInterface):
 
+    def operate(self, data):
+        """
+        查询集合竞价阶段的重复数据9：15-9：25
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+
+        if len(data) > 0:
+            try:
+                temp_data = data[(data['时间'] >= '09:15:00.000') & (data['时间'] < '09:25:00.000')]
+                temp_data_group_by = temp_data.groupby('时间')['代码'].count()
+                temp_data = temp_data.merge(temp_data_group_by, on=['时间'], how='left')
+                temp_data = temp_data[temp_data['代码_y'] > 1]
+                temp_data = temp_data[['代码_x', '自然日', '时间','成交价','成交量']]
+                if len(temp_data) > 1:
+                    return np.array(temp_data).tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
+
+class ClosingDuplicateData(StockDataTraversalInterface):
+
+    def operate(self, data):
+        """
+        15:00时间点上有两条数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+
+        if len(data) > 0:
+            try:
+                temp_data = data[(data['时间'] == '15:00:00.000')]
+                temp_data = temp_data[['代码', '自然日', '时间', '成交价', '成交量']]
+                if len(temp_data) > 1:
+                    return np.array(temp_data).tolist()
+            except Exception as e:
+                print(e)
+        else:
+            print('Invalid data')
 
 
 if __name__ == '__main__':
@@ -524,12 +577,23 @@ if __name__ == '__main__':
     # data = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202108\\20210803\\600787.pkl')
     # print(RepeatDataSearch().operate(data))
 
+    # data = pd.read_csv('E:\\data\\compare\\stock\\tick\\20230201\\20181108_600369.pkl_original.csv')
+    # print(CollectionBiddingDuplicateData().operate(data))
+
+    # data = pd.read_csv('E:\\data\\compare\\stock\\tick\\20230201\\20181108_600369.pkl_original.csv')
+    print(ClosingDuplicateData().operate(data))
+
     # pd.DataFrame(traverse_stock_data(RepeatDataSearch())).to_csv(
     #     'E:\\data\\test\\repeat_data.csv')
 
     # pd.DataFrame(traverse_stock_data(RecordWithVolumeBetweenNoon())).to_csv(
     #     'E:\\data\\test\\volume_between_noon_can_be_fixed.csv')
 
-    pd.DataFrame(traverse_stock_data(NoonClosingDataMissing())).to_csv(
-        'E:\\data\\test\\noon_closing_data_missing.csv')
+    # pd.DataFrame(traverse_stock_data(NoonClosingDataMissing())).to_csv(
+    #     'E:\\data\\test\\noon_closing_data_missing.csv')
 
+    pd.DataFrame(traverse_stock_data(CollectionBiddingDuplicateData())).to_csv(
+        'E:\\data\\test\\collection_bidding_duplicate_data.csv')
+
+    pd.DataFrame(traverse_stock_data(ClosingDuplicateData())).to_csv(
+        'E:\\data\\test\\closing_duplicate_data.csv')

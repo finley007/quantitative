@@ -53,6 +53,17 @@ STOCK_VALID_DATA_STARTTIME = '09:32:00'
 
 #业务信息和数据字典
 STOCK_INDEX_PRODUCTS = ['IC', 'IH', 'IF']
+STOCK_INDEX_INFO = {
+    'IC': {
+        "STOCK_COUNT": 500
+    },
+    'IF': {
+            "STOCK_COUNT": 300
+        },
+    'IH': {
+            "STOCK_COUNT": 50
+        },
+}
 YEAR_LIST = ['2017','2018','2019','2020','2021','2022']
 STOCK_FILE_PREFIX = 'stk_tick10_w_'
 

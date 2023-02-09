@@ -129,6 +129,7 @@ class StockTickFactor(Factor):
                 data = pd.concat([data, temp_data])
         else:
             get_logger().warning('Stock data is missing for product: {0} and date: {1}'.format(product, date))
+        data = data.reset_index()
         return data
         # return self._daily_data_access.access(date)
 
@@ -203,7 +204,13 @@ class StockTickFactor(Factor):
         -------
 
         """
-        columns = data.columns.tolist() + [self.get_key(), 'time', 'second_remainder']
+        if len(self._params) > 0:
+            param_keys = []
+            for param in self._params:
+                param_keys.append(self.get_key(param))
+            columns = data.columns.tolist() + param_keys + ['time', 'second_remainder']
+        else:
+            columns = data.columns.tolist() + [self.get_key(), 'time', 'second_remainder']
         return columns
 
     def get_columns(self):
