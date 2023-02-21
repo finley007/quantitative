@@ -59,8 +59,11 @@ class Factor(metaclass=ABCMeta):
         return pearsonr(data[self.factor_code], data[factor.factor_code])
 
     #加载因子文件
-    def load(self, product):
-        factor_path = FACTOR_PATH + product + '_' + self.get_full_name()
+    def load(self, product, is_organized = False):
+        if is_organized:
+            factor_path = FACTOR_PATH + os.path.sep + 'organized' + os.path.sep + product + '_' + self.get_full_name()
+        else:
+            factor_path = FACTOR_PATH + product + '_' + self.get_full_name()
         return read_decompress(factor_path)
 
     # 全局计算因子值
@@ -97,7 +100,7 @@ class StockTickFactor(Factor):
 
     @timing
     def get_stock_tick_data(self, product, instrument, date):
-        """获取相关的股票tick数据，
+        """按天获取相关的股票tick数据，
         因为一次处理一个股指合约文件，所包含的信息：
         日期，品种
         TODO 这部分可以预处理
@@ -113,22 +116,27 @@ class StockTickFactor(Factor):
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         if stock_list and len(stock_list) > 0:
+            # 过滤掉停盘的
             stock_list = list(filter(lambda stock: (date + stock) not in self._suspend_set, stock_list))
             for stock in stock_list:
                 get_logger().debug('Handle stock {0}'.format(stock))
                 try:
-                    temp_data = self.get_stock_data(date, stock)
+                    daily_stock_data = self.get_stock_data(date, stock)
                 except Exception as e:
+                    get_logger().warning('Stock data is missing for date: {0} and stock: {1}'.format(date, stock))
                     session = create_session()
                     stock_missing_data = StockMissingData(date, stock)
                     session.add(stock_missing_data)
                     session.commit()
                     continue
-                temp_data = temp_data.loc[:, columns]
-                temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
-                data = pd.concat([data, temp_data])
+                if len(daily_stock_data) == 0:
+                    get_logger().warning('Stock data is empty for date: {0} and stock: {1}'.format(date, stock))
+                    continue
+                daily_stock_data = daily_stock_data.loc[:, columns]
+                daily_stock_data = self.enrich_stock_data(instrument, date, stock, daily_stock_data)
+                data = pd.concat([data, daily_stock_data])
         else:
-            get_logger().warning('Stock data is missing for product: {0} and date: {1}'.format(product, date))
+            get_logger().warning('Stock data configuration is missing for product: {0} and date: {1}'.format(product, date))
         data = data.reset_index()
         return data
         # return self._daily_data_access.access(date)
@@ -180,6 +188,17 @@ class StockTickFactor(Factor):
 
     @timing
     def get_stock_data(self, date, stock):
+        """
+        按天获取单个股票数据，可包含一些计算逻辑
+        Parameters
+        ----------
+        date
+        stock
+
+        Returns
+        -------
+
+        """
         temp_data = self._data_access.access(date, stock)
         return temp_data
     @timing
@@ -275,6 +294,16 @@ class StockTickFactor(Factor):
 
     @timing
     def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
         columns = self.get_factor_columns(data)
         new_data = pd.DataFrame(columns=columns)
         product = data.iloc[0]['product']
@@ -285,7 +314,7 @@ class StockTickFactor(Factor):
         while pagination.has_next():
             date_list = pagination.next()
             params_list = list(map(lambda date: [date, instrument, product], date_list))
-            results = ProcessExcecutor(20).execute(self.caculate_by_date, params_list)
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
             temp_cache = {}
             for result in results:
                 cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
@@ -295,20 +324,26 @@ class StockTickFactor(Factor):
         return new_data
 
     # 全局计算因子值
-    @abstractmethod
     def caculate_by_date(self, *args):
         """
-        计算因子值，以合约为单位
+        按天计算
         Parameters
         ----------
-        data
+        args
 
         Returns
         -------
 
         """
-        pass
-
+        date = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
+        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        if len(stock_data_per_date) == 0:
+            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+            return date, stock_data_per_date
+        return self.execute_caculation(date, stock_data_per_date)
 
 class TimewindowStockTickFactor(StockTickFactor):
     """用于因子计算需要跨天的情形

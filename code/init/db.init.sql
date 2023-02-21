@@ -138,3 +138,31 @@ created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id)
 );
+
+-- 因子数据检查结果表
+CREATE TABLE IF NOT EXISTS factor_validation_result
+(
+id VARCHAR(40),
+validation_code VARCHAR(40),
+instrument  VARCHAR(10),
+date    VARCHAR(10),
+result  int comment '0-成功，1-失败',
+err_msg  VARCHAR(1024),
+record_count int,
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(id)
+);
+alter table factor_validation_result add unique (validation_code, instrument, date);
+alter table factor_validation_result add index factor_validation_result_index (result);
+
+insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_017_RISING_FALLING_VOLUME_RATIO','02','现货类','017','涨跌成交量对比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_018_UNTRADED_STOCK_RATIO','02','现货类','018','未成交股票占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_019_DAILY_ACCUMULATED_LARGE_ORDER_RATIO','02','现货类','019','日累计大单占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_020_ROLLING_ACCUMULATED_LARGE_ORDER_RATIO','02','现货类','020','滚动累计大单占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_021_DELTA_TOTAL_COMMISSION_RATIO','02','现货类','021','总委比增量','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_022_OVER_NIGHT_YIELD','02','现货类','022','隔夜收益率','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_023_AMOUNT_AND_1ST_COMMISSION_RATIO','02','现货类','023','成交额和1档委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_024_RISING_LIMIT_STOCK_PROPORTION','02','现货类','024','涨停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION','02','现货类','025','跌停股占比','','1.0','OWN',SYSDATE(),SYSDATE());

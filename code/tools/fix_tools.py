@@ -12,16 +12,19 @@ from common import constants
 from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
-    STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, STOCK_TRANSACTION_START_TIME, RESULT_FAIL, STOCK_FILE_PREFIX
+    STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, \
+    STOCK_TRANSACTION_START_TIME, RESULT_FAIL, STOCK_FILE_PREFIX
 from common.localio import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
-from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord
+from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, FactorValidationResult
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, StockOrganizedDataValidator, Validator, DtoStockValidationResult
 from framework.localconcurrent import ProcessRunner
 from common.timeutils import date_alignment, add_milliseconds_suffix, datetime_advance, time_advance
 from data.access import StockDataAccess
+from common.timeutils import add_milliseconds_suffix, time_difference
+from common.log import get_logger
 
 
 def check_issue_stock_process_data(record_id):
@@ -158,8 +161,9 @@ def validate_stock_organized_data(validate_code, include_year_list=[]):
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_validation_result where validation_code = :vcode', {'vcode': validate_code})
     checked_set = set(map(lambda item : item[0], checked_list))
-    runner = ProcessRunner(5)
+    runner = ProcessRunner(10)
     year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
+    year_folder_list.sort()
     for year_folder in year_folder_list:
         years = re.search('[0-9]{4}', year_folder)
         if not years:
@@ -167,6 +171,7 @@ def validate_stock_organized_data(validate_code, include_year_list=[]):
         elif len(include_year_list) > 0 and years.group() not in include_year_list:
             continue
         month_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        month_folder_list.sort()
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
@@ -192,26 +197,29 @@ def validate_stock_organized_by_month(validate_code, checked_set, year_folder, m
     session = create_session()
     date_folder_list = list_files_in_path(
         STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    date_folder_list.sort()
+    get_logger().info('Handle date for year {0} and month {1}: {2}'.format(year_folder, month_folder, '|'.join(date_folder_list)))
     for date in date_folder_list:
         if not re.search('[0-9]{8}', date):
             continue
         stock_file_list = list_files_in_path(
             STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        stock_file_list.sort()
+        get_logger().debug('Handle date {0} for stock: {1}'.format(date, '|'.join(stock_file_list)))
         for stock in stock_file_list:
             if date + stock.split('.')[0] not in checked_set:
                 try:
                     organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress(organized_stock_file_path)
                 except Exception as e:
-                    print('Load file: {0} error'.format(organized_stock_file_path))
+                    get_logger().error('Load file: {0} error'.format(organized_stock_file_path))
                     continue
-                print(date + ':' + stock)
-                validation_result = ZeroTransactionNumberValidator().validate(data)
+                validation_result = NoVolumeDataValidator().validate(data)
                 stock_validation_result = StockValidationResult(validate_code, validation_result, len(data))
                 session.add(stock_validation_result)
                 session.commit()
             else:
-                print("{0} {1} has been handled".format(date, stock))
+                get_logger().debug("{0} {1} has been handled".format(date, stock))
 
 
 def fix_stock_organized_data(validation_code, include_year_list=[]):
@@ -264,26 +272,32 @@ def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder,
     session = create_session()
     date_folder_list = list_files_in_path(
         STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    date_folder_list.sort()
+    get_logger().info(
+        'Handle date for year {0} and month {1}: {2}'.format(year_folder, month_folder, '|'.join(date_folder_list)))
     for date in date_folder_list:
         if not re.search('[0-9]{8}', date):
             continue
         stock_file_list = list_files_in_path(
             STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        stock_file_list.sort()
+        get_logger().debug('Handle date {0} for stock: {1}'.format(date, '|'.join(stock_file_list)))
         for stock in stock_file_list:
             if date + stock.split('.')[0] in checked_set:
                 try:
                     organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress(organized_stock_file_path)
                 except Exception as e:
-                    print('Load file: {0} error'.format(organized_stock_file_path))
+                    get_logger().error('Load file: {0} error'.format(organized_stock_file_path))
                     continue
-                print(date + ':' + stock)
-                data = CollectionBiddingDuplicateDataFixer().fix(data)
-                save_compress(data, organized_stock_file_path)
-                validation_result = session.query(StockValidationResult).filter(StockValidationResult.validation_code == validation_code, StockValidationResult.tscode == stock.split('.')[0], StockValidationResult.date == date).one()
-                validation_result.result = 2 #2表示修复过
-                validation_result.modified_time = datetime.now()
-                session.commit()
+                get_logger().debug('Fix for {0} and {1}'.format(date, stock))
+                data = CloseRecordMissingFixer().fix(data)
+                if len(data) > 0:
+                    save_compress(data, organized_stock_file_path)
+                    validation_result = session.query(StockValidationResult).filter(StockValidationResult.validation_code == validation_code, StockValidationResult.tscode == stock.split('.')[0], StockValidationResult.date == date).one()
+                    validation_result.result = 2 #2表示修复过
+                    validation_result.modified_time = datetime.now()
+                    session.commit()
 
 class DataFixer(metaclass=ABCMeta):
 
@@ -375,15 +389,194 @@ class ZeroTransactionNumberFixer(DataFixer):
         stock = data.iloc[0]['tscode']
         stock = stock[0:6]
         date = data.iloc[0]['date']
+        data = data.reset_index()
         temp_data = data[(data['transaction_number'] != 0)]
         check_time = temp_data.iloc[0]['time']
-        temp_data = data[(data['time'] > check_time)]
+        temp_data = data[(data['time'] >= check_time)]
         temp_data['delta_transaction_number'] = temp_data['transaction_number'] - temp_data['transaction_number'].shift(-1)
         temp_data = temp_data[temp_data['delta_transaction_number'] > 0]['transaction_number']
         dict = temp_data.to_dict()
-        print(dict)
+        data['temp_index'] = data.index
+        data['transaction_number'] = data.apply(lambda item: self.fix_transaction_number(item, dict, check_time), axis=1)
         return data
 
+    def fix_transaction_number(self, item, dict, check_time):
+        time = item['time']
+        index = item['temp_index']
+        transaction_number = item['transaction_number']
+        if time <= check_time or transaction_number != 0:
+            return transaction_number
+        key_list = list(dict.keys())
+        key_list.sort()
+        tgt_index = 0
+        for key in key_list:
+            if key < index:
+                tgt_index = key
+            else:
+                break
+        tansaction_number = dict[tgt_index]
+        return tansaction_number
+
+class CloseRecordMissingFixer(DataFixer):
+
+    def fix(self, data):
+        """
+        修复方法：
+        检查生成数据是否收盘时刻数据缺失，如果有做如下处理：
+        1. 如果最后一条有成交的时间在15：00或者15：00之前，则直接将原始数据的15：00插入
+        2. 如果最后一条有成交的时间在15：00之后则先不处理
+        3. 检查11:30之前的最后一条数据的时间，按3秒钟拷贝
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        stock = data.iloc[0]['tscode']
+        stock = stock[0:6]
+        date = data.iloc[0]['date']
+        temp_data = data[(data['time'] == add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))]
+        data_access = StockDataAccess()
+        if len(temp_data) == 0:
+            original_data = data_access.access(date, stock)
+            original_data = StockTickDataColumnTransform().process(original_data)
+            # 处理成交量全天为0的数据
+            if len(original_data[original_data['volume'] > 0]) == 0:
+                original_data['volume'] = original_data['daily_accumulated_volume'] - original_data['daily_accumulated_volume'].shift(1)
+                original_data['amount'] = original_data['daily_amount'] - original_data['daily_amount'].shift(1)
+            temp_data = original_data[original_data['volume'] > 0]
+            try:
+                last_volume_time = temp_data.iloc[-1]['time']
+            except Exception as e:
+                get_logger().warning('Special case found for {0} and {1}'.format(date, stock))
+                return pd.DataFrame()
+            if last_volume_time <= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME):
+                # 获取丢失的数据
+                original_data = original_data[(original_data['time'] == add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))]
+                data = pd.concat([data, original_data])
+                data = data.sort_values(axis=0, by='time')
+                return data
+            else:
+                # 如2022/5/31 300253这条数据：全天成交量为0，而且收盘集合竞价成交在15：00之后，把这条数据挪到15：00
+                original_data = original_data[(original_data['time'] == add_milliseconds_suffix(last_volume_time))]
+                original_data['time'] = add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME)
+                data = pd.concat([data, original_data])
+                data = data.sort_values(axis=0, by='time')
+                return data
+        temp_data = data[(data['time'] == add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))]
+        if len(temp_data) == 0:
+            original_data = data_access.access(date, stock)
+            original_data = StockTickDataColumnTransform().process(original_data)
+            try:
+                last_record_in_morning = original_data[(original_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))].iloc[-1]
+            except Exception as e:
+                get_logger().warning('Special case found for {0} and {1}'.format(date, stock))
+                return pd.DataFrame()
+            last_time_in_morning = last_record_in_morning['time']
+            delta_time_sec = time_difference(last_time_in_morning, add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))
+            if delta_time_sec > 0:
+                miss_data = pd.DataFrame(columns=data.columns.tolist())
+                step = constants.STOCK_TICK_SAMPLE_INTERVAL
+                while step <= delta_time_sec:
+                    last_record_in_morning['time'] = time_advance(last_time_in_morning, step)
+                    miss_data = miss_data.append(last_record_in_morning)
+                    step = step + constants.STOCK_TICK_SAMPLE_INTERVAL
+                data = data.append(miss_data)
+                data = data.sort_values(by=['time'])
+                data = data.reset_index(drop=True)
+                return data
+            if delta_time_sec == 0:
+                miss_data = pd.DataFrame(columns=data.columns.tolist())
+                miss_data = miss_data.append(last_record_in_morning)
+                data = data.append(miss_data)
+                data = data.sort_values(by=['time'])
+                data = data.reset_index(drop=True)
+                return data
+        return pd.DataFrame()
+
+class NoVolumeDataFixer(DataFixer):
+
+    def fix(self, data):
+        """
+        修复方法：
+        直接用当日累计成交量和成交额做差分来实现
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        stock = data.iloc[0]['tscode']
+        stock = stock[0:6]
+        date = data.iloc[0]['date']
+        if len(data[data['volume'] > 0]) == 0:
+            data = data.reset_index(drop=True)
+            data['volume'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
+            data['amount'] = data['daily_amount'] - data['daily_amount'].shift(1)
+            print(data['volume'])
+            return data
+        return pd.DataFrame()
+
+class NotClearedAfterCompletionFixer(DataFixer):
+
+    def fix(self, data):
+        """
+        修复方法：
+        比较日累计成交量增量和当前成交量，日累计成交量增量为0，但是成交量不为0，则需要置0
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        stock = data.iloc[0]['tscode']
+        stock = stock[0:6]
+        date = data.iloc[0]['date']
+        temp_data = data.copy(deep=True)
+        temp_data['delta_daily_accumulated_volume'] = temp_data['daily_accumulated_volume'] - temp_data['daily_accumulated_volume'].shift(1)
+        if len(temp_data[(temp_data['delta_daily_accumulated_volume'] == 0) & (temp_data['volume'] > 0)]) > 0:
+            data.loc[(temp_data['delta_daily_accumulated_volume'] == 0) & (temp_data['volume'] > 0), ['volume','amount']] = 0
+        return data
+
+class RepeatRecordFixer(DataFixer):
+
+    def fix(self, data):
+        """
+        修复方法：
+        重复数据，按时间找出所有重复数据的index，遍历这些index，如果当前daily_accumulated_volume最早的index不等于当前的index就删除该条记录
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        data = data.reset_index(drop=True)
+        temp_data = data[(data['time'] <= STOCK_TRANSACTION_END_TIME + '.000') & (
+                    data['time'] >= STOCK_TRANSACTION_START_TIME + '.000') & (
+                                     (data['time'] >= STOCK_TRANSACTION_NOON_START_TIME + '.000') | (
+                                         data['time'] <= STOCK_TRANSACTION_NOON_END_TIME + '.000'))]
+        temp_data = temp_data.groupby('time')[['time']].count()
+        temp_data = temp_data[temp_data['time'] > 1]
+        if len(temp_data) > 0:
+            for index_time in temp_data.index:
+                tdata = data[data['time'] == index_time]
+                if len(tdata) > 0:
+                    for index in tdata.index:
+                        cur_daily_accumulated_volume = data.loc[index]['daily_accumulated_volume']
+                        if type(cur_daily_accumulated_volume) != int:
+                            cur_daily_accumulated_volume = cur_daily_accumulated_volume.tolist()[0]
+                        min_index = min(data[data['daily_accumulated_volume'] == cur_daily_accumulated_volume].index)
+                        if min_index != index:
+                            data = data.drop(index)
+        return data
 def fix_stock_organized_data_daily(data):
     """
     具体的修复执行逻辑
@@ -515,6 +708,7 @@ def validate_stock_original_data(validate_code, include_year_list=[]):
     checked_set = set(map(lambda item: item[0], checked_list))
     runner = ProcessRunner(10)
     year_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep)
+    year_folder_list.sort()
     for year_folder in year_folder_list:
         years = re.search('[0-9]{4}', year_folder)
         if not years:
@@ -522,6 +716,7 @@ def validate_stock_original_data(validate_code, include_year_list=[]):
         elif len(include_year_list) > 0 and years.group() not in include_year_list:
             continue
         month_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        month_folder_list.sort()
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
@@ -548,36 +743,41 @@ def validate_stock_original_by_month(validate_code, checked_set, year_folder, mo
     session = create_session()
     date_folder_list = list_files_in_path(
         STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    date_folder_list.sort()
+    get_logger().info(
+        'Handle date for year {0} and month {1}: {2}'.format(year_folder, month_folder, '|'.join(date_folder_list)))
     for date in date_folder_list:
         if not re.search('[0-9]{8}', date):
             continue
         stock_file_list = list_files_in_path(
             STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        stock_file_list.sort()
+        get_logger().debug('Handle date {0} for stock: {1}'.format(date, '|'.join(stock_file_list)))
         for stock in stock_file_list:
             if date + stock.split('.')[0] not in checked_set:
                 try:
                     original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress(original_stock_file_path)
                 except Exception as e:
-                    print('Load file: {0} error'.format(original_stock_file_path))
+                    get_logger().error('Load file: {0} error'.format(original_stock_file_path))
                     continue
                 print(date + ':' + stock)
                 try:
                     data = StockTickDataColumnTransform().process(data)
                 except Exception as e:
-                    print('Invalid data for {0} : {1}'.format(date, stock))
+                    get_logger().error('Invalid data for {0} : {1}'.format(date, stock))
                     continue
                 data = StockTickDataCleaner().process(data)
                 # 停盘数据
                 if len(data) == 0:
-                    print('Empty data for {0} : {1}'.format(date, stock))
+                    get_logger().warning('Empty data for {0} : {1}'.format(date, stock))
                     continue
                 validation_result = ClosingDuplicateDataValidator().validate(data)
                 stock_validation_result = StockValidationResult(validate_code, validation_result, len(data))
                 session.add(stock_validation_result)
                 session.commit()
             else:
-                print("{0} {1} has been handled".format(date, stock))
+                get_logger().debug("{0} {1} has been handled".format(date, stock))
 
 class ClosingCallAuctionValidator(Validator):
     """检查收盘集合竞价数据是不是来迟了
@@ -599,7 +799,7 @@ class ClosingCallAuctionValidator(Validator):
             # 最后一个有成交量的时间
             time = data.iloc[-1]['time']
             # 最后有成交量的时间大于15：00：00
-            if time > STOCK_TRANSACTION_END_TIME + '.000':
+            if time > add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME):
                 result.result = RESULT_FAIL
                 result.error_details.append('The closing call auction time {0} larger than closing time'.format(time))
         return result
@@ -633,6 +833,7 @@ class CollectionBiddingDuplicateDataValidator(Validator):
         temp_data = temp_data.merge(temp_data_group_by, on=['time'], how='left')
         temp_data = temp_data[temp_data['count_y'] > 1]
         if len(temp_data) > 0:
+            get_logger().error(temp_data["time"])
             result.result = RESULT_FAIL
             result.error_details.append('There are collection bidding duplicate data')
         return result
@@ -712,6 +913,214 @@ class ZeroTransactionNumberValidator(Validator):
     def convert(self, target_data, compare_data):
         pass
 
+class NotClearedAfterCompletionValidator(Validator):
+    """补齐插值时需要把成交量和成交额清0，因为是从上一个时刻照搬下来的，检查是不是有没有清零的数据
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        data['delta_daily_accumulated_volume'] = data['daily_accumulated_volume'] - data['daily_accumulated_volume'].shift(1)
+        if len(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)]) > 0:
+            get_logger().error(data[(data['delta_daily_accumulated_volume'] == 0) & (data['volume'] > 0)][['time','delta_daily_accumulated_volume','volume']])
+            result.result = RESULT_FAIL
+            result.error_details.append('Invalid volume should to be fixed')
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+class RepeatRecordValidator(Validator):
+    """检查是否有重复数据, 只检查交易时间
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        temp_data = data[(data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME)) & (data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) &
+                         ((data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME)) | (data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME)))]
+        temp_data = temp_data.groupby('time')[['time']].count()
+        temp_data = temp_data[temp_data['time'] > 1]
+        if len(temp_data) > 0:
+            get_logger().error(temp_data)
+            result.result = RESULT_FAIL
+            result.error_details.append('Repeat records')
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+class CloseRecordMissingValidator(Validator):
+    """检查生成数据是否有15：00和11：30时间点的记录
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        temp_data1 = data[(data['time'] == add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))]
+        temp_data2 = data[(data['time'] == add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))]
+        if len(temp_data1) == 0 or len(temp_data2) == 0:
+            result.result = RESULT_FAIL
+            result.error_details.append('The close record is missing')
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+class TestValidator(Validator):
+    """测试
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+class NoVolumeDataValidator(Validator):
+    """检查全天没成交量的数据
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        if len(data[data['volume'] > 0]) == 0:
+            result.result = RESULT_FAIL
+            result.error_details.append('The volume is 0 for whole day')
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+def validate_factor_data(validate_code, factor, product='', date_list=[]):
+    """
+    检查因子数据
+
+    Parameters
+    ----------
+    validate_code
+    factor
+    product
+    date_list
+
+    Returns
+    -------
+
+    """
+    session = create_session()
+    checked_list = session.execute('select concat(instrument, date) from factor_validation_result where validation_code = :vcode', {'vcode': validate_code})
+    checked_set = set(map(lambda item : item[0], checked_list))
+    runner = ProcessRunner(10)
+    if product == '':
+        products = [product]
+    else:
+        products = STOCK_INDEX_PRODUCTS
+    for product in products:
+        data = factor.load(product)
+        instruments = list(set(data['instrument'].tolist()))
+        instruments.sort()
+        for instrument in instruments:
+            runner.execute(validate_factor_by_instrument, args=(validate_code, checked_set, factor, product, instrument))
+            # validate_factor_by_instrument(validate_code, checked_set, instrument)
+    time.sleep(100000)
+
+def validate_factor_by_instrument(validate_code, checked_set, factor, product, instrument):
+    """
+    按合约检查因子数据，用于多进程并行运算
+
+    Parameters
+    ----------
+    validate_code
+    checked_set
+    factor
+    product
+    instument
+
+    Returns
+    -------
+
+    """
+    session = create_session()
+    data = factor.load(product)
+    instrument_data = data[data['instrument'] == instrument]
+    dates = list(set(instrument_data['date'].tolist()))
+    dates.sort()
+    for date in dates:
+        if instrument + date not in checked_set:
+            date_data = data[(data['instrument'] == instrument) & (data['date'] == date)]
+            validation_result = CloseRecordMissingValidator().validate(date_data)
+            factor_validation_result = FactorValidationResult(validate_code, validation_result, len(date_data))
+            session.add(factor_validation_result)
+            session.commit()
+
+
 if __name__ == '__main__':
     # fix_stock_tick_data('2021', '01', ['20210108','20210111','20210112','20210113','20210114','20210115','20210118','20210119','20210120','20210121','20210122','20210125','20210126','20210127','20210128','20210129'])
     # fix_stock_tick_data('2021', '03', ['20210326','20210329','20210330','20210331'])
@@ -753,13 +1162,13 @@ if __name__ == '__main__':
     # check_issue_stock_validation_data('081727da-a3ad-43be-b319-21c4f8cb382d')
 
     #检查已生成股票数据
-    validate_stock_organized_data('20230209-finley')
+    # validate_stock_organized_data('20230216-finley')
 
     #检查原始股票数据
     # validate_stock_original_data('20230208-finley')
 
     #修复有问题股票数据
-    # fix_stock_organized_data('20230208-finley')
+    # fix_stock_organized_data('20230214-finley')
 
     #检查收盘集合竞价数据是不是来迟了
     # data = read_decompress("E:\\data\\fix\\4th\\000333-20220617\\000333.original.pkl")
@@ -769,7 +1178,7 @@ if __name__ == '__main__':
     # print(validation_result)
 
     # 检查集合竞价阶段是否有重复数据
-    # data = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201811\\20181108\\600369.pkl')
+    # data = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201812\\20181225\\600126.pkl')
     # data = StockTickDataColumnTransform().process(data)
     # data = StockTickDataCleaner().process(data)
     # validation_result = CollectionBiddingDuplicateDataValidator().validate(data)
@@ -784,22 +1193,72 @@ if __name__ == '__main__':
 
     # 单独测试validator
     # validator = ZeroTransactionNumberValidator()
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201712\\20171204\\000690.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220517\\000156.pkl')
+    # print(validator.validate(data))
+
+    validator = CloseRecordMissingValidator()
+    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\002459.pkl')
+    print(validator.validate(data))
+
+    # validator = NotClearedAfterCompletionValidator()
+    # data = read_decompress('x')
+    # print(validator.validate(data))
+
+    # validator = RepeatRecordValidator()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202004\\20200424\\600859.pkl')
+    # print(validator.validate(data))
+
+    # validator = NoVolumeDataValidator()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220520\\688321.pkl')
     # print(validator.validate(data))
 
     # 单独测试fixer
     # fixer = CollectionBiddingDuplicateDataFixer()
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201811\\20181108\\600369.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201812\\20181226\\000627.pkl')
     # data = fixer.fix(data)
-    # save_compress(data, 'E:\\data\\temp\\aa.pkl')
+    # save_compress(data, 'E:\\data\\temp\\000627_fix.pkl')
 
     # fixer = ClosingDuplicateDataFixer()
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201811\\20181108\\600369.pkl')
     # data = fixer.fix(data)
     # save_compress(data, 'E:\\data\\temp\\aa.pkl')
 
-    fixer = ZeroTransactionNumberFixer()
-    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201712\\20171204\\000690.pkl')
-    data = fixer.fix(data)
-    save_compress(data, 'E:\\data\\temp\\aa.pkl')
+    # fixer = ZeroTransactionNumberFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220517\\000156.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\000156_fix.csv')
 
+    # fixer = CloseRecordMissingFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2019\\stk_tick10_w_201908\\20190830\\600642.pkl')
+    # data = fixer.fix(data)
+    # save_compress(data, 'E:\\data\\temp\\aa.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201704\\20170405\\600649.pkl')
+    # data = fixer.fix(data)
+    # save_compress(data, 'E:\\data\\temp\\bb.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202202\\20220216\\600704.pkl')
+    # data = fixer.fix(data)
+    # save_compress(data, 'E:\\data\\temp\\cc.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\002948.pkl')
+    # data = fixer.fix(data)
+    # save_compress(data, 'E:\\data\\temp\\dd.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220531\\300253.pkl')
+    # data = fixer.fix(data)
+    # save_compress(data, 'E:\\data\\temp\\ee.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220520\\601818.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\601818_fix.csv')
+
+    # fixer = NoVolumeDataFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220601\\688561.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\688561_fix.csv')
+
+    # fixer = NotClearedAfterCompletionFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202012\\20201210\\000415.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\000415_fix.csv')
+
+    # fixer = RepeatRecordFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202004\\20200424\\600859.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\600859_fix.csv')

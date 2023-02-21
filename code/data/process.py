@@ -11,7 +11,7 @@ import numpy as np
 
 from common import constants
 from common.aop import timing
-from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME
+from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME, STOCK_VALID_DATA_STARTTIME
 from common.localio import read_decompress, save_compress
 from common.timeutils import datetime_advance, date_alignment, time_carry, time_advance, add_milliseconds_suffix
 from data.analysis import FutureTickerHandler, StockTickerHandler
@@ -224,7 +224,7 @@ class StockTickDataEnricher(DataProcessor):
         pre_data = data[data['time'] < STOCK_TRANSACTION_START_TIME]
 
         print(data[['time', 'price', 'open', 'high', 'low', 'close']])
-        #处理开盘数据缺失
+        #处理开盘数据缺失，用昨日收盘价补齐
         last_close = data[data['close'] > 0].iloc[0]['close']
         if len(data[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
                 STOCK_VALID_DATA_STARTTIME)) & (data['price'] == 0)]) > 0:
@@ -242,8 +242,6 @@ class StockTickDataEnricher(DataProcessor):
                 STOCK_VALID_DATA_STARTTIME)) & (data['low'] == 0)]) > 0:
             data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['time'] <= add_milliseconds_suffix(
                 STOCK_VALID_DATA_STARTTIME)) & (data['low'] == 0), 'low'] = last_close
-
-        print(data[['time','price','open','high','low','close']])
 
         #对齐
         data = data[data['time'] >= STOCK_TRANSACTION_START_TIME]
@@ -290,7 +288,6 @@ class StockTickDataEnricher(DataProcessor):
                 item['time'] = time_advance(str_cur_time, step)
                 item['volume'] = 0
                 item['amount'] = 0
-                item['transaction_number'] = 0
                 miss_data = miss_data.append(item)
                 step = step + constants.STOCK_TICK_SAMPLE_INTERVAL
         data = data.append(miss_data)
@@ -514,11 +511,12 @@ class IndexAbstactExtractor(DataProcessor):
             if (stock_list == ''): #初始化
                 stock_list = cur_stock_list
             elif (stock_list == cur_stock_list): #成分股未发生变化
-                end_date = time.strftime('%Y%m%d')
+                end_time = time.strftime('%Y%m%d')
             else: #成分股发生变化
-                index_abstract[start_time + '_' + end_date] = [stock.split('.')[0] for stock in stock_list.split('|')]
+                index_abstract[start_time + '_' + end_time] = [stock.split('.')[0] for stock in stock_list.split('|')]
                 start_time = time.strftime('%Y%m%d')
                 stock_list = cur_stock_list
+        index_abstract[start_time + '_' + end_time] = [stock.split('.')[0] for stock in stock_list.split('|')]
         return index_abstract
 
     @timing
@@ -570,28 +568,28 @@ if __name__ == '__main__':
     # tscode = 'sh688800'
     # content = pd.read_csv(constants.STOCK_TICK_DATA_PATH.format('20220812') + StockTickerHandler('20220812').build(tscode), encoding='gbk')
     # # From pkl
-    content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210719\\601998.pkl')
-    content = StockTickDataColumnTransform().process(content)
-    content = StockTickDataCleaner().process(content)
-    content.to_csv("E:\\data\\temp\\601998_org.csv")
-    content = StockTickDataEnricher().process(content)
-    content.to_csv("E:\\data\\temp\\601998_new.csv")
+    # content = read_decompress('D:\\liuli\\data\\original\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210719\\601998.pkl')
+    # content = StockTickDataColumnTransform().process(content)
+    # content = StockTickDataCleaner().process(content)
+    # content.to_csv("E:\\data\\temp\\601998_org.csv")
+    # content = StockTickDataEnricher().process(content)
+    # content.to_csv("E:\\data\\temp\\601998_new.csv")
 
 
     # 测试期指摘要处理类
-    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
-    # data = IndexAbstactExtractor().process(data)
-    # print(data)
-    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
-    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
-    # data = IndexAbstactExtractor().process(data)
-    # print(data)
-    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
-    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
-    # print(data)
-    # data = IndexAbstactExtractor().process(data)
-    # print(data)
-    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
+    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
+    data = IndexAbstactExtractor().process(data)
+    print(data)
+    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
+    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
+    data = IndexAbstactExtractor().process(data)
+    print(data)
+    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
+    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
+    print(data)
+    data = IndexAbstactExtractor().process(data)
+    print(data)
+    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
     # data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
     # list50 = data50['20170103_20170609']
     # print(list50)

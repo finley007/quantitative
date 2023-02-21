@@ -89,3 +89,4 @@ FACTOR_TYPE_DETAILS = {
         'package':'factor.spot_goods_factor'
     }
 }
+FACTOR_STANDARD_FIELD_TYPE = 'float64'

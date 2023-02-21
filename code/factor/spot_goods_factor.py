@@ -11,7 +11,7 @@ from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN
 from common.localio import read_decompress, save_compress
 from common.aop import timing
 from common.visualization import draw_analysis_curve
-from common.timeutils import get_last_or_next_trading_date
+from common.timeutils import get_last_or_next_trading_date, add_milliseconds_suffix
 from framework.pagination import Pagination
 from data.access import StockDataAccess
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
@@ -47,16 +47,8 @@ class TotalCommissionRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date['ask_commission_amount'] = stock_data_per_date['total_ask_volume'] * stock_data_per_date[
             'weighted_average_ask_price']
         stock_data_per_date['bid_commission_amount'] = stock_data_per_date['total_bid_volume'] * stock_data_per_date[
@@ -64,9 +56,11 @@ class TotalCommissionRatioFactor(StockTickFactor):
         stock_data_per_date['total_commission_amount'] = stock_data_per_date['ask_commission_amount'] + \
                                                          stock_data_per_date['bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['ask_commission_amount','total_commission_amount'].sum()
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+            'ask_commission_amount', 'total_commission_amount'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_commission_amount'] == 0 else x['ask_commission_amount'] / x['total_commission_amount'], axis=1)
+            lambda x: 0 if x['total_commission_amount'] == 0 else x['ask_commission_amount'] / x[
+                'total_commission_amount'], axis=1)
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         # 过滤对齐在3秒线的数据
@@ -100,25 +94,21 @@ class TenGradeCommissionRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date['10_grade_ask_commission_amount'] = stock_data_per_date.apply(
             lambda item: self.amount_sum(item, 'ask'), axis=1)
         stock_data_per_date['10_grade_bid_commission_amount'] = stock_data_per_date.apply(
             lambda item: self.amount_sum(item, 'bid'), axis=1)
-        stock_data_per_date['10_grade_total_commission_amount'] = stock_data_per_date['10_grade_ask_commission_amount'] + stock_data_per_date['10_grade_bid_commission_amount']
+        stock_data_per_date['10_grade_total_commission_amount'] = stock_data_per_date[
+                                                                      '10_grade_ask_commission_amount'] + \
+                                                                  stock_data_per_date['10_grade_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['10_grade_ask_commission_amount', '10_grade_total_commission_amount'].sum()
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+            '10_grade_ask_commission_amount', '10_grade_total_commission_amount'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['10_grade_total_commission_amount'] == 0 else x['10_grade_ask_commission_amount'] / x['10_grade_total_commission_amount'], axis=1)
+            lambda x: 0 if x['10_grade_total_commission_amount'] == 0 else x['10_grade_ask_commission_amount'] / x[
+                '10_grade_total_commission_amount'], axis=1)
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
@@ -179,16 +169,8 @@ class FiveGradeCommissionRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date['5_grade_ask_commission_amount'] = stock_data_per_date.apply(
             lambda item: self.amount_sum(item, 'ask'), axis=1)
         stock_data_per_date['5_grade_bid_commission_amount'] = stock_data_per_date.apply(
@@ -196,7 +178,8 @@ class FiveGradeCommissionRatioFactor(StockTickFactor):
         stock_data_per_date['5_grade_total_commission_amount'] = stock_data_per_date['5_grade_ask_commission_amount'] + \
                                                                  stock_data_per_date['5_grade_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['5_grade_ask_commission_amount', '5_grade_total_commission_amount'].sum()
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+            '5_grade_ask_commission_amount', '5_grade_total_commission_amount'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
             lambda x: 0 if x['5_grade_total_commission_amount'] == 0 else x['5_grade_ask_commission_amount'] / x[
                 '5_grade_total_commission_amount'], axis=1)
@@ -251,7 +234,7 @@ class RisingStockRatioFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['price']
+        columns = columns + ['price', 'close']
         return columns
 
     def get_factor_columns(self, data):
@@ -261,16 +244,8 @@ class RisingStockRatioFactor(StockTickFactor):
         columns = data.columns.tolist() + key_columns + ['time', 'second_remainder']
         return columns
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         change_columns = []
         columns_replace = {}
         for param in self._params:
@@ -287,13 +262,21 @@ class RisingStockRatioFactor(StockTickFactor):
         return date, stock_data_per_date_group_by
 
     def enrich_stock_data(self, instrument, date, stock, data):
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        temp_data = data[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         for param in self._params:
-            data['change.' + str(param)] = data['price'] - data[
-                'price'].shift(-param)
+            #盘前
+            data['change.' + str(param)] = 0
+            temp_data['change.' + str(param)] = temp_data['price'] - temp_data['price'].shift(param)
+            # 不足param长度的用昨日收盘价计算
+            temp_data.loc[np.isnan(temp_data['change.' + str(param)]), 'change.' + str(param)] = temp_data['price'] - temp_data['close']
+        pre_data = data[data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+        data = pd.concat([pre_data, temp_data])
         return data
 
     def get_rise_ratio(self, item):
-        return item[item > 0].count()/item.count()
+        rise_ratio = item[item > 0].count() / item.count()
+        return rise_ratio
 
 class SpreadFactor(StockTickFactor):
     """价差因子
@@ -321,16 +304,8 @@ class SpreadFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date[self.get_key()] = (stock_data_per_date['ask_price1'] - stock_data_per_date[
             'bid_price1']) / (stock_data_per_date['bid_price1'] + stock_data_per_date['ask_price1'])
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
@@ -338,6 +313,7 @@ class SpreadFactor(StockTickFactor):
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by, 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
+
 
 class CallAuctionSecondStageIncreaseFactor(StockTickFactor):
     """集合竞价二阶段涨幅因子
@@ -356,7 +332,7 @@ class CallAuctionSecondStageIncreaseFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'ask_price1']
+        columns = columns + ['price', 'ask_price1', 'volume']
         return columns
 
     def get_factor_columns(self, data):
@@ -369,29 +345,38 @@ class CallAuctionSecondStageIncreaseFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    @timing
-    def caculate(self, data):
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns=columns)
-        product = data.iloc[0]['product']
-        instrument = data.iloc[0]['instrument']
-        date_list = list(set(data['date'].tolist()))
-        date_list.sort()
-        for date in date_list:
-            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-            if len(stock_data_per_date) == 0:
-                get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-                continue
-            stock_data_per_date = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
-            start_price = stock_data_per_date.iloc[0]['ask_price1']
-            end_price = stock_data_per_date.iloc[-1]['ask_price1']
-            increase_rate = (end_price - start_price)/start_price
-            data.loc[data['date'] == date, self.get_key()] = increase_rate
-            new_data = pd.concat([new_data, data])
-        return new_data
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['increase_rate'].mean()
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by,
+             'time': stock_data_per_date_group_by.index})
+        return date, df_stock_data_per_date
 
-    def caculate_by_date(self, *args):
-        return
+    @timing
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        start_time_data = data[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['time'] <= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME))]
+        # 这里结束时间不能用时间点卡，因为很多情况二阶段成交会有延时，不是正好在09:25:00
+        end_time_data = data[(data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['volume'] > 0)]
+        # 有些数据没有集合竞价信息，如：'2017-12-18', '002311'，这时能不能用开盘涨幅？
+        data['increase_rate'] = 0
+        if len(start_time_data) > 0 and len(end_time_data) > 0:
+            start_price = start_time_data.iloc[0]['ask_price1']
+            end_price = end_time_data.iloc[0]['price']
+            data.loc[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME), 'increase_rate'] = (end_price - start_price) / start_price
+        return data
 
 class TwoCallAuctionStageDifferenceFactor(StockTickFactor):
     """集合竞价二阶段涨幅减去集合竞价一阶段涨幅因子
@@ -410,7 +395,7 @@ class TwoCallAuctionStageDifferenceFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'ask_price1']
+        columns = columns + ['ask_price1', 'price', 'volume']
         return columns
 
     def get_factor_columns(self, data):
@@ -422,30 +407,42 @@ class TwoCallAuctionStageDifferenceFactor(StockTickFactor):
 
     def get_keys(self):
         return [self.get_key()]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['rate_difference'].mean()
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by,
+             'time': stock_data_per_date_group_by.index})
+        return date, df_stock_data_per_date
 
     @timing
-    def caculate(self, data):
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns=columns)
-        product = data.iloc[0]['product']
-        instrument = data.iloc[0]['instrument']
-        date_list = list(set(data['date'].tolist()))
-        date_list.sort()
-        for date in date_list:
-            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-            if len(stock_data_per_date) == 0:
-                get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-                continue
-            stage_one_data = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)]
-            stage_two_data = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
-            stage_one_increase_rate = (stage_one_data.iloc[-1]['ask_price1'] - stage_one_data.iloc[0]['ask_price1'])/stage_one_data.iloc[0]['ask_price1']
-            stage_two_increase_rate = (stage_two_data.iloc[-1]['ask_price1'] - stage_two_data.iloc[0]['ask_price1'])/stage_two_data.iloc[0]['ask_price1']
-            data.loc[data['date'] == date, self.get_key()] = stage_one_increase_rate - stage_two_increase_rate
-            new_data = pd.concat([new_data, data])
-        return new_data
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
 
-    def caculate_by_date(self, *args):
-        return
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        stage_one_data = data[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME)) & (data['time'] <= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME))]
+        stage_two_start_time_data = data[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['time'] <= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME))]
+        stage_two_end_time_data = data[(data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['volume'] > 0)]
+        data['stage_one_increase_rate'] = 0
+        data['stage_two_increase_rate'] = 0
+        if len(stage_one_data) > 0 and len(stage_two_start_time_data) > 0 and len(stage_two_end_time_data) > 0:
+            stage_one_end_price = stage_one_data.iloc[-1]['ask_price1']
+            stage_one_start_price = stage_one_data.iloc[0]['ask_price1']
+            data.loc[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME), 'stage_one_increase_rate'] = (stage_one_end_price - stage_one_start_price) / stage_one_start_price
+            stage_two_start_price = stage_two_start_time_data.iloc[0]['ask_price1']
+            stage_two_end_price = stage_two_end_time_data.iloc[0]['price']
+            data.loc[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME), 'stage_two_increase_rate'] = (stage_two_end_price - stage_two_start_price) / stage_two_start_price
+        data['rate_difference'] = data['stage_two_increase_rate'] - data['stage_one_increase_rate']
+        return data
 
 
 class CallAuctionSecondStageReturnVolatilityFactor(StockTickFactor):
@@ -465,7 +462,7 @@ class CallAuctionSecondStageReturnVolatilityFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'ask_price1']
+        columns = columns + ['bid_price1', 'ask_price1', 'volume']
         return columns
 
     def get_factor_columns(self, data):
@@ -478,29 +475,39 @@ class CallAuctionSecondStageReturnVolatilityFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    @timing
-    def caculate(self, data):
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns=columns)
-        product = data.iloc[0]['product']
-        instrument = data.iloc[0]['instrument']
-        date_list = list(set(data['date'].tolist()))
-        date_list.sort()
-        for date in date_list:
-            stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-            if len(stock_data_per_date) == 0:
-                get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-                continue
-            stock_data_per_date = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
-            stock_data_per_date['mean_price'] = (stock_data_per_date['ask_price1'] + stock_data_per_date['bid_price1'])/2
-            stock_data_per_date['mean_price_return'] = (stock_data_per_date['mean_price'].shift(1) - stock_data_per_date['mean_price'])/stock_data_per_date['mean_price']
-            return_volatility =  stock_data_per_date['mean_price_return'].std()
-            data.loc[data['date'] == date, self.get_key()] = return_volatility
-            new_data = pd.concat([new_data, data])
-        return new_data
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['mean_price_return_std'].mean()
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by,
+             'time': stock_data_per_date_group_by.index})
+        return date, df_stock_data_per_date
 
-    def caculate_by_date(self, *args):
-        return
+    @timing
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        data['mean_price_return_std'] = 0
+        temp_data = data[(data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['volume'] > 0)]
+        if len(temp_data) > 0:
+            end_time = temp_data.iloc[0]['time']
+            temp_data = data[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['time'] <= end_time)]
+            if len(temp_data) > 0:
+                temp_data['mean_price'] = (temp_data['ask_price1'] + temp_data['bid_price1']) / 2
+                # 这里不会有未来函数，因为实际已经开盘
+                temp_data['mean_price_return'] = (temp_data['mean_price'].shift(-1) - temp_data['mean_price']) / temp_data['mean_price']
+                data.loc[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME), 'mean_price_return_std'] = temp_data['mean_price_return'].std()
+        return data
 
 
 class FirstStageCommissionRatioFactor(StockTickFactor):
@@ -520,8 +527,8 @@ class FirstStageCommissionRatioFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5','bid_price6', 'bid_volume6','bid_price7', 'bid_volume7','bid_price8', 'bid_volume8','bid_price9', 'bid_volume9','bid_price10', 'bid_volume10',
-                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5','ask_price6', 'ask_volume6','ask_price7', 'ask_volume7','ask_price8', 'ask_volume8','ask_price9', 'ask_volume9','ask_price10', 'ask_volume10']
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_volume2',
+                             'ask_price1', 'ask_volume1', 'ask_volume2']
         return columns
 
     def get_factor_columns(self, data):
@@ -536,8 +543,6 @@ class FirstStageCommissionRatioFactor(StockTickFactor):
 
     @timing
     def caculate(self, data):
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns = columns)
         product = data.iloc[0]['product']
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
@@ -547,23 +552,21 @@ class FirstStageCommissionRatioFactor(StockTickFactor):
             if len(stock_data_per_date) == 0:
                 get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
                 continue
-            stock_data_per_date = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)]
+            #截取一阶段数据
+            stock_data_per_date = stock_data_per_date[
+                (stock_data_per_date['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME)) & (
+                            stock_data_per_date['time'] <= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME))]
             stock_data_per_date['ask_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
             stock_data_per_date['bid_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
+            #两个维度求和
             total_ask_commission_amount = stock_data_per_date['ask_commission_amount'].sum()
             total_bid_commission_amount = stock_data_per_date['bid_commission_amount'].sum()
-            data.loc[data['date'] == date, self.get_key()] =  total_ask_commission_amount/(total_ask_commission_amount + total_bid_commission_amount)
-            new_data = pd.concat([new_data, data])
-        return new_data
+            data.loc[data['date'] == date, self.get_key()] = total_ask_commission_amount/(total_ask_commission_amount + total_bid_commission_amount)
+        return data
 
     def amount_sum(self, item, type):
-        sum = 0
-        for i in range(1, 11):
-            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        sum = item[type + '_price1'] * item[type + '_volume1'] + item[type + '_price1'] * item[type + '_volume2']
         return sum
-
-    def caculate_by_date(self, *args):
-        return
 
 class SecondStageCommissionRatioFactor(StockTickFactor):
     """集合竞价二阶段委比因子
@@ -583,7 +586,7 @@ class SecondStageCommissionRatioFactor(StockTickFactor):
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
         columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5','bid_price6', 'bid_volume6','bid_price7', 'bid_volume7','bid_price8', 'bid_volume8','bid_price9', 'bid_volume9','bid_price10', 'bid_volume10',
-                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5','ask_price6', 'ask_volume6','ask_price7', 'ask_volume7','ask_price8', 'ask_volume8','ask_price9', 'ask_volume9','ask_price10', 'ask_volume10']
+                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5','ask_price6', 'ask_volume6','ask_price7', 'ask_volume7','ask_price8', 'ask_volume8','ask_price9', 'ask_volume9','ask_price10', 'ask_volume10', 'volume']
         return columns
 
     def get_factor_columns(self, data):
@@ -598,8 +601,6 @@ class SecondStageCommissionRatioFactor(StockTickFactor):
 
     @timing
     def caculate(self, data):
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns = columns)
         product = data.iloc[0]['product']
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
@@ -609,23 +610,43 @@ class SecondStageCommissionRatioFactor(StockTickFactor):
             if len(stock_data_per_date) == 0:
                 get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
                 continue
-            stock_data_per_date = stock_data_per_date[(stock_data_per_date['time'] >= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME) & (stock_data_per_date['time'] <= STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)]
-            stock_data_per_date['ask_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
-            stock_data_per_date['bid_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
             total_ask_commission_amount = stock_data_per_date['ask_commission_amount'].sum()
             total_bid_commission_amount = stock_data_per_date['bid_commission_amount'].sum()
-            data.loc[data['date'] == date, self.get_key()] =  total_ask_commission_amount/(total_ask_commission_amount + total_bid_commission_amount)
-            new_data = pd.concat([new_data, data])
-        return new_data
+            data.loc[data['date'] == date, self.get_key()] = total_ask_commission_amount/(total_ask_commission_amount + total_bid_commission_amount)
+        return data
 
     def amount_sum(self, item, type):
         sum = 0
-        for i in range(1, 11):
-            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        if item['bid_price2'] == 0:
+            sum = item[type + '_price1'] * item[type + '_volume1'] + item[type + '_price1'] * item[type + '_volume2']
+        else: #对应有成交量的一条记录
+            for i in range(1, 11):
+                sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
         return sum
 
-    def caculate_by_date(self, *args):
-        return
+    @timing
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        data = data.reset_index()
+        # 这里结束时间不能用时间点卡，因为很多情况二阶段成交会有延时，不是正好在09:25:00
+        end_time_data = data[(data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (data['volume'] > 0)]
+        end_time = end_time_data.iloc[0]['time']
+        data['ask_commission_amount'] = 0
+        data['bid_commission_amount'] = 0
+        data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['time'] <= end_time), 'ask_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
+        data.loc[(data['time'] >= add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['time'] <= end_time), 'bid_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
+        return data
 
 class AskLargeAmountBillFactor(TimewindowStockTickFactor):
     """委买大额挂单因子
@@ -723,7 +744,7 @@ class AskLargeAmountBillFactor(TimewindowStockTickFactor):
         instrument_stock_data = self.prepare_timewindow_data(instrument)[stock]
         three_days_before = get_last_or_next_trading_date(stock, date, 3)
         instrument_stock_data = instrument_stock_data[(instrument_stock_data['date'] >= three_days_before) & (instrument_stock_data['date'] <= date)]
-        instrument_stock_data = instrument_stock_data[instrument_stock_data['time'] > STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME ] #当天也只需要已成交的数据
+        instrument_stock_data = instrument_stock_data[instrument_stock_data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)] #当天也只需要已成交的数据
         instrument_stock_data['ask_commission_amount'] = instrument_stock_data.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
         instrument_stock_data['mean_ask_commission_amount'] = instrument_stock_data['ask_commission_amount'].rolling(len(data) * 3).mean()
         data = instrument_stock_data[instrument_stock_data['date'] == date]
@@ -832,7 +853,7 @@ class BidLargeAmountBillFactor(TimewindowStockTickFactor):
         instrument_stock_data = self.prepare_timewindow_data(instrument)[stock]
         three_days_before = get_last_or_next_trading_date(stock, date, 3)
         instrument_stock_data = instrument_stock_data[(instrument_stock_data['date'] >= three_days_before) & (instrument_stock_data['date'] <= date)]
-        instrument_stock_data = instrument_stock_data[instrument_stock_data['time'] > STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME ] #当天也只需要已成交的数据
+        instrument_stock_data = instrument_stock_data[instrument_stock_data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)] #当天也只需要已成交的数据
         instrument_stock_data['bid_commission_amount'] = instrument_stock_data.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
         instrument_stock_data['mean_bid_commission_amount'] = instrument_stock_data['bid_commission_amount'].rolling(len(data) * 3).mean()
         data = instrument_stock_data[instrument_stock_data['date'] == date]
@@ -922,25 +943,24 @@ class AmountAndCommissionRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
-        stock_data_per_date['amount_and_ask_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
-        stock_data_per_date['amount_and_bid_commission_amount'] = stock_data_per_date.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
-        stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'amount_and_ask_commission_amount'] = stock_data_per_date['amount_and_ask_commission_amount'] + stock_data_per_date['amount']
-        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'amount_and_bid_commission_amount'] = stock_data_per_date['amount_and_bid_commission_amount'] + stock_data_per_date['amount']
-        stock_data_per_date['total_amount_and_commission_amount'] = stock_data_per_date['amount_and_ask_commission_amount'] + stock_data_per_date['amount_and_bid_commission_amount']
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+        stock_data_per_date['amount_and_ask_commission_amount'] = stock_data_per_date.apply(
+            lambda item: self.amount_sum(item, 'ask'), axis=1)
+        stock_data_per_date['amount_and_bid_commission_amount'] = stock_data_per_date.apply(
+            lambda item: self.amount_sum(item, 'bid'), axis=1)
+        stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'amount_and_ask_commission_amount'] = \
+        stock_data_per_date['amount_and_ask_commission_amount'] + stock_data_per_date['amount']
+        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'amount_and_bid_commission_amount'] = \
+        stock_data_per_date['amount_and_bid_commission_amount'] + stock_data_per_date['amount']
+        stock_data_per_date['total_amount_and_commission_amount'] = stock_data_per_date['amount_and_ask_commission_amount'] + \
+                                                                    stock_data_per_date['amount_and_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['amount_and_ask_commission_amount', 'total_amount_and_commission_amount'].sum()
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+            'amount_and_ask_commission_amount', 'total_amount_and_commission_amount'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_amount_and_commission_amount'] == 0 else x['amount_and_ask_commission_amount'] / x['total_amount_and_commission_amount'], axis=1)
+            lambda x: 0 if x['total_amount_and_commission_amount'] == 0 else x['amount_and_ask_commission_amount'] / x[
+                'total_amount_and_commission_amount'], axis=1)
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
@@ -995,22 +1015,16 @@ class RisingFallingVolumeRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date['rising_volume'] = 0
         stock_data_per_date['falling_volume'] = 0
         stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'rising_volume'] = stock_data_per_date['volume']
-        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'falling_volume'] = stock_data_per_date['volume']
+        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'falling_volume'] = stock_data_per_date[
+            'volume']
         stock_data_per_date['total_volume'] = stock_data_per_date['volume']
-        stock_data_per_date['diff_volume'] = stock_data_per_date['rising_volume'] - stock_data_per_date['falling_volume']
+        stock_data_per_date['diff_volume'] = stock_data_per_date['rising_volume'] - stock_data_per_date[
+            'falling_volume']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['diff_volume', 'total_volume'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
@@ -1063,16 +1077,8 @@ class UntradedStockRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date['total_count'] = 1
         stock_data_per_date['untraded_count'] = 0
         stock_data_per_date.loc[stock_data_per_date['volume'] == 0, 'untraded_count'] = 1
@@ -1083,6 +1089,7 @@ class UntradedStockRatioFactor(StockTickFactor):
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
+
 
 class DailyAccumulatedLargeOrderRatioFactor(StockTickFactor):
     """日累计大单占比占比因子
@@ -1110,20 +1117,14 @@ class DailyAccumulatedLargeOrderRatioFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['total_rising_amount_per_transaction', 'total_amount_per_transaction'].sum()
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+            'total_rising_amount_per_transaction', 'total_amount_per_transaction'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_amount_per_transaction'] == 0 else x['total_rising_amount_per_transaction'] / x['total_amount_per_transaction'], axis=1)
+            lambda x: 0 if x['total_amount_per_transaction'] == 0 else x['total_rising_amount_per_transaction'] / x[
+                'total_amount_per_transaction'], axis=1)
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
@@ -1184,23 +1185,21 @@ class RollingAccumulatedLargeOrderRatioFactor(StockTickFactor):
         columns = columns + param_keys
         return columns
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > STOCK_TRANSACTION_START_TIME]
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         for param in self._params:
-            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['total_rising_amount_per_transaction.' + str(param), 'total_amount_per_transaction.' + str(param)].sum()
+            stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
+                'total_rising_amount_per_transaction.' + str(param), 'total_amount_per_transaction.' + str(param)].sum()
             stock_data_per_date_group_by[self.get_key(param)] = stock_data_per_date_group_by.apply(
-                lambda x: 0 if x['total_amount_per_transaction.' + str(param)] == 0 else x['total_rising_amount_per_transaction.' + str(param)] / x['total_amount_per_transaction.' + str(param)], axis=1)
+                lambda x: 0 if x['total_amount_per_transaction.' + str(param)] == 0 else x[
+                                                                                             'total_rising_amount_per_transaction.' + str(
+                                                                                                 param)] / x[
+                                                                                             'total_amount_per_transaction.' + str(
+                                                                                                 param)], axis=1)
             df_stock_data_per_date = pd.DataFrame(
-                {self.get_key(param): stock_data_per_date_group_by[self.get_key(param)], 'time': stock_data_per_date_group_by.index})
+                {self.get_key(param): stock_data_per_date_group_by[self.get_key(param)],
+                 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
     def get_stock_data(self, date, stock):
@@ -1249,11 +1248,12 @@ class DeltaTotalCommissionRatioFactor(StockTickFactor):
         self._total_commission_ratio_factor = TotalCommissionRatioFactor()
 
     def caculate_by_date(self, *args):
-        date, df_stock_data_per_date = self._total_commission_ratio_factor.caculate_by_date(args)
+        date, df_stock_data_per_date = self._total_commission_ratio_factor.caculate_by_date(*args)
+        if len(df_stock_data_per_date) == 0:
+            return date, df_stock_data_per_date
         for param in self._params:
             df_stock_data_per_date[self.get_key(param)] = df_stock_data_per_date[self._total_commission_ratio_factor.get_key()] \
-                                                          - df_stock_data_per_date[self._total_commission_ratio_factor.get_key()].shift(param)
-        # 过滤对齐在3秒线的数据
+                                                      - df_stock_data_per_date[self._total_commission_ratio_factor.get_key()].shift(param)
         return date, df_stock_data_per_date
 
 class OverNightYieldFactor(StockTickFactor):
@@ -1273,7 +1273,7 @@ class OverNightYieldFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['close', 'bid_price1']
+        columns = columns + ['close', 'bid_price1', self.get_key()]
         return columns
 
     def get_key(self):
@@ -1282,22 +1282,17 @@ class OverNightYieldFactor(StockTickFactor):
     def get_keys(self):
         return [self.get_key()]
 
-    def caculate_by_date(self, *args):
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+    def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_key()].mean()
         df_stock_data_per_date = pd.DataFrame(
-            {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
+            {self.get_key(): stock_data_per_date_group_by, 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
     def get_stock_data(self, date, stock):
         data = self._data_access.access(date, stock)
         # 一阶段集合竞价
-        temp_data = data[(data['time'] >= '09:15:00') & (data['time'] < '09:20:00') & (data['bid_price1'] != 0) & (data['close'] != 0)]
+        temp_data = data[(data['time'] >= add_milliseconds_suffix(STOCK_START_TIME)) & (data['time'] < add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME)) & (data['bid_price1'] != 0) & (data['close'] != 0)]
         if len(temp_data) == 0:
             get_logger().error('Invalid 1st stage call auction data for {0} and {1}'.format(date, stock))
         last_close = temp_data.iloc[0]['close']
@@ -1323,7 +1318,7 @@ class AmountAnd1stGradeCommissionRatioFactor(AmountAndCommissionRatioFactor):
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
         columns = columns + ['bid_price1', 'bid_volume1',
-                             'ask_price1', 'ask_volume1', 'amount', 'price']
+                             'ask_price1', 'ask_volume1', 'amount', 'price', 'delta_price']
         return columns
 
     def amount_sum(self, item, type):
@@ -1362,9 +1357,16 @@ class RisingLimitStockProportionFactor(StockTickFactor):
         product = args[0][2]
         get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
         stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        if len(stock_data_per_date) == 0:
+            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+            return date, stock_data_per_date
+        return self.execute_caculation(date, product, stock_data_per_date)
+
+    def execute_caculation(self, date, product, stock_data_per_date):
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['limit_sign'].sum()
-        stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by['limit_sign']/STOCK_INDEX_INFO[product]['STOCK_COUNT']
+        stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by['limit_sign'] / \
+                                                       STOCK_INDEX_INFO[product]['STOCK_COUNT']
         df_stock_data_per_date = pd.DataFrame(
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
@@ -1401,30 +1403,30 @@ class FallingLimitStockProportionFactor(RisingLimitStockProportionFactor):
             return 0
 
 if __name__ == '__main__':
-    data = read_decompress(TEST_PATH + 'IF1810.pkl')
-    data['product'] = 'IF'
-    data['instrument'] = 'IF1810'
-    data['date'] = data['datetime'].str[0:10]
-
-    print(data)
-    print(data.columns)
-
-    #总委比因子
-    total_commision = TotalCommissionRatioFactor()
-    print(total_commision.factor_code)
-    print(total_commision.version)
-    print(total_commision.get_params())
-    print(total_commision.get_category())
-    print(total_commision.get_full_name())
-
-    t = time.perf_counter()
-    data = TotalCommissionRatioFactor().caculate(data)
-    print(f'cost time: {time.perf_counter() - t:.8f} s')
-    save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.refactor.pkl')
-    print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
-    data.index = pd.DatetimeIndex(data['datetime'])
-    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
+    # data = read_decompress(TEST_PATH + 'IF1810.pkl')
+    # data['product'] = 'IF'
+    # data['instrument'] = 'IF1810'
+    # data['date'] = data['datetime'].str[0:10]
+    #
+    # print(data)
+    # print(data.columns)
+    #
+    # #总委比因子
+    # total_commision = TotalCommissionRatioFactor()
+    # print(total_commision.factor_code)
+    # print(total_commision.version)
+    # print(total_commision.get_params())
+    # print(total_commision.get_category())
+    # print(total_commision.get_full_name())
+    #
+    # t = time.perf_counter()
+    # data = TotalCommissionRatioFactor().caculate(data)
+    # print(f'cost time: {time.perf_counter() - t:.8f} s')
+    # save_compress(data, 'E:\\data\\test\\IF1803.daily.concurrent.20.10.refactor.pkl')
+    # print(data[['datetime', TotalCommissionRatioFactor.factor_code]])
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    # draw_analysis_curve(data, show_signal=True, signal_keys=total_commision.get_keys())
 
     # 10档委比因子
     # ten_grade_total_commision = TenGradeCommissionRatioFactor()
@@ -1620,7 +1622,11 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True,
     #                     signal_keys=total_commission_ratio_change_rate_factor.get_keys())
 
-
+    data_access = StockDataAccess(check_original=False)
+    data = data_access.access('2017-12-18', '002311')
+    temp_data = data[(data['time'] <= STOCK_TRANSACTION_START_TIME) & (data['volume'] > 0)]
+    end_price = temp_data.iloc[0]['ask_price1']
+    print(end_price)
 
 
 

@@ -58,6 +58,24 @@ class DtoStockValidationResult(ValidationResult):
             raise InvalidStatus('Invalid validation status {0} for stock: {1} date: {2}'.format(self.result, self.tscode, self.date))
 
 
+class DtoFactorValidationResult(ValidationResult):
+
+    def __init__(self, result, error_details, instrument, date):
+        self.result = result
+        self.error_details = error_details
+        self.instrument = instrument
+        self.date = date
+
+    def __str__(self):
+        if self.result == RESULT_SUCCESS:
+            return 'The validation result for instrument: {0} date: {1} is {2}'.format(self.instrument, self.date, RESULT_SUCCESS)
+        elif self.result == RESULT_FAIL:
+            return 'The validation result for instrument: {0} date: {1} is {2} and error details: \n {3}'.format(self.instrument, self.date, RESULT_FAIL,
+                                                                                   '\n'.join(self.error_details))
+        else:
+            raise InvalidStatus('Invalid validation status {0} for instrument: {1} date: {2}'.format(self.result, self.instrument, self.date))
+
+
 class CompareResult(ValidationResult):
     """比较结果类
 

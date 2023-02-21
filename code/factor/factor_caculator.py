@@ -15,7 +15,11 @@ from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
-    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingVolumeRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, RollingAccumulatedLargeOrderRatioFactor
+    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingVolumeRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
+    RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
+    TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor
+
+
 from factor.base_factor import StockTickFactor
 from common.log import get_logger
 from framework.pagination import Pagination
@@ -32,7 +36,7 @@ class FactorCaculator():
     """
 
     @timing
-    def caculate(self, process_code, factor_list, include_instrument_list=[]):
+    def caculate(self, process_code, factor_list, include_instrument_list=[], performance_test=False):
         '''
         生成因子文件
 
@@ -49,7 +53,7 @@ class FactorCaculator():
         #获取k线文件列模板
         session = create_session()
         # for product in STOCK_INDEX_PRODUCTS:
-        for product in ['IF']:
+        for product in ['IH']:
             # factor_data = pd.DataFrame(columns=columns)
             temp_file = 'E:\\data\\temp\\' + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
@@ -86,10 +90,12 @@ class FactorCaculator():
                 session.commit()
                 save_compress(factor_data, temp_file)
             factor_data = factor_data.reset_index()
-            target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
-                list(map(lambda factor: factor.get_full_name(), factor_list)))
-            # target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
-            #     list(map(lambda factor: factor.get_full_name(), factor_list)))
+            if not performance_test:
+                target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
+                    list(map(lambda factor: factor.get_full_name(), factor_list)))
+            else:
+                target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+                    list(map(lambda factor: factor.get_full_name(), factor_list)))
             get_logger().info('Save factor file: {0}'.format(target_factor_file))
             save_compress(factor_data, target_factor_file)
             if os.path.exists(temp_file):
@@ -150,6 +156,7 @@ class FactorCaculator():
         window_size = 100
         session = create_session()
         for product in STOCK_INDEX_PRODUCTS:
+            get_logger().info('Handle product {0}'.format(product))
             instrument_list = session.execute(
                 'select distinct instrument from future_instrument_config where product = :product order by instrument',
                 {'product': product}).fetchall()
@@ -160,6 +167,7 @@ class FactorCaculator():
                 rdm_number = random.randint(0, len(date_list) - 1)
                 date = date_list[rdm_number][0]
                 data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
+                get_logger().info('Handle instrument {0}'.format(instrument[0]))
                 data['date'] = data['datetime'].str[0:10]
                 data['product'] = product
                 data['instrument'] = instrument[0]
@@ -171,13 +179,16 @@ class FactorCaculator():
                         stock = stock_list[rdm_number]
                         filter_stocks.append(stock)
                         stock_count = stock_count - 1
+                    get_logger().info('Handle stocks {}'.format('|'.join(filter_stocks)))
                     factor.set_stock_filter(filter_stocks)
                 data = factor.caculate(data)
+                get_logger().info('Complete factor caculation for {0}'.format(str(i)))
                 daily_data = data[data['date'] == date]
                 if len(daily_data) > 0:
                     daily_data = daily_data.reset_index()
                     rdm_index = random.randint(0, len(daily_data) - window_size)
                     daily_data = daily_data.loc[rdm_index: rdm_index + window_size]
+                    get_logger().info('Prepare the stock data for {0}'.format(str(i)))
                     if len(filter_stocks) > 0: #如果加了股票过滤，截取相应股票数据并且移动到当前目录，便于检查
                         daily_data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + '-'.join(filter_stocks) + '_' + str(i) + '.csv')
                         daily_data['time'] = daily_data['datetime'].apply(lambda dt: add_milliseconds_suffix(dt[11:19]))
@@ -248,8 +259,18 @@ if __name__ == '__main__':
     # factor = RisingFallingVolumeRatioFactor()
     # factor = UntradedStockRatioFactor()
     # factor = DailyAccumulatedLargeOrderRatioFactor()
-    factor = RollingAccumulatedLargeOrderRatioFactor([10])
-    FactorCaculator().caculate_manually_check(factor, 2)
+    # factor = RollingAccumulatedLargeOrderRatioFactor([10])
+    # factor = RisingStockRatioFactor()
+    # factor = SpreadFactor()
+    # factor = OverNightYieldFactor()
+    # factor = DeltaTotalCommissionRatioFactor([5])
+    # factor = CallAuctionSecondStageIncreaseFactor()
+    # factor = TwoCallAuctionStageDifferenceFactor()
+    # factor = CallAuctionSecondStageReturnVolatilityFactor()
+    # factor = FirstStageCommissionRatioFactor()
+    # factor = SecondStageCommissionRatioFactor()
+    factor = AmountAnd1stGradeCommissionRatioFactor()
+    FactorCaculator().caculate_manually_check(factor, is_accumulated=True)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

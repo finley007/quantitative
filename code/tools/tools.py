@@ -25,6 +25,7 @@ from common.timeutils import date_format_transform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, DtoStockValidationResult
 from framework.localconcurrent import ProcessRunner
 from data.access import create_stock_file_path
+from common.log import get_logger
 
 
 @timing
@@ -231,14 +232,15 @@ def enrich_stock_tick_data(process_code, include_year_list=[], include_month_lis
         elif len(include_year_list) > 0 and years.group() not in include_year_list:
             continue
         month_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep)
+        month_folder_list.sort()
         for month_folder in month_folder_list:
             months = re.search('[0-9]{6}', month_folder)
             if not months:
                 continue
             elif len(include_month_list) > 0 and months.group()[4:] not in include_month_list:
                 continue
-            # enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder)
-            runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder))
+            enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder)
+            # runner.execute(enrich_stock_tick_data_by_month, args=(checked_set, process_code, include_date_list, include_stock_list, year_folder, month_folder))
     time.sleep(100000)
 
 
@@ -261,16 +263,18 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
     """
     data_length_threshold = 100
     session = create_session()
-    date_folder_list = list_files_in_path(
-        STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    date_folder_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep)
+    date_folder_list.sort()
+    get_logger().info('Handle date for year {0} and month {1}: {2}'.format(year_folder, month_folder, '|'.join(date_folder_list)))
     for date in date_folder_list:
         days = re.search('[0-9]{8}', date)
         if not days:
             continue
         elif len(include_date_list) > 0 and days.group()[6:] not in include_date_list:
             continue
-        stock_file_list = list_files_in_path(
-            STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        stock_file_list = list_files_in_path(STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep)
+        stock_file_list.sort()
+        get_logger().debug('Handle date {0} for stock: {1}'.format(date, '|'.join(stock_file_list)))
         for stock in stock_file_list:
             if date + stock.split('.')[0] not in checked_set:
                 stocks = re.search('[0-9]{6}', stock)
@@ -282,12 +286,12 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
                     original_stock_file_path = STOCK_TICK_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress( original_stock_file_path)
                 except Exception as e:
-                    print('Load file: {0} error'.format(original_stock_file_path))
+                    get_logger().error('Load file: {0} error'.format(original_stock_file_path))
                     continue
                 try :
                     data = StockTickDataColumnTransform().process(data)
                 except Exception as e:
-                    print('Do column transform error for file: {0}'.format(original_stock_file_path))
+                    get_logger().error('Do column transform error for file: {0}'.format(original_stock_file_path))
                     continue
                 data = StockTickDataCleaner().process(data)
                 if len(data) > data_length_threshold:
@@ -309,11 +313,11 @@ def enrich_stock_tick_data_by_month(checked_set, process_code, include_date_list
                         session.add(stock_process_record)
                         session.commit()
             else:
-                print("{0} {1} has been handled".format(date, stock))
+                get_logger().debug("{0} {1} has been handled".format(date, stock))
 
 def combine_stock_tick_data(process_code, include_year_list=[], include_month_list=[], include_date_list=[]):
     """
-    按天合并股票数据
+    按天合并股票数据，这个的目的是为了合并大文件提升读取性能，但是经过测试这样做是没有效果的
 
     Parameters
     ----------
@@ -791,7 +795,7 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    # enrich_stock_tick_data('20221111-finley-2',['2018'],['10'],['10'],['600705'])
+    enrich_stock_tick_data('20221111-finley-2',['2019'],['11'],['28'],['603877'])
 
     #合并股票数据
     # combine_stock_tick_data('20230109-finley-1',['2018'],['08', '09', '10'])
@@ -865,4 +869,4 @@ if __name__ == '__main__':
     # 生成股票数据人工对比文件
     # create_stock_manually_check_files(10)
 
-    print(len(read_decompress("E:/data/factor/IC_FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE-1.0[200,500,1000,1500]")))
+    # print(len(read_decompress("E:/data/factor/IC_FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE-1.0[200,500,1000,1500]")))

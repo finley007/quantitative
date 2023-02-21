@@ -64,9 +64,22 @@ class FutureConfigDao(BaseDao):
         end_date = result_list[0][1]
         return start_date, end_date
 
+    def filter_date(self, start_date='', end_date=''):
+        if start_date == '':
+            result_list = self._session.execute(
+                'select distinct date from future_instrument_config where date >= :end_date order by date',
+                {'end_date': end_date}).fetchall()
+        elif end_date == '':
+            result_list = self._session.execute(
+                'select distinct date from future_instrument_config where date <= :start_date order by date',
+                {'start_date': start_date}).fetchall()
+        else:
+            result_list = self._session.execute('select distinct date from future_instrument_config where date <= :start_date or date >= :end_date order by date', {'start_date': start_date, 'end_date':end_date}).fetchall()
+        result_list = list(map(lambda item: item[0], result_list))
+        return result_list
 
 if __name__ == '__main__':
-    print(IndexConstituentConfigDao().query_trading_date_by_tscode('600519'))
+    # print(IndexConstituentConfigDao().query_trading_date_by_tscode('600519'))
 
     # session = create_session()
 
@@ -81,5 +94,10 @@ if __name__ == '__main__':
 
     # instrument_config_dao = InstrumentConfigDao()
     # print(instrument_config_dao.get_start_end_date_by_instrument('IF2103'))
+
+    future_config_dao = FutureConfigDao()
+    print(future_config_dao.filter_date('2017-01-03', '2022-06-13'))
+    print(future_config_dao.filter_date('2017-01-03'))
+    print(future_config_dao.filter_date('', '2022-06-13'))
 
 

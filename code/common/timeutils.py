@@ -3,6 +3,26 @@
 from datetime import datetime, timedelta, time
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.persistence.dao import IndexConstituentConfigDao
+from common.exception.exception import InvalidValue
+
+def time_difference(str_start_time, str_end_time):
+    """
+    计算两个时间差值
+
+    Parameters
+    ----------
+    start_time
+    end_time
+
+    Returns
+    -------
+
+    """
+    start_time = datetime.strptime(str_start_time, "%H:%M:%S.%f")
+    end_time = datetime.strptime(str_end_time, "%H:%M:%S.%f")
+    if end_time < start_time:
+        raise InvalidValue('Start time {0} should be large than end time {1}'.format(str_start_time, str_end_time))
+    return (end_time - start_time).seconds
 
 def datetime_advance(str_cur_time, step):
     """
@@ -150,10 +170,11 @@ def get_last_or_next_trading_date(stock, date, range_num = 1, backword=True, dat
 
 
 if __name__ == '__main__':
-    print(date_format_transform('20221121'))
-    print(date_format_transform('2022-11-21'))
-    IndexConstituentConfigDao().query_trading_date_by_tscode('002642')
-    print(get_last_or_next_trading_date('20221212', range_num=2, date_list=['20221210','20221211','20221212','20221213','20221214']))
-    print(get_last_or_next_trading_date('20221212', range_num=3, date_list=['20221210','20221211','20221212','20221213','20221214']))
-    print(get_last_or_next_trading_date('20221212', range_num=2, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
-    print(get_last_or_next_trading_date('20221212', range_num=3, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    # print(date_format_transform('20221121'))
+    # print(date_format_transform('2022-11-21'))
+    # IndexConstituentConfigDao().query_trading_date_by_tscode('002642')
+    # print(get_last_or_next_trading_date('20221212', range_num=2, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    # print(get_last_or_next_trading_date('20221212', range_num=3, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    # print(get_last_or_next_trading_date('20221212', range_num=2, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    # print(get_last_or_next_trading_date('20221212', range_num=3, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
+    print(time_difference('11:29:57', '11:30:00'))
