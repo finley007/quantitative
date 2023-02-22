@@ -45,7 +45,7 @@ select count(1), validation_code from stock_validation_result group by validatio
 --查询股票检查记录总数
 select count(1) from stock_validation_result where validation_code = '20221219-finley';
 --查询股票检查结果分布
-select count(1), result from stock_validation_result where validation_code = '20230105-finley' group by result;
+select count(1), result from stock_validation_result where validation_code = '20230216-finley' group by result;
 --查询股票检查结果
 select distinct err_msg from stock_validation_result where validation_code = '20230105-finley' and result = 1 order by err_msg; 
 --查询已修复数据
@@ -53,6 +53,16 @@ select count(1) from stock_validation_result where validation_code = '20221219-f
 --查询一个具体的股票检查结果记录
 select * from stock_validation_result where tscode = '000027.SZ' and validation_code = '20221213-finley'  and date like '%2020-04%';
 select * from stock_validation_result where err_msg like '%The redundant data for noon break exists%';
+--检查是不是所有日期都已经执行
+select date from stock_validation_result where validation_code = '20230216-finley' group by date order by date;
+--备份表
+CREATE TABLE stock_validation_result_bak SELECT * FROM stock_validation_result WHERE validation_code = '20221219-finley';
+
+--检查因子生成执行记录
+--记录总数
+select count(1) from factor_process_record;
+--执行历史和记录数
+select count(1), process_code from factor_process_record group by process_code;
 
 explain select * from stock_validation_result where validation_code = '20221219-finley' and tscode = '002458' and date = '20210106';
 select * from (select count(1) as count, validation_code, tscode, date from stock_validation_result group by validation_code, tscode, date) t where count > 1; 

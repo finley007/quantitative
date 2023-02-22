@@ -1,0 +1,610 @@
+TotalCommissionRatioFactor：
+数据缺失：
+2016-12-15,4800,0,0,4800 - data miss
+2016-12-16,4800,0,0,4800 - data miss
+2016-12-19,4800,0,0,4800 - data miss
+2016-12-20,4800,0,0,4800 - data miss
+2016-12-21,4800,0,0,4800 - data miss
+2016-12-22,4800,0,0,4800 - data miss
+2016-12-23,4800,0,0,4800 - data miss
+2016-12-26,4800,0,0,4800 - data miss
+2016-12-27,4800,0,0,4800 - data miss
+2016-12-28,4800,0,0,4800 - data miss
+2016-12-29,4800,0,0,4800 - data miss
+2016-12-30,4800,0,0,4800 - data miss
+2017-05-10,4800,0,0,4800 - data miss
+2017-05-22,4800,0,0,4800 - data miss
+2017-12-01,4800,0,0,4800 - data miss
+2019-05-08,4800,0,0,4800 - data miss
+2021-07-06,4800,0,0,4800 - data miss
+2021-08-11,4800,0,0,4800 - data miss
+2022-09-01,4800,0,0,4800 - data miss
+2022-09-02,4800,0,0,4800 - data miss
+2022-09-05,4800,0,0,4800 - data miss
+2022-09-06,4800,0,0,4800 - data miss
+2022-09-07,4800,0,0,4800 - data miss
+2022-09-08,4800,0,0,4800 - data miss
+2022-09-09,4800,0,0,4800 - data miss
+2022-09-13,4800,0,0,4800 - data miss
+2022-09-14,4800,0,0,4800 - data miss
+2022-09-15,4800,0,0,4800 - data miss
+2022-09-16,4800,0,0,4800 - data miss
+2022-09-19,4800,0,0,4800 - data miss
+2022-09-20,4800,0,0,4800 - data miss
+2022-09-21,4800,0,0,4800 - data miss
+2022-09-22,4800,0,0,4800 - data miss
+2022-09-23,4800,0,0,4800 - data miss
+2022-09-26,4800,0,0,4800 - data miss
+2022-09-27,4800,0,0,4800 - data miss
+2022-09-28,4800,0,0,4800 - data miss
+2022-09-29,4800,0,0,4800 - data miss
+-- 以上数据直接drop掉
+
+2022-06-13,4800,0,0,4800 - data miss fill with 0
+2022-06-14,4800,0,0,4800 - data miss fill with 0
+2022-06-15,4800,0,0,4800 - data miss fill with 0
+2022-06-16,4800,0,0,4800 - data miss fill with 0
+2022-06-17,4800,0,0,4800 - data miss fill with 0
+2022-06-20,4800,0,0,4800 - data miss fill with 0
+2022-06-21,4800,0,0,4800 - data miss fill with 0
+2022-06-22,4800,0,0,4800 - data miss fill with 0
+2022-06-23,4800,0,0,4800 - data miss fill with 0
+2022-06-24,4800,0,0,4800 - data miss fill with 0
+2022-06-27,4800,0,0,4800 - data miss fill with 0
+2022-06-28,4800,0,0,4800 - data miss fill with 0
+2022-06-29,4800,0,0,4800 - data miss fill with 0
+2022-06-30,4800,0,0,4800 - data miss fill with 0
+2022-07-01,4800,0,0,4800 - data miss fill with 0
+2022-07-04,4800,0,0,4800 - data miss fill with 0
+2022-07-05,4800,0,0,4800 - data miss fill with 0
+2022-07-06,4800,0,0,4800 - data miss fill with 0
+2022-07-07,4800,0,0,4800 - data miss fill with 0
+2022-07-08,4800,0,0,4800 - data miss fill with 0
+2022-07-11,4800,0,0,4800 - data miss fill with 0
+2022-07-12,4800,0,0,4800 - data miss fill with 0
+2022-07-13,4800,0,0,4800 - data miss fill with 0
+2022-07-14,4800,0,0,4800 - data miss fill with 0
+2022-07-15,4800,0,0,4800 - data miss fill with 0
+2022-07-18,4800,0,0,4800 - data miss fill with 0
+2022-07-19,4800,0,0,4800 - data miss fill with 0
+2022-07-20,4800,0,0,4800 - data miss fill with 0
+2022-07-21,4800,0,0,4800 - data miss fill with 0
+2022-07-22,4800,0,0,4800 - data miss fill with 0
+2022-07-25,4800,0,0,4800 - data miss fill with 0
+2022-07-26,4800,0,0,4800 - data miss fill with 0
+2022-07-27,4800,0,0,4800 - data miss fill with 0
+2022-07-28,4800,0,0,4800 - data miss fill with 0
+2022-07-29,4800,0,0,4800 - data miss fill with 0
+2022-08-01,4800,0,0,4800 - data miss fill with 0
+2022-08-02,4800,0,0,4800 - data miss fill with 0
+2022-08-03,4800,0,0,4800 - data miss fill with 0
+2022-08-04,4800,0,0,4800 - data miss fill with 0
+2022-08-05,4800,0,0,4800 - data miss fill with 0
+2022-08-08,4800,0,0,4800 - data miss fill with 0
+2022-08-09,4800,0,0,4800 - data miss fill with 0
+2022-08-10,4800,0,0,4800 - data miss fill with 0
+2022-08-11,4800,0,0,4800 - data miss fill with 0
+2022-08-12,4800,0,0,4800 - data miss fill with 0
+2022-08-15,4800,0,0,4800 - data miss fill with 0
+2022-08-16,4800,0,0,4800 - data miss fill with 0
+2022-08-17,4800,0,0,4800 - data miss fill with 0
+2022-08-18,4800,0,0,4800 - data miss fill with 0
+2022-08-19,4800,0,0,4800 - data miss fill with 0
+2022-08-22,4800,0,0,4800 - data miss fill with 0
+2022-08-23,4800,0,0,4800 - data miss fill with 0
+2022-08-24,4800,0,0,4800 - data miss fill with 0
+2022-08-25,4800,0,0,4800 - data miss fill with 0
+2022-08-26,4800,0,0,4800 - data miss fill with 0
+2022-08-29,4800,0,0,4800 - data miss fill with 0
+2022-08-30,4800,0,0,4800 - data miss fill with 0
+2022-08-31,4800,0,0,4800 - data miss fill with 0
+-- 这些是因为成分股生成的问题，但是可以直接填0
+
+2020-07-08,454,0,0,454 - data miss
+2020-07-09,741,0,0,741 - data miss
+2020-07-14,918,0,0,918 - data miss
+2020-08-03,640,0,0,640 - IH data miss
+2021-07-22,361,0,0,361 - data miss 缺少9：48之前的数据
+2021-08-03,346,0,0,346 - data miss
+2022-05-30,13,0,0,13 - data miss 缺少9：30：41之前的数据
+-- 补0
+
+2017-01-13,1,0,0,1 - IH 15:00数据缺失
+2017-03-20,1,0,0,1 - IH
+2017-04-05,1,0,0,1 - IH
+2017-04-11,1,0,0,1 - IH
+2017-06-28,1,0,0,1 - IH
+2017-07-05,1,0,0,1 - IH
+2017-07-18,1,0,0,1 - IH
+2017-08-02,1,0,0,1 - IH
+2017-08-08,1,0,0,1 - IH
+2017-08-29,1,0,0,1 - IH
+2017-10-12,1,0,0,1 - IH
+2018-01-02,1,0,0,1 - IH
+2018-01-09,1,0,0,1 - IH
+2018-01-29,1,0,0,1 - IH
+2018-02-02,1,0,0,1 - IH
+2018-02-12,1,0,0,1 - IH
+2018-02-26,1,0,0,1 - IH
+2018-03-01,1,0,0,1 - IH
+2018-03-09,1,0,0,1 - IH
+2018-03-26,1,0,0,1 - IH
+2018-04-13,1,0,0,1 - IH
+2018-06-08,1,0,0,1 - IH
+2021-05-10,1,0,0,1 - IH 11:30数据缺失
+修复data
+
+
+2023-02-16 08:42:54.237 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603369
+2023-02-16 08:42:54.253 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601688
+2023-02-16 08:42:54.266 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600019
+2023-02-16 08:42:54.277 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600048
+2023-02-16 08:42:54.294 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600839
+2023-02-16 08:42:54.305 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601995
+2023-02-16 08:42:54.318 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601598
+2023-02-16 08:42:54.329 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600765
+2023-02-16 08:42:54.341 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601868
+2023-02-16 08:42:54.356 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600037
+2023-02-16 08:42:54.366 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600297
+2023-02-16 08:42:54.381 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600085
+2023-02-16 08:42:54.395 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600862
+2023-02-16 08:42:54.411 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688005
+2023-02-16 08:42:54.424 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600643
+2023-02-16 08:42:54.440 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601360
+2023-02-16 08:42:54.453 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600958
+2023-02-16 08:42:54.469 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601611
+2023-02-16 08:42:54.488 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600970
+2023-02-16 08:42:54.503 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600999
+2023-02-16 08:42:54.514 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600466
+2023-02-16 08:42:54.527 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600216
+2023-02-16 08:42:54.538 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600908
+2023-02-16 08:42:54.551 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603338
+2023-02-16 08:42:54.564 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603786
+2023-02-16 08:42:54.575 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600095
+2023-02-16 08:42:54.586 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600657
+2023-02-16 08:42:54.598 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600875
+2023-02-16 08:42:54.609 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600655
+2023-02-16 08:42:54.623 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600015
+2023-02-16 08:42:54.635 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600089
+2023-02-16 08:42:54.650 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603893
+2023-02-16 08:42:54.668 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603317
+2023-02-16 08:42:54.681 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603077
+2023-02-16 08:42:54.697 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600623
+2023-02-16 08:42:54.709 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600739
+2023-02-16 08:42:54.725 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601128
+2023-02-16 08:42:54.737 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601958
+2023-02-16 08:42:54.751 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600487
+2023-02-16 08:42:54.763 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600022
+2023-02-16 08:42:54.778 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603658
+2023-02-16 08:42:54.789 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600845
+2023-02-16 08:42:54.800 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688122
+2023-02-16 08:42:54.812 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603087
+2023-02-16 08:42:54.825 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600170
+2023-02-16 08:42:54.837 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601238
+2023-02-16 08:42:54.858 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600967
+2023-02-16 08:42:54.870 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601006
+2023-02-16 08:42:54.885 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601200
+2023-02-16 08:42:54.895 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601228
+2023-02-16 08:42:54.910 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601866
+2023-02-16 08:42:54.927 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688208
+2023-02-16 08:42:54.941 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601899
+2023-02-16 08:42:54.953 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600584
+2023-02-16 08:42:54.964 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601156
+2023-02-16 08:42:54.978 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688321
+2023-02-16 08:42:54.992 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600438
+2023-02-16 08:42:55.012 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601088
+2023-02-16 08:42:55.031 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601699
+2023-02-16 08:42:55.043 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600201
+2023-02-16 08:42:55.060 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688002
+2023-02-16 08:42:55.072 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603198
+2023-02-16 08:42:55.086 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600316
+2023-02-16 08:42:55.100 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600219
+2023-02-16 08:42:55.114 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601633
+2023-02-16 08:42:55.128 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600259
+2023-02-16 08:42:55.139 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600399
+2023-02-16 08:42:55.153 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600026
+2023-02-16 08:42:55.164 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601877
+2023-02-16 08:42:55.178 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600372
+2023-02-16 08:42:55.190 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603444
+2023-02-16 08:42:55.200 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600143
+2023-02-16 08:42:55.217 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603799
+2023-02-16 08:42:55.228 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603228
+2023-02-16 08:42:55.242 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601607
+2023-02-16 08:42:55.254 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688065
+2023-02-16 08:42:55.266 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600038
+2023-02-16 08:42:55.287 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600390
+2023-02-16 08:42:55.298 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600649
+2023-02-16 08:42:55.315 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600563
+2023-02-16 08:42:55.326 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600188
+2023-02-16 08:42:55.340 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601718
+2023-02-16 08:42:55.352 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688188
+2023-02-16 08:42:55.362 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600028
+2023-02-16 08:42:55.377 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600918
+2023-02-16 08:42:55.388 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601872
+2023-02-16 08:42:55.397 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603515
+2023-02-16 08:42:55.410 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600733
+2023-02-16 08:42:55.421 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601456
+2023-02-16 08:42:55.433 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600598
+2023-02-16 08:42:55.446 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601766
+2023-02-16 08:42:55.458 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600383
+2023-02-16 08:42:55.474 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600567
+2023-02-16 08:42:55.484 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600895
+2023-02-16 08:42:55.497 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600183
+2023-02-16 08:42:55.511 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600737
+2023-02-16 08:42:55.523 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688289
+2023-02-16 08:42:55.538 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600398
+2023-02-16 08:42:55.551 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600482
+2023-02-16 08:42:55.562 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600667
+2023-02-16 08:42:55.573 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603659
+2023-02-16 08:42:55.587 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601717
+2023-02-16 08:42:55.598 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600903
+2023-02-16 08:42:55.611 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601066
+2023-02-16 08:42:55.627 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601106
+2023-02-16 08:42:55.638 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600718
+2023-02-16 08:42:55.652 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600663
+2023-02-16 08:42:55.663 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601298
+2023-02-16 08:42:55.677 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600871
+2023-02-16 08:42:55.692 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688777
+2023-02-16 08:42:55.709 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600392
+2023-02-16 08:42:55.719 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603000
+2023-02-16 08:42:55.730 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600409
+2023-02-16 08:42:55.744 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600926
+2023-02-16 08:42:55.756 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601333
+2023-02-16 08:42:55.769 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601689
+2023-02-16 08:42:55.782 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603225
+2023-02-16 08:42:55.792 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603290
+2023-02-16 08:42:55.806 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600776
+2023-02-16 08:42:55.820 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600745
+2023-02-16 08:42:55.832 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600642
+2023-02-16 08:42:55.845 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600315
+2023-02-16 08:42:55.856 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601778
+2023-02-16 08:42:55.871 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601800
+2023-02-16 08:42:55.884 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688390
+2023-02-16 08:42:55.897 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601988
+2023-02-16 08:42:55.911 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603233
+2023-02-16 08:42:55.923 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600572
+2023-02-16 08:42:55.938 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600376
+2023-02-16 08:42:55.949 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600985
+2023-02-16 08:42:55.963 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601816
+2023-02-16 08:42:55.975 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600150
+2023-02-16 08:42:55.985 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600764
+2023-02-16 08:42:56.003 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601881
+2023-02-16 08:42:56.014 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688036
+2023-02-16 08:42:56.026 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600803
+2023-02-16 08:42:56.038 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601229
+2023-02-16 08:42:56.050 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600760
+2023-02-16 08:42:56.064 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600699
+2023-02-16 08:42:56.077 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600848
+2023-02-16 08:42:56.093 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601878
+2023-02-16 08:42:56.110 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600811
+2023-02-16 08:42:56.126 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601618
+2023-02-16 08:42:56.141 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601997
+2023-02-16 08:42:56.153 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601916
+2023-02-16 08:42:56.170 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600029
+2023-02-16 08:42:56.181 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600377
+2023-02-16 08:42:56.194 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603719
+2023-02-16 08:42:56.211 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601636
+2023-02-16 08:42:56.222 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601601
+2023-02-16 08:42:56.233 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600016
+2023-02-16 08:42:56.245 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600266
+2023-02-16 08:42:56.255 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688029
+2023-02-16 08:42:56.267 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600648
+2023-02-16 08:42:56.280 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600339
+2023-02-16 08:42:56.291 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600118
+2023-02-16 08:42:56.308 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600158
+2023-02-16 08:42:56.318 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600120
+2023-02-16 08:42:56.333 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600298
+2023-02-16 08:42:56.349 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603195
+2023-02-16 08:42:56.369 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601992
+2023-02-16 08:42:56.381 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600064
+2023-02-16 08:42:56.395 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600000
+2023-02-16 08:42:56.407 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601668
+2023-02-16 08:42:56.418 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601880
+2023-02-16 08:42:56.435 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601390
+2023-02-16 08:42:56.449 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600795
+2023-02-16 08:42:56.462 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600859
+2023-02-16 08:42:56.473 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600511
+2023-02-16 08:42:56.484 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601377
+2023-02-16 08:42:56.500 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600741
+2023-02-16 08:42:56.512 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601966
+2023-02-16 08:42:56.526 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600956
+2023-02-16 08:42:56.540 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603456
+2023-02-16 08:42:56.555 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603986
+2023-02-16 08:42:56.567 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600968
+2023-02-16 08:42:56.578 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600196
+2023-02-16 08:42:56.591 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600535
+2023-02-16 08:42:56.605 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600258
+2023-02-16 08:42:56.619 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603345
+2023-02-16 08:42:56.632 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601608
+2023-02-16 08:42:56.642 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600639
+2023-02-16 08:42:56.656 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688561
+2023-02-16 08:42:56.667 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600528
+2023-02-16 08:42:56.679 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600717
+2023-02-16 08:42:56.695 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600732
+2023-02-16 08:42:56.710 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600418
+2023-02-16 08:42:56.724 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 689009
+2023-02-16 08:42:56.741 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600157
+2023-02-16 08:42:56.758 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600546
+2023-02-16 08:42:56.769 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600959
+2023-02-16 08:42:56.782 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601021
+2023-02-16 08:42:56.793 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601838
+2023-02-16 08:42:56.803 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600556
+2023-02-16 08:42:56.818 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600988
+2023-02-16 08:42:56.830 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600704
+2023-02-16 08:42:56.843 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600837
+2023-02-16 08:42:56.857 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603638
+2023-02-16 08:42:56.868 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600707
+2023-02-16 08:42:56.883 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600887
+2023-02-16 08:42:56.896 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601857
+2023-02-16 08:42:56.913 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600276
+2023-02-16 08:42:56.927 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601665
+2023-02-16 08:42:56.938 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600901
+2023-02-16 08:42:56.960 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601969
+2023-02-16 08:42:56.976 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603486
+2023-02-16 08:42:56.993 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600521
+2023-02-16 08:42:57.010 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600728
+2023-02-16 08:42:57.024 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600885
+2023-02-16 08:42:57.038 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600050
+2023-02-16 08:42:57.050 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603259
+2023-02-16 08:42:57.060 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601198
+2023-02-16 08:42:57.075 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600516
+2023-02-16 08:42:57.086 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601225
+2023-02-16 08:42:57.100 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601928
+2023-02-16 08:42:57.119 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600517
+2023-02-16 08:42:57.133 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603983
+2023-02-16 08:42:57.147 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600566
+2023-02-16 08:42:57.163 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601100
+2023-02-16 08:42:57.176 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600927
+2023-02-16 08:42:57.187 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603355
+2023-02-16 08:42:57.198 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603260
+2023-02-16 08:42:57.209 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688099
+2023-02-16 08:42:57.220 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603379
+2023-02-16 08:42:57.231 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600893
+2023-02-16 08:42:57.240 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601901
+2023-02-16 08:42:57.251 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600348
+2023-02-16 08:42:57.262 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601211
+2023-02-16 08:42:57.272 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688536
+2023-02-16 08:42:57.283 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603288
+2023-02-16 08:42:57.294 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600787
+2023-02-16 08:42:57.309 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601009
+2023-02-16 08:42:57.325 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600126
+2023-02-16 08:42:57.336 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600500
+2023-02-16 08:42:57.347 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601077
+2023-02-16 08:42:57.359 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603939
+2023-02-16 08:42:57.370 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688396
+2023-02-16 08:42:57.381 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600588
+2023-02-16 08:42:57.391 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600018
+2023-02-16 08:42:57.402 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600782
+2023-02-16 08:42:57.413 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 605499
+2023-02-16 08:42:57.423 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600060
+2023-02-16 08:42:57.436 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600056
+2023-02-16 08:42:57.448 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601108
+2023-02-16 08:42:57.461 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600823
+2023-02-16 08:42:57.472 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600582
+2023-02-16 08:42:57.483 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601187
+2023-02-16 08:42:57.493 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603883
+2023-02-16 08:42:57.504 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600256
+2023-02-16 08:42:57.517 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600309
+2023-02-16 08:42:57.528 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600989
+2023-02-16 08:42:57.539 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601989
+2023-02-16 08:42:57.551 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601869
+2023-02-16 08:42:57.566 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601162
+2023-02-16 08:42:57.578 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601098
+2023-02-16 08:42:57.589 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601118
+2023-02-16 08:42:57.600 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600705
+2023-02-16 08:42:57.611 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600208
+2023-02-16 08:42:57.623 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603708
+2023-02-16 08:42:57.633 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688126
+2023-02-16 08:42:57.650 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600036
+2023-02-16 08:42:57.660 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603833
+2023-02-16 08:42:57.671 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600446
+2023-02-16 08:42:57.681 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600008
+2023-02-16 08:42:57.693 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600580
+2023-02-16 08:42:57.703 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601005
+2023-02-16 08:42:57.714 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688180
+2023-02-16 08:42:57.726 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603712
+2023-02-16 08:42:57.742 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688981
+2023-02-16 08:42:57.753 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600415
+2023-02-16 08:42:57.765 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601155
+2023-02-16 08:42:57.776 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601138
+2023-02-16 08:42:57.788 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600884
+2023-02-16 08:42:57.799 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600547
+2023-02-16 08:42:57.809 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600380
+2023-02-16 08:42:57.820 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601169
+2023-02-16 08:42:57.830 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600600
+2023-02-16 08:42:57.841 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601058
+2023-02-16 08:42:57.854 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600941
+2023-02-16 08:42:57.866 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600010
+2023-02-16 08:42:57.875 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600236
+2023-02-16 08:42:57.885 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600872
+2023-02-16 08:42:57.895 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601555
+2023-02-16 08:42:57.905 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600271
+2023-02-16 08:42:57.918 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603160
+2023-02-16 08:42:57.929 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600362
+2023-02-16 08:42:57.939 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601003
+2023-02-16 08:42:57.952 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601166
+2023-02-16 08:42:57.963 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601788
+2023-02-16 08:42:57.974 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600131
+2023-02-16 08:42:57.988 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601016
+2023-02-16 08:42:58.007 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600809
+2023-02-16 08:42:58.018 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600906
+2023-02-16 08:42:58.029 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600299
+2023-02-16 08:42:58.039 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601939
+2023-02-16 08:42:58.051 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601985
+2023-02-16 08:42:58.062 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601615
+2023-02-16 08:42:58.075 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600346
+2023-02-16 08:42:58.086 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600132
+2023-02-16 08:42:58.097 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601168
+2023-02-16 08:42:58.109 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600329
+2023-02-16 08:42:58.120 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601398
+2023-02-16 08:42:58.132 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600307
+2023-02-16 08:42:58.143 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600171
+2023-02-16 08:42:58.155 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600011
+2023-02-16 08:42:58.166 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601728
+2023-02-16 08:42:58.177 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600905
+2023-02-16 08:42:58.190 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600062
+2023-02-16 08:42:58.203 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600754
+2023-02-16 08:42:58.216 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600109
+2023-02-16 08:42:58.230 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600606
+2023-02-16 08:42:58.241 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600406
+2023-02-16 08:42:58.255 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601975
+2023-02-16 08:42:58.267 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600498
+2023-02-16 08:42:58.278 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600155
+2023-02-16 08:42:58.293 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600536
+2023-02-16 08:42:58.304 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601698
+2023-02-16 08:42:58.321 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600900
+2023-02-16 08:42:58.333 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600160
+2023-02-16 08:42:58.348 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600436
+2023-02-16 08:42:58.360 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600066
+2023-02-16 08:42:58.373 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601628
+2023-02-16 08:42:58.390 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600176
+2023-02-16 08:42:58.410 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601336
+2023-02-16 08:42:58.421 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600585
+2023-02-16 08:42:58.431 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603156
+2023-02-16 08:42:58.443 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600549
+2023-02-16 08:42:58.455 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601808
+2023-02-16 08:42:58.466 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600177
+2023-02-16 08:42:58.480 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601669
+2023-02-16 08:42:58.492 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600909
+2023-02-16 08:42:58.506 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600161
+2023-02-16 08:42:58.519 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603589
+2023-02-16 08:42:58.530 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600325
+2023-02-16 08:42:58.548 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600673
+2023-02-16 08:42:58.566 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601179
+2023-02-16 08:42:58.582 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601888
+2023-02-16 08:42:58.594 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600529
+2023-02-16 08:42:58.610 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601577
+2023-02-16 08:42:58.622 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603927
+2023-02-16 08:42:58.635 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601991
+2023-02-16 08:42:58.646 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600115
+2023-02-16 08:42:58.655 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600373
+2023-02-16 08:42:58.668 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600006
+2023-02-16 08:42:58.682 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603605
+2023-02-16 08:42:58.693 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600486
+2023-02-16 08:42:58.707 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600863
+2023-02-16 08:42:58.721 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603218
+2023-02-16 08:42:58.738 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600167
+2023-02-16 08:42:58.749 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601231
+2023-02-16 08:42:58.762 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688256
+2023-02-16 08:42:58.775 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603613
+2023-02-16 08:42:58.787 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600104
+2023-02-16 08:42:58.807 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603267
+2023-02-16 08:42:58.821 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600919
+2023-02-16 08:42:58.836 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603501
+2023-02-16 08:42:58.847 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600660
+2023-02-16 08:42:58.860 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600233
+2023-02-16 08:42:58.872 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601318
+2023-02-16 08:42:58.884 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603392
+2023-02-16 08:42:58.900 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603885
+2023-02-16 08:42:58.912 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603882
+2023-02-16 08:42:58.927 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600027
+2023-02-16 08:42:58.939 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688006
+2023-02-16 08:42:58.954 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601828
+2023-02-16 08:42:58.968 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600820
+2023-02-16 08:42:58.988 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 605358
+2023-02-16 08:42:59.010 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600426
+2023-02-16 08:42:59.027 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601600
+2023-02-16 08:42:59.037 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600030
+2023-02-16 08:42:59.051 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601000
+2023-02-16 08:42:59.062 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601696
+2023-02-16 08:42:59.071 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600827
+2023-02-16 08:42:59.086 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603026
+2023-02-16 08:42:59.100 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600153
+2023-02-16 08:42:59.114 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 605117
+2023-02-16 08:42:59.126 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688185
+2023-02-16 08:42:59.138 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688599
+2023-02-16 08:42:59.155 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600369
+2023-02-16 08:42:59.167 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600111
+2023-02-16 08:42:59.182 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600867
+2023-02-16 08:42:59.195 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601012
+2023-02-16 08:42:59.207 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603866
+2023-02-16 08:42:59.223 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600021
+2023-02-16 08:42:59.234 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601998
+2023-02-16 08:42:59.247 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600352
+2023-02-16 08:42:59.261 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600195
+2023-02-16 08:42:59.277 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600570
+2023-02-16 08:42:59.287 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603568
+2023-02-16 08:42:59.298 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600886
+2023-02-16 08:42:59.312 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603650
+2023-02-16 08:42:59.323 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601825
+2023-02-16 08:42:59.338 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601236
+2023-02-16 08:42:59.353 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601186
+2023-02-16 08:42:59.365 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601860
+2023-02-16 08:42:59.380 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603806
+2023-02-16 08:42:59.393 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601111
+2023-02-16 08:42:59.410 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600166
+2023-02-16 08:42:59.423 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688008
+2023-02-16 08:42:59.433 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603858
+2023-02-16 08:42:59.442 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688819
+2023-02-16 08:42:59.453 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600879
+2023-02-16 08:42:59.468 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600096
+2023-02-16 08:42:59.479 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603868
+2023-02-16 08:42:59.493 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603127
+2023-02-16 08:42:59.503 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600497
+2023-02-16 08:42:59.514 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600917
+2023-02-16 08:42:59.529 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601117
+2023-02-16 08:42:59.540 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601216
+2023-02-16 08:42:59.550 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601818
+2023-02-16 08:42:59.563 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601319
+2023-02-16 08:42:59.573 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688363
+2023-02-16 08:42:59.582 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600729
+2023-02-16 08:42:59.595 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600460
+2023-02-16 08:42:59.605 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688088
+2023-02-16 08:42:59.615 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601139
+2023-02-16 08:42:59.626 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603056
+2023-02-16 08:42:59.637 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603707
+2023-02-16 08:42:59.648 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600025
+2023-02-16 08:42:59.658 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600998
+2023-02-16 08:42:59.675 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601919
+2023-02-16 08:42:59.687 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603899
+2023-02-16 08:42:59.698 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603019
+2023-02-16 08:42:59.708 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601933
+2023-02-16 08:42:59.718 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688111
+2023-02-16 08:42:59.729 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600079
+2023-02-16 08:42:59.741 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600282
+2023-02-16 08:42:59.751 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600801
+2023-02-16 08:42:59.763 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600435
+2023-02-16 08:42:59.774 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601328
+2023-02-16 08:42:59.789 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601658
+2023-02-16 08:42:59.802 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600690
+2023-02-16 08:42:59.812 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600755
+2023-02-16 08:42:59.823 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600031
+2023-02-16 08:42:59.834 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600522
+2023-02-16 08:42:59.844 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601799
+2023-02-16 08:42:59.855 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600597
+2023-02-16 08:42:59.865 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600499
+2023-02-16 08:42:59.876 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600835
+2023-02-16 08:42:59.894 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603517
+2023-02-16 08:42:59.905 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600039
+2023-02-16 08:42:59.917 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600519
+2023-02-16 08:42:59.929 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600928
+2023-02-16 08:42:59.941 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688169
+2023-02-16 08:42:59.953 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600061
+2023-02-16 08:42:59.966 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688521
+2023-02-16 08:42:59.978 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600141
+2023-02-16 08:42:59.993 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601990
+2023-02-16 08:43:00.017 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601865
+2023-02-16 08:43:00.035 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601898
+2023-02-16 08:43:00.047 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601288
+2023-02-16 08:43:00.056 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688009
+2023-02-16 08:43:00.066 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600332
+2023-02-16 08:43:00.076 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600350
+2023-02-16 08:43:00.087 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603185
+2023-02-16 08:43:00.097 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600489
+2023-02-16 08:43:00.111 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600763
+2023-02-16 08:43:00.122 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 601568
+2023-02-16 08:43:00.133 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 603993
+2023-02-16 08:43:00.144 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600009
+2023-02-16 08:43:00.155 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600637
+2023-02-16 08:43:00.167 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 688012
+2023-02-16 08:43:00.180 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600507
+2023-02-16 08:43:00.196 | WARNING  | __main__:fix:455 - Special case found for 2022-02-08 and 600808
+
+| The validation result for stock: 000627 date: 20181226 is fail and error details: 数据未生成
+| The validation result for stock: 002415 date: 20191008 is fail and error details: 数据未生成
+| The validation result for stock: 603877 date: 20191128 is fail and error details: 数据未生成
+| The validation result for stock: 000627 date: 20181226 is fail and error details: 数据未生成
+| The validation result for stock: 600126 date: 20181225 is fail and error details: 数据未生成
+| The validation result for stock: 603556 date: 20181207 is fail and error details: 数据未生成
+
+
