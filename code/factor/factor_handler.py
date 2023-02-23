@@ -10,6 +10,9 @@ from common.constants import STOCK_INDEX_PRODUCTS, FACTOR_PATH, FACTOR_STANDARD_
 from common.localio import save_compress
 from factor.spot_goods_factor import TotalCommissionRatioFactor
 
+"""
+该包主要用于因子文件的进一步处理和数据修复
+"""
 def handle_factor(factor_list, products=[]):
     """
     处理因子
@@ -24,6 +27,7 @@ def handle_factor(factor_list, products=[]):
     """
     if len(products) == 0:
         products = STOCK_INDEX_PRODUCTS
+        # products = ['IH']
     handler_list = create_handler_list()
     for factor in factor_list:
         for product in products:
@@ -31,7 +35,6 @@ def handle_factor(factor_list, products=[]):
             for handler in handler_list:
                 if len(handler.factor_filter()) == 0 or factor.factor_code in handler.factor_filter():
                     data = handler.handle(product, data, factor)
-                    print(data.dtypes[factor.get_key()])
                 factor_name = '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list)))
             save_path = FACTOR_PATH + os.path.sep + 'organized' + os.path.sep + product + '_' + factor_name
             save_compress(data, save_path)
@@ -122,7 +125,7 @@ class TotalCommissionRatioFactoHandler(FactorHandler):
         for date in date_list:
             data.loc[data['date'] == date, factor.get_key()] = 0
         #IH 数据修复
-        instrument_list = [{'instrument':'IH1704','dates':['2017-03-20','2017-04-05','2017-04-11']},{'instrument':'IH1707','dates':['2017-06-28','2017-07-05','2017-07-18']},{'instrument':'IH1708','dates':['2017-08-02','2017-08-08']},{'instrument':'IH1709','dates':['2017-08-29']}
+        instrument_list = [{'instrument':'IH1701','dates':['2017-01-13']}, {'instrument':'IH1704','dates':['2017-03-20','2017-04-05','2017-04-11']},{'instrument':'IH1707','dates':['2017-06-28','2017-07-05','2017-07-18']},{'instrument':'IH1708','dates':['2017-08-02','2017-08-08']},{'instrument':'IH1709','dates':['2017-08-29']}
                            ,{'instrument':'IH1710','dates':['2017-10-12']},{'instrument':'IH1801','dates':['2018-01-02','2018-01-09']},{'instrument':'IH1802','dates':['2018-01-29','2018-02-02','2018-02-12']},{'instrument':'IH1803','dates':['2018-02-26','2018-03-01','2018-03-09']}
                            ,{'instrument':'IH1804','dates':['2018-03-26','2018-04-13']},{'instrument':'IH1806','dates':['2018-06-08']},{'instrument':'IH2105','dates':['2021-05-10']}]
         if product == 'IH':
@@ -134,9 +137,8 @@ class TotalCommissionRatioFactoHandler(FactorHandler):
                     issue_item_time = data[(data['date'] == date) & np.isnan(data[factor.get_key()])]['datetime'].tolist()
                     for datetime in issue_item_time:
                         time = datetime[11:23]
-                        print(data[(data['date'] == date) & (data['datetime'] == datetime)])
-                        data.loc[(data['date'] == date) & np.isnan(data[factor.get_key()]), factor.get_key()] = date_data[date_data['time'] == time][factor.get_key()]
-                        print(data[(data['date'] == date) & (data['datetime'] == datetime)])
+                        factor_value = date_data[date_data['time'] == time][factor.get_key()]
+                        data.loc[(data['date'] == date) & np.isnan(data[factor.get_key()]), factor.get_key()] = factor_value[0]
         return data
 
     def factor_filter(self):

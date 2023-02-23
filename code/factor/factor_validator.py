@@ -170,11 +170,12 @@ class BasicValidator(FactorValidator):
                     for date in dates:
                         get_logger().debug('Validate for date {0}'.format(date))
                         date_data = data[(data['instrument'] == instrument) & (data['date'] == date)]
-                        nan_count = len(date_data[np.isnan(date_data[factor.get_key()])])
                         if len(factor.get_params()) == 0:
+                            nan_count = len(date_data[np.isnan(date_data[factor.get_key()])])
                             zero_count = len(date_data[date_data[factor.get_key()] == 0])
                         else:
                             for param in factor.get_params():
+                                nan_count = nan_count + len(date_data[np.isnan(date_data[factor.get_key()])])
                                 zero_count = zero_count + len(date_data[date_data[factor.get_key(param)] == 0])
                         morning_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))])
                         afternoon_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))])
@@ -182,12 +183,14 @@ class BasicValidator(FactorValidator):
                         instrument_info.add_date(date_info)
                     factor_analysis_result.add_instrument(instrument_info)
                 factor_analysis_result.print()
-                if self._check_nan and data.isnull().values.any(): #打印空数据
-                    error_factor.append(product + '-' + factor.get_full_name())
-                    temp_data = data[data.isna().any(axis=1)][
-                        ['datetime', 'time', 'second_remainder', 'instrument', 'date']]
-                    temp_data = temp_data.groupby('date').count()
-                    temp_data.to_csv(FACTOR_PATH + os.path.sep + 'validation' + os.path.sep + product + '_' + factor.get_full_name() + '.csv')
+                if self._check_nan: #打印空数据
+                    if len(factor.get_params()) == 0:
+                        if len(data[np.isnan(data[factor.get_key()])]) > 0:
+                            error_factor.append(product + '-' + factor.get_full_name())
+                    else:
+                        for param in factor.get_params():
+                            if len(data[np.isnan(data[factor.get_key(param)])]) > 0:
+                                error_factor.append(product + '-' + factor.get_full_name() + str(param))
         if len(error_factor) > 0:
             error_factor_list = '|'.join(error_factor)
             raise ValidationFailed(error_factor_list + ' has nan value')
@@ -202,36 +205,65 @@ class StatisticsAnalysis(FactorValidator):
         factor_report_path = REPORT_PATH + 'factor' + os.path.sep + 'statistics'
         if not os.path.exists(factor_report_path):
             os.makedirs(factor_report_path)
-        columns = ['count', 'mean', 'std', 'min', 'max', '1%', '5%', '10%', '50%', '90%', '95%', '99%', 'abs_mean', 'ic']
+        for factor in factor_list:
+            if len(factor.get_params()) > 0:
+                for param in factor.get_params():
+                    self.create_statistics_info(factor, factor_report_path, factor.get_key(param))
+            else:
+                self.create_statistics_info(factor, factor_report_path, factor.get_key())
+
+    def create_statistics_info(self, factor, factor_report_path, key):
+        """
+        生成统计信息
+
+        Parameters
+        ----------
+        factor
+        factor_report_path
+        key
+
+        Returns
+        -------
+
+        """
+        columns = ['count', 'mean', 'std', 'min', 'max', '1%', '5%', '10%', '50%', '90%', '95%', '99%', 'abs_mean',
+                   'ic']
         content = []
         index = []
-        for factor in factor_list:
-            for param in factor.get_params():
-                for product in STOCK_INDEX_PRODUCTS:
-                    data = factor.load(product)
-                    count = len(data)
-                    mean = data[factor.get_key(param)].mean()
-                    std = data[factor.get_key(param)].std()
-                    min = data[factor.get_key(param)].min()
-                    max = data[factor.get_key(param)].max()
-                    quantile1 = data[factor.get_key(param)].quantile(0.01)
-                    quantile5 = data[factor.get_key(param)].quantile(0.05)
-                    quantile10 = data[factor.get_key(param)].quantile(0.1)
-                    quantile50 = data[factor.get_key(param)].quantile(0.5)
-                    quantile90 = data[factor.get_key(param)].quantile(0.9)
-                    quantile95 = data[factor.get_key(param)].quantile(0.95)
-                    quantile99 = data[factor.get_key(param)].quantile(0.99)
-                    abs_mean = ''
-                    ic = ''
-                    content.append([count, mean, std, min, max, quantile1, quantile5, quantile10, quantile50, quantile90, quantile95, quantile99, abs_mean, ic])
-                    index = index + [product]
+        for product in STOCK_INDEX_PRODUCTS:
+            data = factor.load(product, is_organized=True)
+            count = len(data)
+            mean = data[key].mean()
+            std = data[key].std()
+            min = data[key].min()
+            max = data[key].max()
+            quantile1 = data[key].quantile(0.01)
+            quantile5 = data[key].quantile(0.05)
+            quantile10 = data[key].quantile(0.1)
+            quantile50 = data[key].quantile(0.5)
+            quantile90 = data[key].quantile(0.9)
+            quantile95 = data[key].quantile(0.95)
+            quantile99 = data[key].quantile(0.99)
+            abs_mean = ''
+            ic = ''
+            content.append([count, mean, std, min, max, quantile1, quantile5, quantile10, quantile50, quantile90, quantile95, quantile99, abs_mean, ic])
+            index = index + [product]
         report = pd.DataFrame(content, columns=columns, index=index)
-        report.to_csv(factor_report_path + os.path.sep + factor.get_key(param) + '_report.csv')
+        report.to_csv(factor_report_path + os.path.sep + key + '_report.csv')
+
+class SingleFactorLoopbackAnalysis(FactorValidator):
+    """
+    单因子区间回测
+
+    """
+    @timing
+    def validate(self, factor_list):
+        # 划分区间
 
 
 class StabilityValidator(FactorValidator):
     """因子稳定性检查类
-    
+        按天计算因子值的均值和标准差
     """
 
     @timing
@@ -240,26 +272,47 @@ class StabilityValidator(FactorValidator):
         if not os.path.exists(factor_diagram_path):
             os.makedirs(factor_diagram_path)
         for factor in factor_list:
-            for param in factor.get_params():
+            if len(factor.get_params()) > 0:
+                for param in factor.get_params():
+                    for product in STOCK_INDEX_PRODUCTS:
+                        self.create_diagram(factor, factor_diagram_path, product, factor.get_key(param))
+            else:
                 for product in STOCK_INDEX_PRODUCTS:
-                    data = factor.load(product)
-                    mean = data.groupby('date')[factor.get_key(param)].mean()
-                    std = data.groupby('date')[factor.get_key(param)].std()
-                    groupby_data = pd.DataFrame({
-                        'mean' : mean,
-                        'std' : std
-                    })
-                    groupby_data['date'] = groupby_data.index
-                    mean_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '_mean.png'
-                    std_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '_std.png'
-                    final_path = factor_diagram_path + os.path.sep + product + '_' + factor.get_key(param) + '.png'
-                    draw_line(groupby_data, factor.get_key(param), 'Date', 'Mean',
-                              {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, save_path = mean_path)
-                    draw_line(groupby_data, factor.get_key(param), 'Date', 'Std',
-                              {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, save_path = std_path)
-                    png_file = join_two_images(mean_path, std_path, final_path, flag = 'vertical')
-                    os.remove(mean_path)
-                    os.remove(std_path)
+                    self.create_diagram(factor, factor_diagram_path, product, factor.get_key())
+
+    def create_diagram(self, factor, factor_diagram_path, product, key):
+        """
+        生成并保存均值，标准差图
+        Parameters
+        ----------
+        factor
+        factor_diagram_path
+        product
+        key
+
+        Returns
+        -------
+
+        """
+        data = factor.load(product, is_organized=True)
+        mean = data.groupby('date')[key].mean()
+        std = data.groupby('date')[key].std()
+        groupby_data = pd.DataFrame({
+            'mean': mean,
+            'std': std
+        })
+        groupby_data['date'] = groupby_data.index
+        mean_path = factor_diagram_path + os.path.sep + product + '_' + key + '_mean.png'
+        std_path = factor_diagram_path + os.path.sep + product + '_' + key + '_std.png'
+        final_path = factor_diagram_path + os.path.sep + product + '_' + key + '.png'
+        draw_line(groupby_data, key, 'Date', 'Mean',
+                  {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, save_path=mean_path)
+        draw_line(groupby_data, key, 'Date', 'Std',
+                  {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, save_path=std_path)
+        join_two_images(mean_path, std_path, final_path, flag='vertical')
+        os.remove(mean_path)
+        os.remove(std_path)
+
 
 def parse_factor_file(product, factor_list, start_date, end_date=''):
     """
@@ -277,7 +330,6 @@ def parse_factor_file(product, factor_list, start_date, end_date=''):
     """
     path = FACTOR_PATH + os.path.sep + 'organized' + os.path.sep + product + '_' + '_'.join(list(map(lambda factor: factor.get_full_name(), factor_list)))
     data = read_decompress(path)
-    print(data[(data['date'] == start_date) & data.isna().any(axis=1)]['datetime'])
     if end_date == '':
         data = data[data['date'] == start_date]
     else:
@@ -332,17 +384,17 @@ def parse_spot_goods_stock_data(product, date, start_time, end_time=''):
 
 if __name__ == '__main__':
     #测试因子检测基类
-    # factor_validator = FactorValidator([
-    #     BasicValidator()
-    #     # StatisticsAnalysis(),
-    #     # StabilityValidator()
-    # ])
-    # factor_validator.validate([TotalCommissionRatioFactor()])
+    factor_validator = FactorValidator([
+        BasicValidator(),
+        StatisticsAnalysis(),
+        StabilityValidator()
+    ])
+    factor_validator.validate([TotalCommissionRatioFactor()])
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
 
     #检查片段
-    parse_factor_file('IH', [TotalCommissionRatioFactor()], '2017-03-20')
+    # parse_factor_file('IH', [TotalCommissionRatioFactor()], '2017-03-20')
 
     #检查现货相关股票文件
     # parse_spot_goods_stock_data('IC', '2022-01-11', ' 9:30:03')

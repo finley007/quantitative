@@ -52,8 +52,8 @@ class FactorCaculator():
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
         session = create_session()
-        # for product in STOCK_INDEX_PRODUCTS:
-        for product in ['IH']:
+        for product in STOCK_INDEX_PRODUCTS:
+        # for product in ['IH']:
             # factor_data = pd.DataFrame(columns=columns)
             temp_file = 'E:\\data\\temp\\' + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     # factor = UntradedStockRatioFactor()
     # factor = DailyAccumulatedLargeOrderRatioFactor()
     # factor = RollingAccumulatedLargeOrderRatioFactor([10])
-    # factor = RisingStockRatioFactor()
+    factor = RisingStockRatioFactor()
     # factor = SpreadFactor()
     # factor = OverNightYieldFactor()
     # factor = DeltaTotalCommissionRatioFactor([5])
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     # factor = CallAuctionSecondStageReturnVolatilityFactor()
     # factor = FirstStageCommissionRatioFactor()
     # factor = SecondStageCommissionRatioFactor()
-    factor = AmountAnd1stGradeCommissionRatioFactor()
+    # factor = AmountAnd1stGradeCommissionRatioFactor()
     FactorCaculator().caculate_manually_check(factor, is_accumulated=True)
 
     # session = create_session()

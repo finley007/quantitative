@@ -795,7 +795,7 @@ if __name__ == '__main__':
 
     # 生成stock数据
     # enrich_stock_tick_data('20221111-finley-1')
-    enrich_stock_tick_data('20221111-finley-2',['2019'],['11'],['28'],['603877'])
+    # enrich_stock_tick_data('20221111-finley-2',['2019'],['11'],['28'],['603877'])
 
     #合并股票数据
     # combine_stock_tick_data('20230109-finley-1',['2018'],['08', '09', '10'])
@@ -813,7 +813,7 @@ if __name__ == '__main__':
     # 生成股指k线
     # create_k_line_for_future_tick('20221117-finley')
     # 拼接股指k线
-    # conbine_k_line_for_future_tick('20221117-finley')
+    conbine_k_line_for_future_tick('20221117-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')

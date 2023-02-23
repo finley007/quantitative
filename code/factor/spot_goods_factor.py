@@ -96,13 +96,6 @@ class TenGradeCommissionRatioFactor(StockTickFactor):
 
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
-        stock_data_per_date['10_grade_ask_commission_amount'] = stock_data_per_date.apply(
-            lambda item: self.amount_sum(item, 'ask'), axis=1)
-        stock_data_per_date['10_grade_bid_commission_amount'] = stock_data_per_date.apply(
-            lambda item: self.amount_sum(item, 'bid'), axis=1)
-        stock_data_per_date['10_grade_total_commission_amount'] = stock_data_per_date[
-                                                                      '10_grade_ask_commission_amount'] + \
-                                                                  stock_data_per_date['10_grade_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
             '10_grade_ask_commission_amount', '10_grade_total_commission_amount'].sum()
@@ -119,6 +112,12 @@ class TenGradeCommissionRatioFactor(StockTickFactor):
             sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
         return sum
 
+    def enrich_stock_data(self, instrument, date, stock, data):
+        data = data[data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+        data['10_grade_ask_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
+        data['10_grade_bid_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
+        data['10_grade_total_commission_amount'] = data['10_grade_ask_commission_amount'] + data['10_grade_bid_commission_amount']
+        return data
 
 class TenGradeWeightedCommissionRatioFactor(TenGradeCommissionRatioFactor):
     """10档加权委比因子
@@ -263,10 +262,12 @@ class RisingStockRatioFactor(StockTickFactor):
 
     def enrich_stock_data(self, instrument, date, stock, data):
         get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        data = data.reset_index(drop=True)
         temp_data = data[data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         for param in self._params:
             #盘前
             data['change.' + str(param)] = 0
+            #交易时间
             temp_data['change.' + str(param)] = temp_data['price'] - temp_data['price'].shift(param)
             # 不足param长度的用昨日收盘价计算
             temp_data.loc[np.isnan(temp_data['change.' + str(param)]), 'change.' + str(param)] = temp_data['price'] - temp_data['close']

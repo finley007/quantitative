@@ -478,6 +478,7 @@ class FutureTickDataProcessorPhase2(DataProcessor):
         for period in self._ret_period:
             data['ret.' + str(period)] = (data['close'].shift(-(period * 20)) - data['close'])/data['close']
         closing_price = data.iloc[-1]['close']
+        # 这里需要区分跨天和不跨天的计算
         for period in self._ret_period:
             data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'])/data['close']
         return data
