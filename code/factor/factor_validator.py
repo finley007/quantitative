@@ -259,6 +259,7 @@ class SingleFactorLoopbackAnalysis(FactorValidator):
     @timing
     def validate(self, factor_list):
         # 划分区间
+        return
 
 
 class StabilityValidator(FactorValidator):
@@ -382,14 +383,19 @@ def parse_spot_goods_stock_data(product, date, start_time, end_time=''):
     data.to_csv(FACTOR_PATH + os.path.sep + 'validation' + os.path.sep + product + '_' + date + '_stocks_' + str(uuid.uuid4()) + '.csv')
 
 
+def analyze_stability_extreme_value(factor, product, key, quantile):
+    data = factor.load(product, is_organized=True)
+    mean = data.groupby('date')[key].mean()
+    std = data.groupby('date')[key].std()
+
 if __name__ == '__main__':
     #测试因子检测基类
-    factor_validator = FactorValidator([
-        BasicValidator(),
-        StatisticsAnalysis(),
-        StabilityValidator()
-    ])
-    factor_validator.validate([TotalCommissionRatioFactor()])
+    # factor_validator = FactorValidator([
+    #     BasicValidator(),
+    #     StatisticsAnalysis(),
+    #     StabilityValidator()
+    # ])
+    # factor_validator.validate([TotalCommissionRatioFactor()])
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
 
@@ -398,6 +404,9 @@ if __name__ == '__main__':
 
     #检查现货相关股票文件
     # parse_spot_goods_stock_data('IC', '2022-01-11', ' 9:30:03')
+
+    #分析因子极值
+    analyze_stability_extreme_value(TotalCommissionRatioFactor(), 'IH', TotalCommissionRatioFactor().get_key(), 95)
 
     #检查有问题的因子
     # data = WilliamFactor().load('IC')
