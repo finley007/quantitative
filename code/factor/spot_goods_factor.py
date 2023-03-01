@@ -268,7 +268,7 @@ class RisingStockRatioFactor(StockTickFactor):
             #盘前
             data['change.' + str(param)] = 0
             #交易时间
-            temp_data['change.' + str(param)] = temp_data['price'] - temp_data['price'].shift(param)
+            temp_data.loc[:, 'change.' + str(param)] = temp_data['price'] - temp_data['price'].shift(param)
             # 不足param长度的用昨日收盘价计算
             temp_data.loc[np.isnan(temp_data['change.' + str(param)]), 'change.' + str(param)] = temp_data['price'] - temp_data['close']
         pre_data = data[data['time'] < add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
@@ -990,7 +990,7 @@ class AmountAndCommissionRatioFactor(StockTickFactor):
         return sum
 
 
-class RisingFallingVolumeRatioFactor(StockTickFactor):
+class RisingFallingAmountRatioFactor(StockTickFactor):
     """上涨下跌成交量比例因子
 
     Parameters
@@ -999,7 +999,7 @@ class RisingFallingVolumeRatioFactor(StockTickFactor):
     version : string
     _params ： list
     """
-    factor_code = 'FCT_02_017_RISING_FALLING_VOLUME_RATIO'
+    factor_code = 'FCT_02_017_RISING_FALLING_AMOUNT_RATIO'
     version = '1.0'
 
     def __init__(self):
@@ -1007,7 +1007,7 @@ class RisingFallingVolumeRatioFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['volume', 'price', 'delta_price']
+        columns = columns + ['amount', 'price', 'delta_price']
         return columns
 
     def get_key(self):
@@ -1018,20 +1018,16 @@ class RisingFallingVolumeRatioFactor(StockTickFactor):
 
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
-        stock_data_per_date['rising_volume'] = 0
-        stock_data_per_date['falling_volume'] = 0
-        stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'rising_volume'] = stock_data_per_date['volume']
-        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'falling_volume'] = stock_data_per_date[
-            'volume']
-        stock_data_per_date['total_volume'] = stock_data_per_date['volume']
-        stock_data_per_date['diff_volume'] = stock_data_per_date['rising_volume'] - stock_data_per_date[
-            'falling_volume']
+        stock_data_per_date['rising_amount'] = 0
+        stock_data_per_date['falling_amount'] = 0
+        stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'rising_amount'] = stock_data_per_date['amount']
+        stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'falling_amount'] = stock_data_per_date['amount']
+        stock_data_per_date['total_amount'] = stock_data_per_date['amount']
+        stock_data_per_date['diff_amount'] = stock_data_per_date['rising_amount'] - stock_data_per_date['falling_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['diff_volume', 'total_volume'].sum()
-        stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_volume'] == 0 else x['diff_volume'] / x['total_volume'], axis=1)
-        df_stock_data_per_date = pd.DataFrame(
-            {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['diff_amount', 'total_amount'].sum()
+        stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(lambda x: 0 if x['total_amount'] == 0 else x['diff_amount'] / x['total_amount'], axis=1)
+        df_stock_data_per_date = pd.DataFrame({self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
     def get_stock_data(self, date, stock):
@@ -1046,10 +1042,10 @@ class RisingFallingVolumeRatioFactor(StockTickFactor):
         -------
 
         """
-        temp_data = self._data_access.access(date, stock)
-        temp_data['delta_price'] = temp_data['price'] - temp_data['price'].shift(1)
-        temp_data.loc[temp_data[np.isnan(temp_data['delta_price'])].index, 'delta_price'] = 0
-        return temp_data
+        data = self._data_access.access(date, stock)
+        data['delta_price'] = data['price'] - data['price'].shift(1)
+        data.loc[data[np.isnan(data['delta_price'])].index, 'delta_price'] = 0
+        return data
 
 
 class UntradedStockRatioFactor(StockTickFactor):
@@ -1403,6 +1399,261 @@ class FallingLimitStockProportionFactor(RisingLimitStockProportionFactor):
         else:
             return 0
 
+
+class AmountAskTotalCommissionRatioFactor(StockTickFactor):
+    """成交额总委买比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_026_AMOUNT_ASK_TOTAL_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['weighted_average_ask_price', 'total_ask_volume', 'amount']
+        return columns
+
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[self.get_action_type() + '_commission_amount', 'amount'].sum()
+        stock_data_per_date_group_by['ratio'] = stock_data_per_date_group_by.apply(
+            lambda x: 0 if x[self.get_action_type() + '_commission_amount'] == 0 else x['amount'] / x[self.get_action_type() + '_commission_amount'], axis=1)
+        columns = []
+        for param in self.get_params():
+            stock_data_per_date_group_by[self.get_key(param)] = stock_data_per_date_group_by['ratio'].rolling(param)
+            columns = columns + [self.get_key(param)]
+        df_stock_data_per_date = stock_data_per_date_group_by[columns]
+        df_stock_data_per_date['time'] = stock_data_per_date_group_by.index
+        # 过滤对齐在3秒线的数据
+        return date, df_stock_data_per_date
+
+    def enrich_stock_data(self, instrument, date, stock, data):
+        data[self.get_action_type() + '_commission_amount'] = data.apply(lambda item: self.amount_sum(item))
+        return data
+
+    def amount_sum(self, item):
+        return item['total_' + self.get_action_type() + '_volume'] * item['weighted_average_' + self.get_action_type() + '_price']
+
+    def get_action_type(self):
+        return 'ask'
+
+class AmountBidTotalCommissionRatioFactor(AmountAskTotalCommissionRatioFactor):
+    """成交额总委卖比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_027_AMOUNT_BID_TOTAL_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['weighted_average_bid_price', 'total_bid_volume', 'amount']
+        return columns
+
+    def get_action_type(self):
+        return 'bid'
+
+
+class AmountAsk10GradeCommissionRatioFactor(AmountAskTotalCommissionRatioFactor):
+    """成交额10档委买比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_028_AMOUNT_ASK_10_GRADE_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3', 'ask_price4', 'ask_volume4','ask_price5', 'ask_volume5',
+                             'ask_price6', 'ask_volume6', 'ask_price7', 'ask_volume7', 'ask_price8', 'ask_volume8', 'ask_price9', 'ask_volume9', 'ask_price10', 'ask_volume10', 'amount']
+        return columns
+
+    def amount_sum(self, item):
+        sum = 0
+        for i in range(1, 11):
+            sum = sum + ((item[self.get_action_type() + '_price' + str(i)]) * (item[self.get_action_type() + '_volume' + str(i)]))
+        return sum
+
+
+class AmountBid10GradeCommissionRatioFactor(AmountAsk10GradeCommissionRatioFactor):
+    """成交额10档委卖比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_029_AMOUNT_BID_10_GRADE_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3', 'bid_price4', 'bid_volume4','bid_price5', 'bid_volume5',
+                             'bid_price6', 'bid_volume6', 'bid_price7', 'bid_volume7','bid_price8', 'bid_volume8', 'bid_price9', 'bid_volume9','bid_price10', 'bid_volume10', 'amount']
+        return columns
+
+    def get_action_type(self):
+        return 'bid'
+
+
+class AmountAsk5GradeCommissionRatioFactor(AmountAskTotalCommissionRatioFactor):
+    """成交额5档委买比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_030_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3', 'ask_price4', 'ask_volume4','ask_price5', 'ask_volume5', 'amount']
+        return columns
+
+    def amount_sum(self, item):
+        sum = 0
+        for i in range(1, 6):
+            sum = sum + ((item[self.get_action_type() + '_price' + str(i)]) * (item[self.get_action_type() + '_volume' + str(i)]))
+        return sum
+
+
+class AmountBid5GradeCommissionRatioFactor(AmountAsk5GradeCommissionRatioFactor):
+    """成交额5档委卖比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_031_AMOUNT_BID_5_GRADE_COMMISSION_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3', 'bid_price4', 'bid_volume4','bid_price5', 'bid_volume5', 'amount']
+        return columns
+
+    def get_action_type(self):
+        return 'bid'
+
+class TotalCommissionVolatilityRatioFactor(StockTickFactor):
+    """总委买总委卖波动率比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_032_TOTAL_COMMISSION_VOLATILITY_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['weighted_average_ask_price', 'total_ask_volume', 'weighted_average_bid_price', 'total_bid_volume']
+        return columns
+
+    def execute_caculation(self, date, stock_data_per_date):
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        sum_columns = []
+        for param in self.get_params():
+            sum_columns = sum_columns + ['ask_commission_amount_std_' + str(param), 'bid_commission_amount_std_' + str(param)]
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[sum_columns].sum()
+        columns = []
+        for param in self.get_params():
+            stock_data_per_date_group_by[self.get_key(param)] = stock_data_per_date_group_by.apply(
+                lambda x: 0 if x['bid_commission_amount_std_' + str(param)] == 0 else x['ask_commission_amount_std_' + str(param)] / x['bid_commission_amount_std_' + str(param)], axis=1)
+            columns = columns + [self.get_key(param)]
+        df_stock_data_per_date = stock_data_per_date_group_by[columns]
+        df_stock_data_per_date['time'] = df_stock_data_per_date.index
+        # 过滤对齐在3秒线的数据
+        return date, df_stock_data_per_date
+
+    def enrich_stock_data(self, instrument, date, stock, data):
+        data['ask_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask'))
+        data['bid_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid'))
+        for param in self.get_params():
+            data['ask_commission_amount_std_' + str(param)] = data['ask_commission_amount'].rolling(param).std()
+            data['bid_commission_amount_std_' + str(param)] = data['bid_commission_amount'].rolling(param).std()
+        return data
+
+    def amount_sum(self, item, type):
+        return item['total_' + type + '_volume'] * item['weighted_average_' + type + '_price']
+
+
+class Commission10GradeVolatilityRatioFactor(TotalCommissionVolatilityRatioFactor):
+    """10档委买委卖波动率比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_033_10_GRADE_COMMISSION_VOLATILITY_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2', 'bid_price3', 'bid_volume3',
+                             'bid_price4', 'bid_volume4', 'bid_price5', 'bid_volume5', 'bid_price6', 'bid_volume6',
+                             'bid_price7', 'bid_volume7', 'bid_price8', 'bid_volume8', 'bid_price9', 'bid_volume9',
+                             'bid_price10', 'bid_volume10',
+                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3',
+                             'ask_price4', 'ask_volume4', 'ask_price5', 'ask_volume5', 'ask_price6', 'ask_volume6',
+                             'ask_price7', 'ask_volume7', 'ask_price8', 'ask_volume8', 'ask_price9', 'ask_volume9',
+                             'ask_price10', 'ask_volume10']
+        return columns
+
+    def amount_sum(self, item, type):
+        sum = 0
+        for i in range(1, 11):
+            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        return sum
+
+class Commission5GradeVolatilityRatioFactor(TotalCommissionVolatilityRatioFactor):
+    """5档委买委卖波动率比例因子
+
+    Parameters
+    ----------
+    factor_code : string
+    version : string
+    _params ： list
+    """
+    factor_code = 'FCT_02_034_5_GRADE_COMMISSION_VOLATILITY_RATIO'
+    version = '1.0'
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2', 'bid_price3', 'bid_volume3',
+                             'bid_price4', 'bid_volume4', 'bid_price5', 'bid_volume5',
+                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3',
+                             'ask_price4', 'ask_volume4', 'ask_price5', 'ask_volume5']
+        return columns
+
+    def amount_sum(self, item, type):
+        sum = 0
+        for i in range(1, 6):
+            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        return sum
+
 if __name__ == '__main__':
     # data = read_decompress(TEST_PATH + 'IF1810.pkl')
     # data['product'] = 'IF'
@@ -1623,11 +1874,15 @@ if __name__ == '__main__':
     # draw_analysis_curve(data, show_signal=True,
     #                     signal_keys=total_commission_ratio_change_rate_factor.get_keys())
 
-    data_access = StockDataAccess(check_original=False)
-    data = data_access.access('2017-12-18', '002311')
-    temp_data = data[(data['time'] <= STOCK_TRANSACTION_START_TIME) & (data['volume'] > 0)]
-    end_price = temp_data.iloc[0]['ask_price1']
-    print(end_price)
+    # data_access = StockDataAccess(check_original=False)
+    # data = data_access.access('2017-12-18', '002311')
+    # temp_data = data[(data['time'] <= STOCK_TRANSACTION_START_TIME) & (data['volume'] > 0)]
+    # end_price = temp_data.iloc[0]['ask_price1']
+    # print(end_price)
+
+    factor = RisingStockRatioFactor()
+    data = factor.caculate_by_date(['2017-07-17','IC1707','IC'])
+    data[1].to_csv('E:\\data\\temp\\IC1707_20170717.csv')
 
 
 

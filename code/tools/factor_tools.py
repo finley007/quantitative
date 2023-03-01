@@ -55,12 +55,13 @@ def create_factor_files(factor_list=[], current_transaction_id=''):
                     id = current_transaction_id
                 try:
                     t = time.perf_counter()
-                    factor_caculator.caculate(id, [factor])
+                    factor_caculator.caculate(id, [factor], ['IC', 'IF'])
                     time_cost = time.perf_counter() - t
                     factor_operation_history = FactorOperationHistory(id, factor.get_full_name(), 1, 0, time_cost)
                     session.add(factor_operation_history)
                     session.commit()
                 except Exception as e:
+                    get_logger.error(e)
                     time_cost = time.perf_counter() - t
                     factor_operation_history = FactorOperationHistory(id, factor.get_full_name(), 1, 0, time_cost, str(e))
                     session.add(factor_operation_history)
@@ -120,7 +121,7 @@ def create_factor_single_instrument_performance_report(instrument, factor_list=[
             if factor_full_name == factor_po.get_full_name() and factor_full_name not in handled_factors:
                 t = time.perf_counter()
                 process_code = uuid.uuid4()
-                factor_caculator.caculate(process_code, [factor], [instrument], performance_test=True)
+                factor_caculator.caculate(process_code, [factor], include_instrument_list=[instrument], performance_test=True)
                 time_cost = time.perf_counter() - t
                 factor_type = factor.get_category()
                 params = '|'.join(list(map(lambda param: str(param), factor.get_params())))
@@ -137,7 +138,7 @@ def create_factor_single_instrument_performance_report(instrument, factor_list=[
 
 if __name__ == '__main__':
     # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
-    create_factor_files(['FCT_02_006_RISING_STOCK_RATIO_1.0'])
+    create_factor_files(['FCT_02_018_UNTRADED_STOCK_RATIO_1.0'],'2dfe8995-7431-4ebc-8d12-88f279f7a891')
 
     # init_factor_list()
 

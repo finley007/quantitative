@@ -214,7 +214,7 @@ def validate_stock_organized_by_month(validate_code, checked_set, year_folder, m
                 except Exception as e:
                     get_logger().error('Load file: {0} error'.format(organized_stock_file_path))
                     continue
-                validation_result = NoVolumeDataValidator().validate(data)
+                validation_result = TenGradeFiveGradeDataValidator().validate(data)
                 stock_validation_result = StockValidationResult(validate_code, validation_result, len(data))
                 session.add(stock_validation_result)
                 session.commit()
@@ -291,7 +291,7 @@ def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder,
                     get_logger().error('Load file: {0} error'.format(organized_stock_file_path))
                     continue
                 get_logger().debug('Fix for {0} and {1}'.format(date, stock))
-                data = CloseRecordMissingFixer().fix(data)
+                data = TenGradeFiveGradeDataFixer().fix(data)
                 if len(data) > 0:
                     save_compress(data, organized_stock_file_path)
                     validation_result = session.query(StockValidationResult).filter(StockValidationResult.validation_code == validation_code, StockValidationResult.tscode == stock.split('.')[0], StockValidationResult.date == date).one()
@@ -577,6 +577,32 @@ class RepeatRecordFixer(DataFixer):
                         if min_index != index:
                             data = data.drop(index)
         return data
+
+class TenGradeFiveGradeDataFixer(DataFixer):
+
+    def fix(self, data):
+        """
+        增加10档和5档委比计算结果
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        data['10_grade_bid_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid', 11), axis=1)
+        data['10_grade_ask_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask', 11), axis=1)
+        data['5_grade_bid_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid', 6), axis=1)
+        data['5_grade_ask_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask', 6), axis=1)
+        return data
+
+    def amount_sum(self, item, type, rank):
+        sum = 0
+        for i in range(1, rank):
+            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]))
+        return sum
+
 def fix_stock_organized_data_daily(data):
     """
     具体的修复执行逻辑
@@ -1006,6 +1032,37 @@ class CloseRecordMissingValidator(Validator):
     def convert(self, target_data, compare_data):
         pass
 
+class TenGradeFiveGradeDataValidator(Validator):
+    """检查是否有10档5档的委比数据
+
+    Parameters
+    ----------
+    data : DataFrame
+        待处理数据.
+
+    """
+
+    @classmethod
+    def validate(self, data):
+        tscode = data.iloc[0]['tscode']
+        date = data.iloc[0]['date']
+        result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
+        columns = data.columns
+        for column in ['10_grade_bid_amount','10_grade_ask_amount','5_grade_bid_amount','5_grade_ask_amount']:
+            if column not in columns:
+                result.result = RESULT_FAIL
+                result.error_details.append('10 and 5 grade data not enriched')
+        return result
+
+    @classmethod
+    def compare_validate(self, target_data, compare_data):
+        return True
+
+    @classmethod
+    def convert(self, target_data, compare_data):
+        pass
+
+
 class TestValidator(Validator):
     """测试
 
@@ -1162,13 +1219,13 @@ if __name__ == '__main__':
     # check_issue_stock_validation_data('081727da-a3ad-43be-b319-21c4f8cb382d')
 
     #检查已生成股票数据
-    # validate_stock_organized_data('20230216-finley')
+    validate_stock_organized_data('20230228-finley')
 
     #检查原始股票数据
     # validate_stock_original_data('20230208-finley')
 
     #修复有问题股票数据
-    # fix_stock_organized_data('20230214-finley')
+    # fix_stock_organized_data('20230228-finley')
 
     #检查收盘集合竞价数据是不是来迟了
     # data = read_decompress("E:\\data\\fix\\4th\\000333-20220617\\000333.original.pkl")
@@ -1196,9 +1253,13 @@ if __name__ == '__main__':
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220517\\000156.pkl')
     # print(validator.validate(data))
 
-    validator = CloseRecordMissingValidator()
-    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\002459.pkl')
-    print(validator.validate(data))
+    # validator = CloseRecordMissingValidator()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\002459.pkl')
+    # print(validator.validate(data))
+
+    # validator = TenGradeFiveGradeDataValidator()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\002459.pkl')
+    # print(validator.validate(data))
 
     # validator = NotClearedAfterCompletionValidator()
     # data = read_decompress('x')
@@ -1262,3 +1323,8 @@ if __name__ == '__main__':
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202004\\20200424\\600859.pkl')
     # data = fixer.fix(data)
     # data.to_csv('E:\\data\\temp\\600859_fix.csv')
+
+    # fixer = TenGradeFiveGradeDataFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000039.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\000039_fix.csv')

@@ -8,7 +8,8 @@ import numpy as np
 from common.persistence.dao import FutureConfigDao
 from common.constants import STOCK_INDEX_PRODUCTS, FACTOR_PATH, FACTOR_STANDARD_FIELD_TYPE
 from common.localio import save_compress
-from factor.spot_goods_factor import TotalCommissionRatioFactor
+from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRatioFactor, TenGradeCommissionRatioFactor
+from common.log import get_logger
 
 """
 该包主要用于因子文件的进一步处理和数据修复
@@ -27,11 +28,11 @@ def handle_factor(factor_list, products=[]):
     """
     if len(products) == 0:
         products = STOCK_INDEX_PRODUCTS
-        # products = ['IH']
     handler_list = create_handler_list()
     for factor in factor_list:
         for product in products:
             data = factor.load(product)
+            get_logger().info('Handle product: {0}'.format(product))
             for handler in handler_list:
                 if len(handler.factor_filter()) == 0 or factor.factor_code in handler.factor_filter():
                     data = handler.handle(product, data, factor)
@@ -40,7 +41,7 @@ def handle_factor(factor_list, products=[]):
             save_compress(data, save_path)
 
 def create_handler_list():
-    return [DateFilterHandler(), MissingDataFilterHandler(), TotalCommissionRatioFactoHandler()]
+    return [DateFilterHandler(), MissingDataFilterHandler(), TotalCommissionRatioFactorHandler()]
 
 class FactorHandler(metaclass=ABCMeta):
     """
@@ -71,6 +72,7 @@ class DateFilterHandler(FactorHandler):
     '2017-05-10','2017-05-22','2017-12-01','2019-05-08','2021-07-06','2021-07-06','2021-08-11'
     """
     def handle(self, product, data, factor):
+        get_logger().info('Run date filter handler for factor: {0}'.format(factor.get_full_name()))
         if len(factor.get_params()) > 0:
             for param in factor.get_params():
                 if data.dtypes[factor.get_key(param)] != FACTOR_STANDARD_FIELD_TYPE:
@@ -97,6 +99,7 @@ class MissingDataFilterHandler(FactorHandler):
     处理方式：补0
     """
     def handle(self, product, data, factor):
+        get_logger().info('Missing data filter handler for factor: {0}'.format(factor.get_full_name()))
         date_list = ['2020-07-08','2020-07-09','2020-07-14','2021-07-22','2021-08-03','2022-05-30']
         for date in date_list:
             if len(factor.get_params()) > 0:
@@ -112,18 +115,25 @@ class MissingDataFilterHandler(FactorHandler):
                 data.loc[(data['date'] == '2020-08-03') & np.isnan(data[factor.get_key()]), factor.get_key()] = 0
         return data
 
-class TotalCommissionRatioFactoHandler(FactorHandler):
+class TotalCommissionRatioFactorHandler(FactorHandler):
     """
     总委比因子需要这四个字段：'weighted_average_bid_price', 'weighted_average_ask_price', 'total_bid_volume', 'total_ask_volume'
     从2022-02-07之后的数据就没有这四个字段，对于已经生成的因子需要处理填充0，
+    这个直接抹0是有问题的，需要用10档因子值先代替总委比
     # TODO
     对于因子计算逻辑如果数据缺失就自动填0
     """
     def handle(self, product, data, factor):
+        get_logger().info('Total commission ratio handler for factor: {0}'.format(factor.get_full_name()))
         future_config_dao = FutureConfigDao()
         date_list = future_config_dao.filter_date('', '2022-02-07')
+        ten_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
         for date in date_list:
-            data.loc[data['date'] == date, factor.get_key()] = 0
+            # data.loc[data['date'] == date, factor.get_key()] = 0
+            instrument = future_config_dao.get_main_instrument_by_product_and_date(product, date)
+            date, date_data = ten_grade_commission_ratio_factor.caculate_by_date([date, instrument, product])
+            print(date_data)
+            print('aa')
         #IH 数据修复
         instrument_list = [{'instrument':'IH1701','dates':['2017-01-13']}, {'instrument':'IH1704','dates':['2017-03-20','2017-04-05','2017-04-11']},{'instrument':'IH1707','dates':['2017-06-28','2017-07-05','2017-07-18']},{'instrument':'IH1708','dates':['2017-08-02','2017-08-08']},{'instrument':'IH1709','dates':['2017-08-29']}
                            ,{'instrument':'IH1710','dates':['2017-10-12']},{'instrument':'IH1801','dates':['2018-01-02','2018-01-09']},{'instrument':'IH1802','dates':['2018-01-29','2018-02-02','2018-02-12']},{'instrument':'IH1803','dates':['2018-02-26','2018-03-01','2018-03-09']}
@@ -146,5 +156,11 @@ class TotalCommissionRatioFactoHandler(FactorHandler):
 
 
 if __name__ == '__main__':
-    factor_list = [TotalCommissionRatioFactor()]
-    handle_factor(factor_list)
+    # factor_list = [TotalCommissionRatioFactor()]
+    # factor_list = [RisingStockRatioFactor()]
+    # handle_factor(factor_list)
+
+    factor = TotalCommissionRatioFactor()
+    data = factor.load('IC')
+    handler = TotalCommissionRatioFactorHandler()
+    handler.handle('IC', data, factor)

@@ -39,6 +39,23 @@ def draw_analysis_curve(data, type='candle',
         mpf.plot(data=data, type=type, volume=volume, figratio=figratio, figscale=figscale,
                  show_nontrading=show_nontrading, style=s)
 
+def draw_histogram(data, bin_num, facecolor='blue', alpha=0.5, save_path=''):
+    """画直方图
+
+    :param data: 待分析数据源
+    :param bin_num: 直方图立柱的数量
+    :param facecolor: 直方图立柱的的颜色
+    :param alpha: 透明度
+    :return: NoneType
+
+    """
+    plt.hist(data, bin_num, facecolor=facecolor, alpha=alpha)
+    if save_path != '':
+        plt.savefig(save_path)
+        plt.close()
+    else:
+        plt.show()
+
 def draw_line(data, title='', xlabel='', ylabel='', plot_info={'x': 'x', 'y': [{'key': 'y', 'label': ''}]},
               show_grid=False, save_path=''):
     """画折线图

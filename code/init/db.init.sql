@@ -156,6 +156,7 @@ PRIMARY KEY(id)
 alter table factor_validation_result add unique (validation_code, instrument, date);
 alter table factor_validation_result add index factor_validation_result_index (result);
 
+insert into factor_config values ('FCT_02_007_SPREAD','02','现货类','007','价差因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_017_RISING_FALLING_VOLUME_RATIO','02','现货类','017','涨跌成交量对比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_018_UNTRADED_STOCK_RATIO','02','现货类','018','未成交股票占比','','1.0','OWN',SYSDATE(),SYSDATE());

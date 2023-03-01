@@ -78,6 +78,11 @@ class FutureConfigDao(BaseDao):
         result_list = list(map(lambda item: item[0], result_list))
         return result_list
 
+    def get_main_instrument_by_product_and_date(self, product, date):
+        result_list = self._session.execute('select instrument from future_instrument_config where is_main = 0 and product = :product and date = :date', {'product': product, 'date':date}).fetchall()
+        result_list = list(map(lambda item: item[0], result_list))
+        return result_list[0]
+
 if __name__ == '__main__':
     # print(IndexConstituentConfigDao().query_trading_date_by_tscode('600519'))
 
@@ -96,8 +101,9 @@ if __name__ == '__main__':
     # print(instrument_config_dao.get_start_end_date_by_instrument('IF2103'))
 
     future_config_dao = FutureConfigDao()
-    print(future_config_dao.filter_date('2017-01-03', '2022-06-13'))
-    print(future_config_dao.filter_date('2017-01-03'))
-    print(future_config_dao.filter_date('', '2022-06-13'))
+    # print(future_config_dao.filter_date('2017-01-03', '2022-06-13'))
+    # print(future_config_dao.filter_date('2017-01-03'))
+    # print(future_config_dao.filter_date('', '2022-06-13'))
+    print(future_config_dao.get_main_instrument_by_product_and_date('IH', '2018-03-20'))
 
 

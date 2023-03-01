@@ -15,7 +15,7 @@ from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from factor.volume_price_factor import WilliamFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
-    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingVolumeRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
+    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
     TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor
 
@@ -36,7 +36,7 @@ class FactorCaculator():
     """
 
     @timing
-    def caculate(self, process_code, factor_list, include_instrument_list=[], performance_test=False):
+    def caculate(self, process_code, factor_list, include_product_list=[], include_instrument_list=[], performance_test=False):
         '''
         生成因子文件
 
@@ -52,7 +52,9 @@ class FactorCaculator():
             raise InvalidStatus('Empty factor list')
         #获取k线文件列模板
         session = create_session()
-        for product in STOCK_INDEX_PRODUCTS:
+        if len(include_product_list) == 0:
+            include_product_list = STOCK_INDEX_PRODUCTS
+        for product in include_product_list:
         # for product in ['IH']:
             # factor_data = pd.DataFrame(columns=columns)
             temp_file = 'E:\\data\\temp\\' + product + '_' + '_'.join(
@@ -126,7 +128,10 @@ class FactorCaculator():
         data['product'] = product
         data['instrument'] = instrument
         for factor in factor_list:
-            data = factor.caculate(data)
+            try:
+                data = factor.caculate(data)
+            except Exception as e:
+                print(e)
         # 截取主力合约区间
         date_range = session.execute(
             'select min(date), max(date) from future_instrument_config where product = :product and instrument = :instrument and is_main = 0',
@@ -256,11 +261,11 @@ if __name__ == '__main__':
     # factor = TenGradeWeightedCommissionRatioFactor()
     # factor = FiveGradeCommissionRatioFactor()
     # factor = AmountAndCommissionRatioFactor()
-    # factor = RisingFallingVolumeRatioFactor()
+    factor = RisingFallingAmountRatioFactor()
     # factor = UntradedStockRatioFactor()
     # factor = DailyAccumulatedLargeOrderRatioFactor()
     # factor = RollingAccumulatedLargeOrderRatioFactor([10])
-    factor = RisingStockRatioFactor()
+    # factor = RisingStockRatioFactor()
     # factor = SpreadFactor()
     # factor = OverNightYieldFactor()
     # factor = DeltaTotalCommissionRatioFactor([5])

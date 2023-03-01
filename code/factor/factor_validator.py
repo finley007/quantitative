@@ -15,10 +15,10 @@ from common.exception.exception import InvalidStatus
 from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
-from common.visualization import draw_line, join_two_images
+from common.visualization import draw_line, join_two_images, draw_histogram
 from factor.volume_price_factor import WilliamFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
-    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingVolumeRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
+    TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor
 from common.exception.exception import ValidationFailed
 from data.access import StockDataAccess
@@ -115,8 +115,12 @@ class FactorValidator():
     ----------
     """
 
-    def __init__(self, validator_list = []):
+    def __init__(self, validator_list = [], product_list = STOCK_INDEX_PRODUCTS):
         self._validator_list = validator_list
+        self._product_list = product_list
+
+    def set_product_list(self, product_list = STOCK_INDEX_PRODUCTS):
+        self._product_list = product_list
 
     @timing
     def validate(self, factor_list):
@@ -137,6 +141,7 @@ class FactorValidator():
         #遍历检测器，执行检查
         if len(self._validator_list) > 0:
             for validator in self._validator_list:
+                validator.set_product_list(self._product_list)
                 validator.validate(factor_list)
 
 class BasicValidator(FactorValidator):
@@ -149,13 +154,14 @@ class BasicValidator(FactorValidator):
 
     def __init__(self, check_nan = True):
         self._check_nan = check_nan
+        self._product_list = STOCK_INDEX_PRODUCTS
 
     @timing
     def validate(self, factor_list):
         error_factor = []
         for factor in factor_list:
             get_logger().info('Validate for factor {0}'.format(factor.get_full_name()))
-            for product in STOCK_INDEX_PRODUCTS:
+            for product in self._product_list:
                 get_logger().info('Validate for product {0}'.format(product))
                 data = factor.load(product, True)
                 factor_analysis_result = FactorAnalysisResult(factor, product)
@@ -174,8 +180,10 @@ class BasicValidator(FactorValidator):
                             nan_count = len(date_data[np.isnan(date_data[factor.get_key()])])
                             zero_count = len(date_data[date_data[factor.get_key()] == 0])
                         else:
+                            nan_count = 0
+                            zero_count = 0
                             for param in factor.get_params():
-                                nan_count = nan_count + len(date_data[np.isnan(date_data[factor.get_key()])])
+                                nan_count = nan_count + len(date_data[np.isnan(date_data[factor.get_key(param)])])
                                 zero_count = zero_count + len(date_data[date_data[factor.get_key(param)] == 0])
                         morning_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))])
                         afternoon_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))])
@@ -196,6 +204,10 @@ class BasicValidator(FactorValidator):
             raise ValidationFailed(error_factor_list + ' has nan value')
 
 class StatisticsAnalysis(FactorValidator):
+
+    def __init__(self):
+        self._product_list = STOCK_INDEX_PRODUCTS
+
     """
     生成统计信息
 
@@ -215,6 +227,7 @@ class StatisticsAnalysis(FactorValidator):
     def create_statistics_info(self, factor, factor_report_path, key):
         """
         生成统计信息
+        绘制分布图
 
         Parameters
         ----------
@@ -226,11 +239,24 @@ class StatisticsAnalysis(FactorValidator):
         -------
 
         """
+        #生成统计信息
+        self.statistic_info(factor, factor_report_path, key)
+        #绘制分布图
+        self.distribution_histogram(factor, factor_report_path, key)
+
+    def distribution_histogram(self, factor, factor_report_path, key):
+        for product in self._product_list:
+            data = factor.load(product, is_organized=True)
+            factor_values = data[key]
+            histogram_path = factor_report_path + os.path.sep + key + '_distribution.png'
+            draw_histogram(factor_values, 20, save_path=histogram_path)
+
+    def statistic_info(self, factor, factor_report_path, key):
         columns = ['count', 'mean', 'std', 'min', 'max', '1%', '5%', '10%', '50%', '90%', '95%', '99%', 'abs_mean',
                    'ic']
         content = []
         index = []
-        for product in STOCK_INDEX_PRODUCTS:
+        for product in self._product_list:
             data = factor.load(product, is_organized=True)
             count = len(data)
             mean = data[key].mean()
@@ -246,10 +272,13 @@ class StatisticsAnalysis(FactorValidator):
             quantile99 = data[key].quantile(0.99)
             abs_mean = ''
             ic = ''
-            content.append([count, mean, std, min, max, quantile1, quantile5, quantile10, quantile50, quantile90, quantile95, quantile99, abs_mean, ic])
+            content.append(
+                [count, mean, std, min, max, quantile1, quantile5, quantile10, quantile50, quantile90, quantile95,
+                 quantile99, abs_mean, ic])
             index = index + [product]
         report = pd.DataFrame(content, columns=columns, index=index)
         report.to_csv(factor_report_path + os.path.sep + key + '_report.csv')
+
 
 class SingleFactorLoopbackAnalysis(FactorValidator):
     """
@@ -267,6 +296,9 @@ class StabilityValidator(FactorValidator):
         按天计算因子值的均值和标准差
     """
 
+    def __init__(self):
+        self._product_list = STOCK_INDEX_PRODUCTS
+
     @timing
     def validate(self, factor_list):
         factor_diagram_path = REPORT_PATH + 'factor'
@@ -275,10 +307,10 @@ class StabilityValidator(FactorValidator):
         for factor in factor_list:
             if len(factor.get_params()) > 0:
                 for param in factor.get_params():
-                    for product in STOCK_INDEX_PRODUCTS:
+                    for product in self._product_list:
                         self.create_diagram(factor, factor_diagram_path, product, factor.get_key(param))
             else:
-                for product in STOCK_INDEX_PRODUCTS:
+                for product in self._product_list:
                     self.create_diagram(factor, factor_diagram_path, product, factor.get_key())
 
     def create_diagram(self, factor, factor_diagram_path, product, key):
@@ -313,6 +345,130 @@ class StabilityValidator(FactorValidator):
         join_two_images(mean_path, std_path, final_path, flag='vertical')
         os.remove(mean_path)
         os.remove(std_path)
+
+class SingleFactorBackTestValidator(FactorValidator):
+    """
+    单因子回测检查
+
+    """
+
+    def __init__(self):
+        self._product_list = STOCK_INDEX_PRODUCTS
+
+    def __init__(self, group_number = 10):
+        self._group_number = group_number
+        self._ret_key = 'ret.30'
+        # 计算分割点的分位数
+        self._split_quantile = []
+        for i in range(0, self._group_number + 1):
+            self._split_quantile = self._split_quantile + [50 + i * 50/self._group_number]
+
+    @timing
+    def validate(self, factor_list):
+        for factor in factor_list:
+            get_logger().info('Validate for factor {0}'.format(factor.get_full_name()))
+            for product in self._product_list:
+                get_logger().info('Validate for product {0}'.format(product))
+                original_data = factor.load(product, True)
+                if len(factor.get_params()) > 0:
+                    for param in factor.get_params():
+                        data = original_data.copy()
+                        factor_value_list = data[factor.get_key(param)].tolist()
+                        split_points = np.percentile(factor_value_list, self._split_quantile)
+                        self.simulate(factor, data, product, split_points, factor.get_key(param))
+                else:
+                    data = original_data.copy()
+                    factor_value_list = data[factor.get_key()].tolist()
+                    split_points = np.percentile(factor_value_list, self._split_quantile)
+                    self.simulate(factor, data, product, split_points, factor.get_key())
+    class SimulationResult():
+
+        _columns = ['product','index','key','trade_count','long_trade_count','short_trade_count','win_trade_count','loss_trade_count','win_trade_amount','loss_trade_amount','long_win_trade_amount','long_lose_trade_amount','short_lose_trade_amount']
+        def __init__(self):
+            self._data = pd.DataFrame(columns = self._columns)
+
+        def set_property(self, product, index, key, trade_count, long_trade_count, short_trade_count, win_trade_count, loss_trade_count, win_trade_amount, loss_trade_amount,
+                           long_win_trade_amount, long_lose_trade_amount, short_win_trade_amount, short_lose_trade_amount):
+            self._data = pd.concat([self._data,  pd.DataFrame({ 'product' : [product],
+            'index' : [index],
+            'key' : [key],
+            'trade_count' : [trade_count],
+            'long_trade_count' : [long_trade_count],
+            'short_trade_count' : [short_trade_count],
+            'win_trade_count' : [win_trade_count],
+            'lose_trade_count' : [loss_trade_count],
+            'win_trade_amount' : [win_trade_amount],
+            'lose_trade_amount' : [loss_trade_amount],
+            'long_win_trade_amount' : [long_win_trade_amount],
+            'long_lose_trade_amount' : [long_lose_trade_amount],
+            'short_win_trade_amount' : [short_win_trade_amount],
+            'short_lose_trade_amount' : [short_lose_trade_amount]}, columns = self._columns)])
+            print(self._data)
+
+
+        def print(self):
+            for row in self._data.iterrows():
+                result_info = '品种：' + row.product + ' 分位档：' + str(row.index) + ' 参数：' + row.key + \
+                              '\n总交易次数：' + str(row.trade_count) + '\n做多：' + str(row.long_trade_count) + \
+                              '\n做空：' + str(row.short_trade_count) + '\n胜率：' + str(row.win_trade_count / row.trade_count) + \
+                              '\n盈利因子：' + str(row.win_trade_amount / row.lose_trade_amount) + '\n多头盈利因子：' + str(row.long_win_trade_amount / row.long_lose_trade_amount) + \
+                              '\n空头盈利因子：' + str(row.short_win_trade_amount / row.short_lose_trade_amount)
+                              # '\n平均每笔盈利：' + str(all_industry_total_profit[-1] / row.trade_count)
+                print('--------------------------------------------------')
+                print(result_info)
+            self._data.to_csv(REPORT_PATH + os.path.sep + 'factor' + os.path.sep + 'simulation' + os.path.sep + product +  '_' + key + '.csv')
+
+    def simulate(self, factor, data, product, split_points, key):
+        simulation_result = SingleFactorBackTestValidator.SimulationResult()
+        for index in range(1, len(split_points)):
+            data['action'] = 0
+            data['profit'] = 0
+            if index == 1:
+                long_threshold_high = split_points[index]
+                long_threshold_low = split_points[0]
+                short_threshold_high = split_points[0]
+                short_threshold_low = split_points[0] - (split_points[index] - split_points[0])
+                data.loc[(data[key] > long_threshold_low) & (data[key] < long_threshold_high), 'action'] = 1
+                data.loc[(data[key] > short_threshold_low) & (data[key] < short_threshold_high), 'action'] = -1
+            else:
+                long_threshold_high = split_points[index]
+                long_threshold_low = split_points[index - 1]
+                short_threshold_high = split_points[0] - (split_points[index - 1] - split_points[0])
+                short_threshold_low = split_points[0] - (split_points[index] - split_points[0])
+                data.loc[(data[key] > long_threshold_low) & (data[key] < long_threshold_high), 'action'] = 1
+                data.loc[(data[key] > short_threshold_low) & (data[key] < short_threshold_high), 'action'] = -1
+            get_logger().info('Get distribution for {0} and long high value: {1}, long low value: {2}, short high value: {3}, short low value: {4}'
+                              .format(str(index), str(long_threshold_high), str(long_threshold_low), str(short_threshold_high), str(short_threshold_low)))
+            data.loc[data['action'] != 0, 'profit'] = data.apply(lambda item: self.caculate_profit(item), axis=1)
+            trade_count = len(data[data['action'] != 0])
+            long_trade_count = len(data[data['action'] == 1])
+            short_trade_count = len(data[data['action'] == -1])
+            win_trade_count = len(data[data['profit'] > 0])
+            loss_trade_count = len(data[data['profit'] < 0])
+            win_trade_amount = data[(data['profit'] > 0)]['profit'].sum()
+            loss_trade_amount = abs(data[data['profit'] < 0]['profit'].sum())
+            long_win_trade_amount = data[(data['profit'] > 0) & (data['action'] == 1)]['profit'].sum()
+            long_lose_trade_amount = abs(data[(data['profit'] < 0) & (data['action'] == 1)]['profit'].sum())
+            short_win_trade_amount = data[(data['profit'] > 0) & (data['action'] == -1)]['profit'].sum()
+            short_lose_trade_amount = abs(data[(data['profit'] < 0) & (data['action'] == -1)]['profit'].sum())
+            simulation_result.set_property(product, index, key, trade_count, long_trade_count, short_trade_count, win_trade_count, loss_trade_count,
+                                win_trade_amount, loss_trade_amount, long_win_trade_amount, long_lose_trade_amount,
+                                                                               short_win_trade_amount, short_lose_trade_amount)
+            data['date'] = data['datetime'].apply(lambda x:x[0:10])
+            data_group_by_date = pd.DataFrame({'profit' : data.groupby('date')['profit'].sum()})
+            data_group_by_date['total_profit'] = data_group_by_date['profit'].cumsum()
+            data_group_by_date['date'] = data_group_by_date.index
+            draw_line(data_group_by_date, xlabel='date', ylabel='total_profit', plot_info={'x': 'date', 'y': [{'key': 'total_profit', 'label': 'total_profit'}]},
+                      save_path = REPORT_PATH + os.path.sep + 'factor' + os.path.sep + 'simulation' + os.path.sep + product + '_' +  key + '_' + str(index) + '.png')
+        simulation_result.print()
+
+    def caculate_profit(self, item):
+        rate = item[self._ret_key]
+        profit = item['close'] * rate
+        if item['action'] == -1:
+            return -profit
+        else:
+            return profit
 
 
 def parse_factor_file(product, factor_list, start_date, end_date=''):
@@ -384,29 +540,49 @@ def parse_spot_goods_stock_data(product, date, start_time, end_time=''):
 
 
 def analyze_stability_extreme_value(factor, product, key, quantile):
+    """
+    打印极值日期
+
+    Parameters
+    ----------
+    factor
+    product
+    key
+    quantile
+
+    Returns
+    -------
+
+    """
     data = factor.load(product, is_organized=True)
-    mean = data.groupby('date')[key].mean()
-    std = data.groupby('date')[key].std()
+    mean_group_by = data.groupby('date')[key].mean()
+    mean_quantile = np.percentile(mean_group_by.tolist(), [quantile])
+    std_group_by = data.groupby('date')[key].std()
+    std_quantile = np.percentile(std_group_by.tolist(), [quantile])
+    mean_extreme_value_index = mean_group_by[mean_group_by > mean_quantile[0]].index.tolist()
+    std_extreme_value_index = std_group_by[std_group_by > std_quantile[0]].index.tolist()
+    return mean_extreme_value_index, std_extreme_value_index
 
 if __name__ == '__main__':
     #测试因子检测基类
-    # factor_validator = FactorValidator([
-    #     BasicValidator(),
-    #     StatisticsAnalysis(),
-    #     StabilityValidator()
-    # ])
-    # factor_validator.validate([TotalCommissionRatioFactor()])
+    factor_validator = FactorValidator([
+        # BasicValidator(),
+        # StatisticsAnalysis(),
+        # StabilityValidator()
+        SingleFactorBackTestValidator()
+    ])
+    factor_validator.validate([TotalCommissionRatioFactor()])
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
 
     #检查片段
-    # parse_factor_file('IH', [TotalCommissionRatioFactor()], '2017-03-20')
+    # parse_factor_file('IC', [RisingStockRatioFactor()], '2017-07-17')
 
     #检查现货相关股票文件
-    # parse_spot_goods_stock_data('IC', '2022-01-11', ' 9:30:03')
+    # parse_spot_goods_stock_data('IC', '2017-07-17', '09:45:51')
 
     #分析因子极值
-    analyze_stability_extreme_value(TotalCommissionRatioFactor(), 'IH', TotalCommissionRatioFactor().get_key(), 95)
+    # print(analyze_stability_extreme_value(TotalCommissionRatioFactor(), 'IF', TotalCommissionRatioFactor().get_key(), 99.99))
 
     #检查有问题的因子
     # data = WilliamFactor().load('IC')

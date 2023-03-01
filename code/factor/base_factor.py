@@ -310,11 +310,11 @@ class StockTickFactor(Factor):
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
-        pagination = Pagination(date_list, page_size=30)
+        pagination = Pagination(date_list, page_size=20)
         while pagination.has_next():
             date_list = pagination.next()
             params_list = list(map(lambda date: [date, instrument, product], date_list))
-            results = ProcessExcecutor(15).execute(self.caculate_by_date, params_list)
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
             temp_cache = {}
             for result in results:
                 cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
