@@ -23,6 +23,15 @@ def get_full_stockcode_for_stock(stock_code):
     else:
         raise InvalidStatus('Unrecognized stock code {0}'.format(stock_code))
 
+def get_full_stockcode_for_tdx(stock_code):
+    #获取完整股票代码 688005 -> SH#688005.txt
+    if stock_code[0] == '6':
+        return 'SH#' + stock_code + '.txt'
+    elif stock_code[0] == '0' or stock_code[0] == '3':
+        return 'SZ#' + stock_code + '.txt'
+    else:
+        raise InvalidStatus('Unrecognized stock code {0}'.format(stock_code))
+
 def get_rising_falling_limit(stock, date):
     """
     自20200824日起，科创办68xxxx和创业板300xxx股票涨跌幅调整为20%

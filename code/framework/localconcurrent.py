@@ -81,6 +81,7 @@ def task(arg):
     time.sleep(10)
     return arg
 
+
 if __name__ == '__main__':
     # 多进程测试
     # runner = ProcessRunner(5, False)

@@ -41,12 +41,16 @@ class ValidationResult:
             raise InvalidStatus('Invalid validation status {0}'.format(self.result))
 
 class DtoStockValidationResult(ValidationResult):
+    """
+    股票检查结果
+    """
 
-    def __init__(self, result, error_details, tscode, date):
+    def __init__(self, result, error_details, tscode, date, issue_count = 0):
         self.result = result
         self.error_details = error_details
         self.tscode = tscode
         self.date = date
+        self.issue_count = issue_count
 
     def __str__(self):
         if self.result == RESULT_SUCCESS:
@@ -57,6 +61,27 @@ class DtoStockValidationResult(ValidationResult):
         else:
             raise InvalidStatus('Invalid validation status {0} for stock: {1} date: {2}'.format(self.result, self.tscode, self.date))
 
+
+class DtoFutureValidationResult(ValidationResult):
+    """
+    期货检查结果
+    """
+
+    def __init__(self, result, error_details, instrument, date, issue_count = 0):
+        self.result = result
+        self.error_details = error_details
+        self.instrument = instrument
+        self.date = date
+        self.issue_count = issue_count
+
+    def __str__(self):
+        if self.result == RESULT_SUCCESS:
+            return 'The validation result for instrument: {0} date:{1} is {2}'.format(self.instrument, self.date, RESULT_SUCCESS)
+        elif self.result == RESULT_FAIL:
+            return 'The validation result for instrument: {0} date:{1} is {2} and error details: \n {3}'.format(self.instrument, self.date, RESULT_FAIL,
+                                                                                   '\n'.join(self.error_details))
+        else:
+            raise InvalidStatus('Invalid validation status {0} for instrument: {1} date: {2}'.format(self.result, self.instrument, self.date))
 
 class DtoFactorValidationResult(ValidationResult):
 
@@ -120,7 +145,6 @@ class CompareResult(ValidationResult):
             file_writer.write_file_line(diff)
 
 
-# 和金字塔数据源比对
 class Validator(metaclass=ABCMeta):
     """数据验证接口
 
@@ -171,8 +195,6 @@ class Validator(metaclass=ABCMeta):
             对比数据.
         """
         pass
-
-
 class StockFilterCompressValidator(Validator):
     """股票过滤压缩数据比较验证
 

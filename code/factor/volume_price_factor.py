@@ -1312,6 +1312,70 @@ class ThresholdRsiFactor(Factor):
             data.loc[data[self.get_key(param)].isnull(), self.get_key(param)] = 0
         return data
 
+class SupportCloseThreeBollFactor(Factor):
+    """
+    Support close three boll 因子，来自长青账户
+    """
+
+    factor_code = 'FCT_01_058_SUPPORT_CLOSE_THREE_BOLL'
+    version = '1.0'
+
+    def __init__(self, params):
+        self._params = params
+        self._level = 3
+
+    def caculate(self, data):
+        for param in self._params:
+            data['top.' + str(param)] = data['high'].rolling(param).max()
+            data['bottom.' + str(param)] = data['low'].rolling(param).min()
+            data['cur.top.' + str(param)] = data['top.' + str(param)].shift(1) # 取昨天的上下边界
+            data['cur.bottom.' + str(param)] = data['bottom.' + str(param)].shift(1)
+            # 区间宽度
+            data['cur.width.' + str(param)] = (data['cur.top.' + str(param)] - data['cur.bottom.' + str(param)])/self._level
+            data['mean_price'] = (data['open'] + data['close'] + data['high'] + data['low'])/4
+            for i in range(1, self._level + 1):
+                data[str(i) + '.level.' + str(param)] = data['cur.bottom.' + str(param)] + data['cur.width.' + str(param)] * i
+            for i in range(1, self._level + 1):
+                if i == 1:
+                    data[str(i) + '.level.price.total.' + str(param)] = data[(data['mean_price'] >= data['cur.bottom.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])]['mean_price'].rolling(param).sum()
+                    data[str(i) + '.level.volume.total.' + str(param)] = data[(data['mean_price'] >= data['cur.bottom.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])]['volume'].rolling(param).sum()
+                    data[str(i) + '.level.count.total.' + str(param)] = data[(data['mean_price'] >= data['cur.bottom.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])].rolling(param).count()
+                else:
+                    data[str(i) + '.level.price.total.' + str(param)] = data[(data['mean_price'] >= data[str(i - 1) + '.level.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])]['mean_price'].rolling(param).sum()
+                    data[str(i) + '.level.volume.total.' + str(param)] = data[(data['mean_price'] >= data[str(i - 1) + '.level.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])]['volume'].rolling(param).sum()
+                    data[str(i) + '.level.count.total.' + str(param)] = data[(data['mean_price'] >= data[str(i - 1) + '.level.' + str(param)]) & (data['mean_price'] < data[str(i) + '.level.' + str(param)])].rolling(param).count()
+            data['support_price.' + str(param)] = data.apply(lambda item: self.get_support_price(item, param), axis = 1)
+            data['support_price.std.' + str(param)] = data['support_price.' + str(param)].rolling(param).std()
+            data['support_price.top.' + str(param)] = data['support_price.' + str(param)] + data['support_price.std.' + str(param)] * 2
+            data['support_price.bottom.' + str(param)] = data['support_price.' + str(param)] - data['support_price.std.' + str(param)] * 2
+            data['support_price.witdh.' + str(param)] = data.apply(lambda item: self.get_width(item, param), axis = 1)
+            data[self.get_key(param)] = data.apply(lambda item: self.get_key_value(item, param), axis = 1)
+            return data
+
+    def get_key_value(self, item, param):
+        if abs(item['close'] - item['support_price.' + str(param)])/'support_price.' + str(param) > 0.03:
+            return 0
+        else:
+            (item['close'] - item['support_price.' + str(param)])/data['support_price.witdh.' + str(param)]
+
+    def get_width(self, item, param):
+        return max((item['support_price.top.' + str(param)] - item['support_price.bottom.' + str(param)]), item['close'] * 0.004)
+
+    def get_support_price(self, item, param):
+        price = 0
+        index = 0
+        for i in range(1, self._level + 1):
+            if price < item[str(i) + '.level.price.total.' + str(param)]:
+                price = item[str(i) + '.level.price.total.' + str(param)]
+                index = i
+        support_price = price/item[str(index) + '.level.count.total.' + str(param)]
+        if support_price == 0:
+            return item['close']
+        else:
+            return support_price
+
+
+
 if __name__ == '__main__':
     # 测试数据
     # data = read_decompress(TEST_PATH + 'IC2003.pkl')

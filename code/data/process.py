@@ -1,17 +1,18 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
 import math
+import numpy as np
 import os
+import pandas as pd
 import sys
 from abc import abstractmethod, ABCMeta
 from datetime import datetime, timedelta, time
-import pandas as pd
 from pandas import DataFrame
-import numpy as np
 
 from common import constants
 from common.aop import timing
-from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME, STOCK_VALID_DATA_STARTTIME
+from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING, STOCK_TRANSACTION_START_TIME, \
+    STOCK_VALID_DATA_STARTTIME, CONFIG_PATH, RET_PERIOD
 from common.localio import read_decompress, save_compress
 from common.timeutils import datetime_advance, date_alignment, time_carry, time_advance, add_milliseconds_suffix
 from data.analysis import FutureTickerHandler, StockTickerHandler
@@ -471,16 +472,20 @@ class FutureTickDataProcessorPhase2(DataProcessor):
     """
 
     #收益计算周期
-    _ret_period = [1, 2, 5, 10, 20, 30]
+    _ret_period = RET_PERIOD
 
     @timing
     def process(self, data):
         for period in self._ret_period:
-            data['ret.' + str(period)] = (data['close'].shift(-(period * 20)) - data['close'])/data['close']
+            # 收益率从下一个tick开始计算
+            data['ret.' + str(period)] = (data['close'].shift(-(period * 20)-1) - data['close'].shift(-1))/data['close'].shift(-1)
         closing_price = data.iloc[-1]['close']
         # 这里需要区分跨天和不跨天的计算
         for period in self._ret_period:
-            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'])/data['close']
+            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'].shift(-1))/data['close'].shift(-1)
+        # 处理最后一条记录
+        for period in self._ret_period:
+            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = 0
         return data
 
 class IndexAbstactExtractor(DataProcessor):
@@ -524,6 +529,39 @@ class IndexAbstactExtractor(DataProcessor):
     def append(self, data, list, start_date, end_date):
         data[start_date + '_' + end_date] = list
         return data
+
+class IndexConstituentStocksInfo():
+
+    def __init__(self):
+        self._stocks_abstract_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks_abstract.pkl')
+        self._stocks_abstract_300 = pd.read_pickle(CONFIG_PATH + os.path.sep + '300_stocks_abstract.pkl')
+        self._stocks_abstract_500 = pd.read_pickle(CONFIG_PATH + os.path.sep + '500_stocks_abstract.pkl')
+        self._stocks_map = {
+            'IC' : self._stocks_abstract_500,
+            'IH' : self._stocks_abstract_50,
+            'IF' : self._stocks_abstract_300
+        }
+
+    def get_constituent_info(self, product):
+        return self._stocks_map[product]
+
+    def get_all_constituent_stocks(self, product):
+        """
+        获取所有成分股，包括已经去除的
+        Parameters
+        ----------
+        product
+
+        Returns
+        -------
+
+        """
+        all_stocks = []
+        for values in self._stocks_map[product].values():
+            all_stocks = all_stocks + values
+        results = list(set(all_stocks))
+        results.sort()
+        return results
 
 
 if __name__ == '__main__':
@@ -578,19 +616,19 @@ if __name__ == '__main__':
 
 
     # 测试期指摘要处理类
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
-    data = IndexAbstactExtractor().process(data)
-    print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
-    data = IndexAbstactExtractor().process(data)
-    print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
-    data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
-    print(data)
-    data = IndexAbstactExtractor().process(data)
-    print(data)
-    pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/50_stocks.pkl')
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/50_stocks_abstract.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/300_stocks.pkl')
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/300_stocks_abstract.pkl')
+    # data = pd.read_pickle('D:/liuli/workspace/quantitative/data/config/500_stocks.pkl')
+    # print(data)
+    # data = IndexAbstactExtractor().process(data)
+    # print(data)
+    # pd.to_pickle(data, 'D:/liuli/workspace/quantitative/data/config/500_stocks_abstract.pkl')
     # data50 = pd.read_pickle('/Users/finley/Projects/stock-index-future/data/config/50_stocks_abstract.pkl')
     # list50 = data50['20170103_20170609']
     # print(list50)
@@ -629,3 +667,7 @@ if __name__ == '__main__':
     # IndexAbstactExtractor().append(data500, data.split('\n'), start_date, end_date)
     # print(data500)
     # pd.to_pickle(data500, '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
+
+    print(IndexConstituentStocksInfo().get_constituent_info("IH"))
+    print(len(IndexConstituentStocksInfo().get_all_constituent_stocks("IH")))
+    print(IndexConstituentStocksInfo().get_all_constituent_stocks("IH"))

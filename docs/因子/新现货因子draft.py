@@ -14,6 +14,13 @@ def main(df1, df):
     new_df['fdata'] = buy_money['money'].groupby('code').sum() / all_money
     return new_df
 
+时间维度 取大于5天的mean和std 
+股票维度两种实现方式：
+先求占比，再求平均
+先求大单交易额之和，再求占比
+分成买卖两个因子
+
+
 日内最大成交量出现的时间
 import Funcs.Formula as Fla
 
@@ -49,6 +56,8 @@ def main(df1, df, q = 0.1, N = 1):
     money_per_deal = money_per_deal.where(rank > 10)
     new_df['fdata'] = (money_per_deal.quantile(q) - money_per_deal.min()) / (money_per_deal.max() - money_per_deal.min())
     return new_df
+从开盘开始计算？
+两个维度计算的顺序？
 
 大成交量对应的收益率标准差(分钟成交量前1/3)
 import Funcs.Formula as Fla
@@ -72,10 +81,12 @@ def main_date(df , N = 1):
     ret_std = ret_rank.groupby('date').std()
     new_df = Fla.sma(ret_std , N)
     return new_df
+二类因子：每天前30%成交量收益率标准差，股票维度求均值，考虑用三类因子（比如5天均值）实时计算滑动时间窗的值
 
-当日隔夜涨幅
-集合竞价量比（与前N日集合竞价均量相比）
-集合竞价第二阶段累计挂单量/第一阶段累计挂单量
+
+当日隔夜涨幅 - done
+集合竞价量比（与前N日集合竞价均量相比）？
+集合竞价第二阶段累计挂单量/第一阶段累计挂单量 ？ 无法获得
 当日隔夜涨幅（将涨幅排序值最大的10%股票排序值变为0）
 剔除了N个tick的当日隔夜涨幅
 剔除了N个tick的当日隔夜涨幅
@@ -89,14 +100,16 @@ def main_date(df , N = 1):
 剔除了N个tick的集合竞价量比（240×集合竞价成交额/过去五日日均成交额）
 剔除了N个tick的集合竞价量比（240×集合竞价成交额/过去五日日均成交额）
 剔除了N个tick的集合竞价量比（240×集合竞价成交额/过去五日日均成交额）
-阶段 1（9:15-9:20，该阶段可以撤单）涨幅
-阶段 2 （9:20-9:25，该阶段无法撤单）涨幅
+阶段 1（9:15-9:20，该阶段可以撤单）涨幅 - done
+阶段 2 （9:20-9:25，该阶段无法撤单）涨幅 - done
 阶段 1 是否涨停
 阶段 1 是否跌停
 阶段 2 价格是否平稳上升。比率类型
 阶段 2 价格是否平稳上升。相关系数
 集合竞价量比（240×集合竞价成交额/过去五日日均成交额）
 隔夜收益率与第二阶段涨幅的差
+
+为什么要剔除N个tick？
 
 def main(df1, df2, df3, drop_tick = 1):
     pre_close = df2['pre_close'] / df2['factor']

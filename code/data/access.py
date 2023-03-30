@@ -6,7 +6,7 @@ import time
 from functools import lru_cache
 
 from common.localio import read_decompress
-from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_COMBINED_DATA_PATH, STOCK_FILE_PREFIX
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, STOCK_TICK_DATA_PATH, STOCK_TICK_COMBINED_DATA_PATH, STOCK_FILE_PREFIX, FACTOR_STANDARD_FIELD_TYPE
 from common.aop import timing
 from common.stockutils import get_full_stockcode_for_stock
 
@@ -52,9 +52,9 @@ class StockDataAccess(DataAccess):
         if self._combined_file_enabled:
             data = read_date_combined_file(date, file_path)
             data = data[data['tscode'] == get_full_stockcode_for_stock(stock)]
-            return data
+            return self.field_mapping(data)
         else:
-            return read_decompress(file_path + stock + '.pkl')
+            return self.field_mapping(read_decompress(file_path + stock + '.pkl'))
 
     def create_stock_tick_data_path(self, date):
         file_prefix = STOCK_FILE_PREFIX
@@ -69,6 +69,23 @@ class StockDataAccess(DataAccess):
             else:
                 root_path = STOCK_TICK_ORGANIZED_DATA_PATH
         return root_path + file_prefix + year + os.path.sep + file_prefix + year + month + os.path.sep + date + os.path.sep
+
+    def field_mapping(self, data):
+        """
+        字段类型转换
+        amount object -》 float64
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        if data.dtypes['amount'] != FACTOR_STANDARD_FIELD_TYPE:
+            data['amount'] = data['amount'].astype(FACTOR_STANDARD_FIELD_TYPE)
+        return data
 
 class StockDailyDataAccess(StockDataAccess):
     """

@@ -57,7 +57,7 @@ def draw_histogram(data, bin_num, facecolor='blue', alpha=0.5, save_path=''):
         plt.show()
 
 def draw_line(data, title='', xlabel='', ylabel='', plot_info={'x': 'x', 'y': [{'key': 'y', 'label': ''}]},
-              show_grid=False, save_path=''):
+              show_grid=False, save_path='', sample_freqency=1):
     """画折线图
 
     :param data: 待分析数据源
@@ -67,11 +67,16 @@ def draw_line(data, title='', xlabel='', ylabel='', plot_info={'x': 'x', 'y': [{
     :param ylabel: 纵坐标标识
     :param plot_info: 数据源解析字典
     :param show_grid: 是否展示网格
+    :param save_path: 保存路径
+    :param sample_freqency: 数据采样频度 0.1
     :return: NoneType
 
     """
     plt.style.use('ggplot')
-    fig = plt.figure(figsize=(6, 3))
+    fig = plt.figure(figsize=(12, 6))
+    if sample_freqency != 1:
+        sample = int(1/sample_freqency)
+        data = data[[i % sample == 0 for i in range(len(data.index))]]
     for y in plot_info.get('y'):
         plt.plot(data[plot_info.get('x')], data[y.get('key')], label=y.get('label'))
     plt.legend()
@@ -116,10 +121,19 @@ def join_two_images(img_1, img_2, path, flag='horizontal'):
 
 
 if __name__ == '__main__':
-    data = read_decompress(TEST_PATH + '20200928.pkl')
-    data.index = pd.DatetimeIndex(data['datetime'])
-    print(data)
-    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:15:00')]
-    print(data)
-    draw_analysis_curve(data)
-    print('result')
+    # data = read_decompress(TEST_PATH + '20200928.pkl')
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # print(data)
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:15:00')]
+    # print(data)
+    # draw_analysis_curve(data)
+    # print('result')
+
+    #测试折线图
+    data = {'a': [1, 2, 6, 4, 3], 'b': [2, 3, 4, 5, 6], 'c': [2, 3, 4, 3, 2]}
+    df = pd.DataFrame(data)
+    draw_line(df, '测试', xlabel='a', ylabel='b', plot_info={'x': 'a', 'y': [{'key': 'b', 'label': 'b'}, {'key': 'c', 'label': 'c'}]})
+    data = {'a': ['a', 'b', 'c', 'd', 'e'], 'b': [2, 3, 4, 5, 6], 'c': [2, 3, 4, 3, 2]}
+    df = pd.DataFrame(data)
+    draw_line(df, '测试', xlabel='a', ylabel='b', plot_info={'x': 'a', 'y': [{'key': 'b', 'label': 'b'}, {'key': 'c', 'label': 'c'}]})
+    print(df)

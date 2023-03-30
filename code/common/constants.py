@@ -22,13 +22,18 @@ STOCK_TICK_COMBINED_DATA_PATH = 'G:\\data\\' + 'organized' + os.path.sep + 'stoc
 STOCK_TICK_COMPARE_DATA_PATH = 'E:\\data\\' + 'compare' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
 TEMP_PATH = config.get('common', 'data_path') + os.path.sep + 'temp' + os.path.sep
 # TEST_PATH = config.get('common', 'data_path') + os.path.sep + 'test' + os.path.sep
-TEST_PATH = 'E:\\data\\' + 'test' + os.path.sep
+TEST_PATH = 'G:\\data\\' + 'test' + os.path.sep
 # CONFIG_PATH = config.get('common', 'data_path') + os.path.sep + 'config' + os.path.sep
 CONFIG_PATH = 'E:\\data\\' + 'config' + os.path.sep
 # FACTOR_PATH = config.get('common', 'data_path') + os.path.sep + 'factor' + os.path.sep
-FACTOR_PATH = 'E:\\data\\' + 'factor' + os.path.sep
+FACTOR_PATH = 'G:\\data\\' + 'factor' + os.path.sep
 # REPORT_PATH = config.get('common', 'data_path') + os.path.sep + 'report' + os.path.sep
-REPORT_PATH = 'E:\\data\\' + 'report' + os.path.sep
+REPORT_PATH = 'G:\\data\\' + 'report' + os.path.sep
+#第三方数据路径信息
+#通达信
+TDX_PATH = config.get('common', 'data_path') + 'original' + os.path.sep + 'stock' + os.path.sep + 'tdx' + os.path.sep
+MODEL_PATH = 'G:\\data\\' + 'model' + os.path.sep
+XGBOOST_MODEL_PATH = MODEL_PATH + 'xgboost'
 
 #数据库信息
 DB_CONNECTION = config.get('common', 'db_connection')
@@ -90,3 +95,5 @@ FACTOR_TYPE_DETAILS = {
     }
 }
 FACTOR_STANDARD_FIELD_TYPE = 'float64'
+
+RET_PERIOD = [1, 2, 5, 10, 20, 30]

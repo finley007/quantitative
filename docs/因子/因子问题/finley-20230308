@@ -1,0 +1,40 @@
+IC_FCT_02_007_SPREAD_5
+1. 查看统计报告
+先看IC：
+都是IC1804合约
+2018-03-16 
+2018-03-19
+2018-03-20
+2018-03-21
+2018-03-22
+2018-03-23
+2018-03-26
+2018-03-27 
+2018-03-28
+2018-03-29
+2018-03-30
+2018-04-02 
+2018-04-03 
+2018-04-04
+2018-04-09
+2018-04-10
+2018-04-11
+2018-04-12
+2018-04-13
+2018-04-16 
+2018-04-17
+2018-04-18
+2018-04-19 
+这些因子值确实没有生成
+2. 调用caculate_by_date分析,程序执行结果正确
+3. 执行单因子计算检查结果
+factor.factor_caculator:caculate_by_instrument:134 - Factor <bound method Factor.get_full_name of <factor.spot_goods_factor.SpreadFactor object at 0x000001E262364280>> caculation error
+debug模式却没有这个错误，应该是多进程在执行计算时出错了，发现没有添加停盘信息
+
+IC_FCT_02_002_10_GRADE_COMMISSION_RATIO - ok
+IF_FCT_02_002_10_GRADE_COMMISSION_RATIO - ok
+IC_FCT_02_004_5_GRADE_COMMISSION_RATIO
+IC_FCT_02_018_UNTRADED_STOCK_RATIO - ok
+IF_FCT_02_018_UNTRADED_STOCK_RATIO - ok
+IC_FCT_02_017_RISING_FALLING_AMOUNT_RATIO
+IC_FCT_02_007_SPREAD

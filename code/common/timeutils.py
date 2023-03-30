@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
 from datetime import datetime, timedelta, time
+import time as tm
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.persistence.dao import IndexConstituentConfigDao
 from common.exception.exception import InvalidValue
@@ -168,6 +169,8 @@ def get_last_or_next_trading_date(stock, date, range_num = 1, backword=True, dat
     else:
         return ''
 
+def get_current_time():
+    return tm.strftime("%Y%m%d%H%M%S", tm.localtime())
 
 if __name__ == '__main__':
     # print(date_format_transform('20221121'))
@@ -177,4 +180,5 @@ if __name__ == '__main__':
     # print(get_last_or_next_trading_date('20221212', range_num=3, date_list=['20221210','20221211','20221212','20221213','20221214']))
     # print(get_last_or_next_trading_date('20221212', range_num=2, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
     # print(get_last_or_next_trading_date('20221212', range_num=3, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
-    print(time_difference('11:29:57', '11:30:00'))
+    # print(time_difference('11:29:57', '11:30:00'))
+    print(get_current_time())

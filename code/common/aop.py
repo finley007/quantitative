@@ -20,3 +20,20 @@ def timing(func):
         get_logger().debug(f'Method-{func.__name__} cost time: {time.perf_counter() - t:.8f} s')
         return result
     return fun
+
+def deamon(func):
+    """
+    该注解表示在实盘计算需要有后台进程更新
+    Parameters
+    ----------
+    func
+
+    Returns
+    -------
+
+    """
+
+    def fun(*args, **kwargs):
+        result = func(*args, **kwargs)
+        return result
+    return fun

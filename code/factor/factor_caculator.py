@@ -17,7 +17,8 @@ from factor.volume_price_factor import WilliamFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
-    TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor
+    TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor,\
+    AmountAskTotalCommissionRatioFactor
 
 
 from factor.base_factor import StockTickFactor
@@ -91,7 +92,7 @@ class FactorCaculator():
                 get_logger().info('Save temp file for instrument list: {}'.format(sub_instrument_list))
                 session.commit()
                 save_compress(factor_data, temp_file)
-            factor_data = factor_data.reset_index()
+            factor_data = factor_data.reset_index(drop=True)
             if not performance_test:
                 target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
                     list(map(lambda factor: factor.get_full_name(), factor_list)))
@@ -102,6 +103,7 @@ class FactorCaculator():
             save_compress(factor_data, target_factor_file)
             if os.path.exists(temp_file):
                 os.remove(temp_file)
+
     def caculate_by_instrument(self, *args):
         """
         按合约计算因子值，主要为了并行化
@@ -128,10 +130,8 @@ class FactorCaculator():
         data['product'] = product
         data['instrument'] = instrument
         for factor in factor_list:
-            try:
-                data = factor.caculate(data)
-            except Exception as e:
-                print(e)
+            # 这个异常不能捕获，任何一个合约的异常都必须处理，不然最终还要修复
+            data = factor.caculate(data)
         # 截取主力合约区间
         date_range = session.execute(
             'select min(date), max(date) from future_instrument_config where product = :product and instrument = :instrument and is_main = 0',
@@ -141,7 +141,6 @@ class FactorCaculator():
             start_date = date_range_query_result[0][0]
             end_date = date_range_query_result[0][1]
             data = data[(data['date'] >= start_date) & (data['date'] <= end_date)]
-
         return instrument, data
 
     @timing
@@ -190,7 +189,7 @@ class FactorCaculator():
                 get_logger().info('Complete factor caculation for {0}'.format(str(i)))
                 daily_data = data[data['date'] == date]
                 if len(daily_data) > 0:
-                    daily_data = daily_data.reset_index()
+                    daily_data = daily_data.reset_index(drop=True)
                     rdm_index = random.randint(0, len(daily_data) - window_size)
                     daily_data = daily_data.loc[rdm_index: rdm_index + window_size]
                     get_logger().info('Prepare the stock data for {0}'.format(str(i)))
@@ -215,7 +214,6 @@ class FactorCaculator():
         session.execute('delete from future_instrument_config')
         main_instrument_config = pd.DataFrame(pd.read_pickle(CONFIG_PATH + 'all-main.pkl'))
         main_instrument_config = main_instrument_config[STOCK_INDEX_PRODUCTS]
-        print(main_instrument_config)
         for product in STOCK_INDEX_PRODUCTS:
             instrument_list = list_files_in_path(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
             instrument_list.sort()
@@ -257,11 +255,10 @@ if __name__ == '__main__':
     # factor = TotalCommissionRatioFactor()
     # factor = TenGradeCommissionRatioFactor()
     # factor = FiveGradeCommissionRatioFactor()
-    # factor = AmountAndCommissionRatioFactor()
     # factor = TenGradeWeightedCommissionRatioFactor()
     # factor = FiveGradeCommissionRatioFactor()
     # factor = AmountAndCommissionRatioFactor()
-    factor = RisingFallingAmountRatioFactor()
+    # factor = RisingFallingAmountRatioFactor()
     # factor = UntradedStockRatioFactor()
     # factor = DailyAccumulatedLargeOrderRatioFactor()
     # factor = RollingAccumulatedLargeOrderRatioFactor([10])
@@ -275,7 +272,9 @@ if __name__ == '__main__':
     # factor = FirstStageCommissionRatioFactor()
     # factor = SecondStageCommissionRatioFactor()
     # factor = AmountAnd1stGradeCommissionRatioFactor()
-    FactorCaculator().caculate_manually_check(factor, is_accumulated=True)
+    # factor = TotalCommissionRatioDifferenceFactor([20, 50, 100, 200])
+    factor = AmountAskTotalCommissionRatioFactor()
+    FactorCaculator().caculate_manually_check(factor)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

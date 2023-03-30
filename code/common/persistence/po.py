@@ -3,7 +3,7 @@
 import uuid
 import datetime
 
-from sqlalchemy import Column, String, Integer, DateTime, Date, Time, BigInteger
+from sqlalchemy import Column, String, Integer, DateTime, Date, Time, BigInteger, DECIMAL
 from sqlalchemy.ext.declarative import declarative_base
 
 from common.constants import RESULT_SUCCESS, FACTOR_TYPE_DETAILS
@@ -22,6 +22,7 @@ class StockValidationResult(Base):
     result = Column(Integer)
     err_msg = Column(String(1024))
     record_count = Column(Integer)
+    issue_count = Column(Integer)
     created_time = Column(DateTime)
     modified_time = Column(DateTime)
 
@@ -39,6 +40,41 @@ class StockValidationResult(Base):
             str_validation_result = str_validation_result[0:1020] + '...'
         self.err_msg = str_validation_result
         self.record_count = record_count
+        self.issue_count = validation_result.issue_count
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
+class FutureValidationResult(Base):
+    """期货验证记录表po：
+    """
+    __tablename__ = "future_validation_result"
+
+    id = Column(String(32), primary_key=True)
+    validation_code = Column(String(32))
+    instrument = Column(String(10))
+    date = Column(String(10))
+    result = Column(Integer)
+    err_msg = Column(String(1024))
+    record_count = Column(Integer)
+    issue_count = Column(Integer)
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, validation_code, validation_result, record_count):
+        self.id = uuid.uuid4()
+        self.validation_code = validation_code
+        self.instrument = validation_result.instrument
+        self.date = validation_result.date
+        if validation_result.result == RESULT_SUCCESS:
+            self.result = 0
+        else:
+            self.result = 1
+        str_validation_result = str(validation_result)
+        if (len(str_validation_result) > 1020):
+            str_validation_result = str_validation_result[0:1020] + '...'
+        self.err_msg = str_validation_result
+        self.record_count = record_count
+        self.issue_count = validation_result.issue_count
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
 
@@ -283,6 +319,28 @@ class FactorValidationResult(Base):
             str_validation_result = str_validation_result[0:1020] + '...'
         self.err_msg = str_validation_result
         self.record_count = record_count
+        self.created_time = datetime.datetime.now()
+        self.modified_time = datetime.datetime.now()
+
+class StockReversionConfig(Base):
+    """股票复权表po：
+    """
+    __tablename__ = "stock_reversion_config"
+
+    id = Column(String(32), primary_key=True)
+    date = Column(String(10))
+    tscode = Column(String(10))
+    value = Column(DECIMAL(15,5))
+    type = Column(Integer)
+    created_time = Column(DateTime)
+    modified_time = Column(DateTime)
+
+    def __init__(self, date, tscode, value, type):
+        self.id = uuid.uuid4()
+        self.date = date
+        self.tscode = tscode
+        self.value = value
+        self.type = type
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
 

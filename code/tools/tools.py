@@ -5,22 +5,24 @@ import re
 import time
 from datetime import datetime
 import random
+import heapq
 
 import pandas as pd
 
 from common import constants
-from common.aop import timing
+from common.aop import timing, deamon
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
     STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL, STOCK_TICK_COMBINED_DATA_PATH, YEAR_LIST, STOCK_FILE_PREFIX, \
-    STOCK_TICK_COMPARE_DATA_PATH
+    STOCK_TICK_COMPARE_DATA_PATH, TDX_PATH, STOCK_INDEX_PRODUCTS
 from common.crawler import StockInfoCrawler
-from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter
+from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter, read_txt
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, IndexConstituentConfig
-from common.stockutils import get_full_stockcode
+from common.persistence.dao import StockReversionConfigDao
+from common.stockutils import get_full_stockcode, get_full_stockcode_for_tdx
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
-    FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher
+    FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher, IndexConstituentStocksInfo
 from common.timeutils import date_format_transform
 from data.validation import StockFilterCompressValidator, FutureTickDataValidator, StockTickDataValidator, DtoStockValidationResult
 from framework.localconcurrent import ProcessRunner
@@ -418,12 +420,34 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
             instrument = instrument_file.split('.')[1]
             if len(include_instrument) > 0 and instrument not in include_instrument:
                 continue
-            runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
+            create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file)
+            # runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
     time.sleep(100000)
 
+def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
+    session = create_session()
+    instrument = instrument_file.split('.')[1]
+    get_logger().info('Create k-line for {0} and {1}'.format(product, instrument))
+    data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
+    data = FutureTickDataColumnTransform(product, instrument).process(data)
+    data = DataCleaner().process(data)
+    data['date'] = data['datetime'].str[0:10]
+    date_list = sorted(list(set(data['date'].tolist())))
+    for date in date_list:
+        date_replace = date.replace('-', '')
+        if instrument + date_replace in checked_set:
+            continue
+        date_data = data[data['date'] == date]
+        k_line_data = FutureTickDataProcessorPhase1().process(date_data)
+        if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
+            os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
+        save_compress(k_line_data, FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date_replace + '.pkl')
+        future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
+        session.add(future_process_record)
+        session.commit()
 
 @timing
-def conbine_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
+def combine_k_line_for_future_tick(process_code, include_product=[], include_instrument=[]):
     """遍历k线临时文件，将文件按合约合并生成到organized目录
     organized文件目录
     product
@@ -439,7 +463,7 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
                                    {'pcode': process_code})
     checked_set = set(map(lambda item: item[0], checked_list))
-    # runner = ProcessRunner(10)
+    runner = ProcessRunner(10)
     for product in products:
         if len(include_product) > 0 and product not in include_product:
             continue
@@ -452,24 +476,22 @@ def conbine_k_line_for_future_tick(process_code, include_product=[], include_ins
                 continue
             if not os.path.exists(FUTURE_TICK_ORGANIZED_DATA_PATH + product):
                 os.makedirs(FUTURE_TICK_ORGANIZED_DATA_PATH + product)
-            combine_future_k_line_by_instrument(process_code, checked_set, product, instrument)
-            # runner.execute(combine_future_k_line_by_instrument,
-            #                args=(process_code, checked_set, product, instrument))
-    # time.sleep(100000)
+            # combine_future_k_line_by_instrument(process_code, checked_set, product, instrument)
+            runner.execute(combine_future_k_line_by_instrument, args=(process_code, checked_set, product, instrument))
+    time.sleep(100000)
 
-@timing
 def combine_future_k_line_by_instrument(process_code, checked_set, product, instrument):
     session = create_session()
     columns = ['datetime', 'open', 'close', 'high', 'low', 'volume', 'interest', 'ret.1', 'ret.2', 'ret.5', 'ret.10',
                'ret.20', 'ret.30']
     data = pd.DataFrame(columns=columns)
+    get_logger().info('Combine k-line for {0} and {1}'.format(product, instrument))
     file_list = list_files_in_path(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
     file_list.sort()
     for file in file_list:
         date = file[0: 8]
         if instrument + date in checked_set:
-            date_file = read_decompress(
-                FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
+            date_file = read_decompress(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date + '.pkl')
             date_file = FutureTickDataProcessorPhase2().process(date_file)  # 计算收益
             data = pd.concat([data, date_file])
             session.execute(
@@ -478,30 +500,6 @@ def combine_future_k_line_by_instrument(process_code, checked_set, product, inst
             session.commit()
     data = data.reset_index()
     save_compress(data, FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
-
-@timing
-def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
-    session = create_session()
-    instrument = instrument_file.split('.')[1]
-    print('Create k-line for {0} and {1}'.format(product, instrument))
-    data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + os.path.sep + instrument_file)
-    data = FutureTickDataColumnTransform(product, instrument).process(data)
-    data = DataCleaner().process(data)
-    data['date'] = data['datetime'].str[0:10]
-    date_list = sorted(list(set(data['date'].tolist())))
-    for date in date_list:
-        if instrument + date in checked_set:
-            continue
-        date_data = data[data['date'] == date]
-        k_line_data = FutureTickDataProcessorPhase1().process(date_data)
-        if not os.path.exists(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument):
-            os.makedirs(FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument)
-        date_replace = date.replace('-', '')
-        save_compress(k_line_data,
-                      FUTURE_TICK_TEMP_DATA_PATH + product + os.path.sep + instrument + os.path.sep + date_replace + '.pkl')
-        future_process_record = FutrueProcessRecord(process_code, instrument, date_replace, 0)
-        session.add(future_process_record)
-        session.commit()
 
 @timing
 def init_index_constituent_config():
@@ -760,6 +758,48 @@ def create_stock_manually_check_files(compare_count = 10):
         organized_data.to_csv(target_path + year + month + day + '_' + stock + '_organized.csv')
         compare_count = compare_count - 1
 
+@deamon
+def create_stock_reversion_info(is_incremental = False, products=STOCK_INDEX_PRODUCTS):
+    """
+    生成股票复权信息
+    Returns
+    -------
+
+    """
+    init_index_constituent_config = IndexConstituentStocksInfo()
+    stock_reversion_config_dao = StockReversionConfigDao()
+    un_reversion_data = TDX_PATH + os.path.sep + 'wfq'
+    back_reversion_data = TDX_PATH + os.path.sep + 'hfq'
+    for product in products:
+        stocks = init_index_constituent_config.get_all_constituent_stocks(product)
+        get_logger().info('Start to handle product {0} \n stock list: {1}'.format(product, stocks))
+        # 增量更新 vs 全量更新
+        if not is_incremental:
+            stock_reversion_config_dao.delete_records_by_stocks(stocks)
+            for stock in stocks:
+                #未复权
+                un_reversion = parse_tdx_data(un_reversion_data + os.path.sep + get_full_stockcode_for_tdx(stock))
+                #后复权
+                back_reversion = parse_tdx_data(back_reversion_data + os.path.sep + get_full_stockcode_for_tdx(stock))
+                data = pd.merge(un_reversion, back_reversion, on='date')
+                data.dropna(inplace=True)
+                data['factor'] = data.apply(lambda item: float(item['open_y'])/float(item['open_x']), axis = 1)
+                print(data)
+                data['delta_factor'] = data['factor'] - data['factor'].shift(1)
+                data.dropna(inplace=True)
+                min_delta_factor = min(data['delta_factor'].tolist())
+                print(data[data['delta_factor'] == min_delta_factor][['date', 'open_x', 'open_y', 'factor', 'delta_factor', 'close_x', 'close_y']])
+                print(data[data['date'] == '2022-11-28'][['date', 'open_x', 'open_y', 'factor', 'delta_factor', 'close_x', 'close_y']])
+
+def parse_tdx_data(file):
+    """
+    日期	    开盘	    最高	    最低	    收盘	    成交量	    成交额
+    Returns
+    -------
+
+    """
+    return pd.DataFrame(read_txt(file, '\t'), columns=['date', 'open', 'high', 'low', 'close', 'volume', 'amount'])
+
 
 
 if __name__ == '__main__':
@@ -811,9 +851,9 @@ if __name__ == '__main__':
     # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
-    # create_k_line_for_future_tick('20221117-finley')
+    create_k_line_for_future_tick('20230313-finley')
     # 拼接股指k线
-    conbine_k_line_for_future_tick('20221117-finley')
+    # combine_k_line_for_future_tick('20230313-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
@@ -865,6 +905,9 @@ if __name__ == '__main__':
 
     # 生成股票停盘信息
     # update_stock_suspension_status()
+
+    # 生成股票复权信息
+    # create_stock_reversion_info()
 
     # 生成股票数据人工对比文件
     # create_stock_manually_check_files(10)

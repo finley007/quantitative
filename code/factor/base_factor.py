@@ -66,11 +66,21 @@ class Factor(metaclass=ABCMeta):
             factor_path = FACTOR_PATH + product + '_' + self.get_full_name()
         return read_decompress(factor_path)
 
+    def get_action_delay(self):
+        """
+        行为延迟，因子信号出现，至少要在下一个tick才能交易，所以默认是1，单位是tick
+        有些特殊的二类因子要计算整日某个指标，因此可能会更长
+        主要用于回测
+        Returns
+        -------
+
+        """
+        return 1
+
     # 全局计算因子值
     @abstractmethod
     def caculate(self, data):
         pass
-
 
 class StockTickFactor(Factor):
     """现货类基类，可以加载股票Tick数据
@@ -93,7 +103,7 @@ class StockTickFactor(Factor):
         self._data_access = StockDataAccess(False)
         self._daily_data_access = StockDailyDataAccess()
         index_constituent_config_dao = IndexConstituentConfigDao()
-        self._suspend_set = index_constituent_config_dao.get_suspend_list()
+        self._invalid_set = index_constituent_config_dao.get_invalid_list()
 
     def set_stock_filter(self, stock_filter):
         self._stock_filter = stock_filter
@@ -116,18 +126,18 @@ class StockTickFactor(Factor):
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
         if stock_list and len(stock_list) > 0:
-            # 过滤掉停盘的
-            stock_list = list(filter(lambda stock: (date + stock) not in self._suspend_set, stock_list))
+            # 过滤异常数据
+            stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
             for stock in stock_list:
                 get_logger().debug('Handle stock {0}'.format(stock))
                 try:
                     daily_stock_data = self.get_stock_data(date, stock)
                 except Exception as e:
                     get_logger().warning('Stock data is missing for date: {0} and stock: {1}'.format(date, stock))
-                    session = create_session()
-                    stock_missing_data = StockMissingData(date, stock)
-                    session.add(stock_missing_data)
-                    session.commit()
+                    # session = create_session()
+                    # stock_missing_data = StockMissingData(date, stock)
+                    # session.add(stock_missing_data)
+                    # session.commit()
                     continue
                 if len(daily_stock_data) == 0:
                     get_logger().warning('Stock data is empty for date: {0} and stock: {1}'.format(date, stock))
@@ -313,6 +323,7 @@ class StockTickFactor(Factor):
         pagination = Pagination(date_list, page_size=20)
         while pagination.has_next():
             date_list = pagination.next()
+            get_logger().debug('Handle date from {0} to {1} for instrument: {2}'.format(date_list[0], date_list[-1], instrument))
             params_list = list(map(lambda date: [date, instrument, product], date_list))
             results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
             temp_cache = {}

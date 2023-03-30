@@ -39,8 +39,8 @@ delete from stock_process_record where process_code = '20221111-finley-1' and st
 ALTER TABLE index_constituent_config add column status  int comment '0-正常，1-停牌';
 ALTER TABLE stock_validation_result add column record_count  int;
 
-
---查询检查执行纪录
+------股票
+--查询股票检查执行纪录
 select count(1), validation_code from stock_validation_result group by validation_code;
 --查询股票检查记录总数
 select count(1) from stock_validation_result where validation_code = '20221219-finley';
@@ -57,14 +57,35 @@ select * from stock_validation_result where err_msg like '%The redundant data fo
 select date from stock_validation_result where validation_code = '20230216-finley' group by date order by date;
 --备份表
 CREATE TABLE stock_validation_result_bak SELECT * FROM stock_validation_result WHERE validation_code = '20221219-finley';
+--导出数据
+select date, tscode  into outfile 'G:\data\temp\bb.xls' from stock_validation_result where validation_code = '20230310-finley' and result = 1 and err_msg not like '%14:59%';
+
+------期货
+--查询期货检查执行纪录
+select count(1), validation_code from future_validation_result group by validation_code;
+--查询期货检查结果分布
+select count(1), result from future_validation_result where validation_code = '20230216-finley' group by result;
+
 
 --检查因子生成执行记录
 --记录总数
 select count(1) from factor_process_record;
 --执行历史和记录数
 select count(1), process_code from factor_process_record group by process_code;
+--执行进度查询
+select * from factor_process_record order by created_time;
 
 explain select * from stock_validation_result where validation_code = '20221219-finley' and tscode = '002458' and date = '20210106';
 select * from (select count(1) as count, validation_code, tscode, date from stock_validation_result group by validation_code, tscode, date) t where count > 1; 
 select * from stock_validation_result where concat(validation_code, tscode, date) = '';
 
+--查询mysql连接数
+SHOW PROCESSLIST;
+SHOW FULL PROCESSLIST;
+SHOW VARIABLES LIKE '%max_connections%';
+SHOW STATUS LIKE '%Connection%';
+
+show status like 'Threads%';
+--查询mysql安装目录及数据目录
+select @@basedir;
+select @@datadir;

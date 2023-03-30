@@ -14,4 +14,8 @@ pip3 install memory_profiler -i http://mirrors.aliyun.com/pypi/simple/ --trusted
 pip3 install xlrd -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install loguru -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install xgboost -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install tables -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install seaborn -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install graphviz -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install Jinja2 -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 

@@ -50,7 +50,6 @@ def read_decompress(path):
         raw_data = file_object.read()
     return cPickle.loads(raw_data)
 
-
 def save_compress(data, path):
     """压缩并保存
 
@@ -65,8 +64,6 @@ def save_compress(data, path):
     serialized = cPickle.dumps(data)
     with gzip.open(path, 'wb', compresslevel=1) as file_object:
         file_object.write(serialized)
-
-
 
 
 class FileWriter:
@@ -88,6 +85,24 @@ class FileWriter:
     def write_file_line(self, content):
         self.file.write(content + '\n')
 
+def read_txt(file_name, splits=''):
+    """
+    读取txt文件
+    Parameters
+    ----------
+    file_name
+    splits
+
+    Returns
+    -------
+
+    """
+    with open(file_name, 'r') as f:
+        buf_lis = f.read().split('\n')
+    if splits != '':
+        return [x.split(splits) for x in buf_lis[:-1]]
+    else:
+        return ''.join(buf_lis)
 
 if __name__ == '__main__':
     # print(list_files_in_path(constants.DATA_PATH + 'future/tick/IF/'))
@@ -98,4 +113,8 @@ if __name__ == '__main__':
     # file_writer.write_file_line("aa")
     # file_writer.write_file_line("bb")
     # file_writer.close_file()
-    print(build_path('a','b'))
+    # print(build_path('a','b'))
+    # print(read_txt('D:\\liuli\\data\\original\\stock\\tdx\\qfq\\BJ#430047.txt', '\t'))
+    print(type(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
+    print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
+    print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg'))['数据集'])

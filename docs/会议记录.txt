@@ -1,0 +1,82 @@
+会议记录
+20230224
+1 复权：
+  二类和三类因子需要
+  信息来源处理方式
+  如何处理：所有的price都需要处理，生成新文件vs增加新字段？
+todo: 
+a. 核对现有数据是否已经考虑除权除息
+b. 复权因子不能直接取现成的，因为不同的数据商因子不一样，可以考虑从通达信的价格直接进行计算
+c. 需要处理的字段：
+新增加一个字段记录除权因子，逻辑放到因子计算中	
+d. 实际回测和实盘用真实价格，只是计算相关二类三类因子时考虑除权
+
+2 因子确认
+todo:
+增加二类因子日内最大成交量出现的时间
+
+3 委比因子缺失数据处理
+todo:
+缺失总委比用十档委比代替，比较已有的总委比和十档委比数据
+如果以后需要总委比可以通过逐笔委托来计算
+  
+
+20230305
+1. 已生成因子平稳性分析结果
+TODD: IH_FCT_02_006_RISING_STOCK_RATIO.20.png 趋势性分析
+IC_FCT_02_007_SPREAD_5.png 无交易分析
+IC_FCT_02_006_RISING_STOCK_RATIO.20_4.png 分析是否有未来函数
+IH_FCT_02_006_RISING_STOCK_RATIO.20_5.png 无交易分析
+增加和测试差分因子
+2. 通达信的除权数据
+TODO: 验证除权数据的正确性
+3. 讨论文章
+
+20230312
+1. 总委比问题
+TODO：
+ret需要打个补丁去考虑交易延迟
+分成集合竞价因子和一般银子，训练两个模型：
+model1 -> factor1 + factor2
+model2 -> factor1
+分时间去应用不同的model
+搭建xgboost训练环境
+完成回测框架设计
+检查IF_FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE.50_1.png未成交问题
+因为这个因子的50和55分位数都是0
+检查IC_FCT_02_017_RISING_FALLING_AMOUNT_RATIO_1.png曲线问题
+2022-06-22这天的因子值为0，一直在开仓
+检查IF_FCT_02_017_RISING_FALLING_AMOUNT_RATIO_1.png曲线问题
+                  profit  total_profit  delta_total_profit
+date                                                      
+2021-02-24 -13692.619383  -8321.544816       -13692.619383
+10:47:18 - 11:05:00 数据缺失
+                  profit  total_profit  delta_total_profit
+date                                                      
+2021-05-10 -10395.355694 -18868.413767       -10395.355694
+                 profit  total_profit  delta_total_profit
+date                                                     
+2021-07-14 -6225.626263 -26961.866611        -6225.626263
+检查IF_FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE.50_2.png曲线问题
+                 profit  total_profit
+date                                 
+2020-07-24 -5619.910989   5864.507446
+                 profit  total_profit
+date                                 
+2020-08-14 -1115.784914    5219.55089
+                profit  total_profit
+date                                
+2020-07-15 -825.775077  12253.390983
+                profit  total_profit
+date                                
+2019-04-19 -744.843757   7854.039022
+                profit  total_profit
+date                                
+2020-10-16 -707.621575    1743.88968
+数据上没什么问题，感觉是因为尾盘集合竞价导致的
+
+
+20230326
+1. 股指可以考虑对品种用one-hot编码区分品种特性
+2. 模型评估方式，可以直接用loss函数
+3. 检查尾盘集合竞价，股指的交易行情

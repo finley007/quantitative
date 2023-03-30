@@ -25,12 +25,31 @@ date    VARCHAR(10),
 result  int comment '0-成功，1-失败',
 err_msg  VARCHAR(1024),
 record_count int,
+issue_count int,
 created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id)
 );
 alter table stock_validation_result add unique (validation_code, tscode, date);
 alter table stock_validation_result add index stock_validation_result_index (result);
+
+-- 期货数据检查结果表
+CREATE TABLE IF NOT EXISTS future_validation_result
+(
+id VARCHAR(40),
+validation_code VARCHAR(40),
+instrument  VARCHAR(10),
+date    VARCHAR(10),
+result  int comment '0-成功，1-失败',
+err_msg  VARCHAR(1024),
+record_count int,
+issue_count int,
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(id)
+);
+alter table future_validation_result add unique (validation_code, instrument, date);
+alter table future_validation_result add index future_validation_result_index (result);
 
 -- 期货数据处理结果表
 CREATE TABLE IF NOT EXISTS future_process_record
@@ -80,7 +99,7 @@ id VARCHAR(40),
 product VARCHAR(2),
 date    VARCHAR(10),
 tscode  VARCHAR(10),
-status  int comment '0-正常，1-停牌',
+status  int comment '0-正常，1-停牌，2-数据异常',
 created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id),
@@ -156,14 +175,36 @@ PRIMARY KEY(id)
 alter table factor_validation_result add unique (validation_code, instrument, date);
 alter table factor_validation_result add index factor_validation_result_index (result);
 
+-- 复权因子表
+CREATE TABLE IF NOT EXISTS stock_reversion_config
+(
+id VARCHAR(40),
+date    VARCHAR(10),
+tscode  VARCHAR(10),
+value   DECIMAL(15,5),
+type    int comment '0-后复权，1-前复权',
+created_time datetime,
+modified_time datetime,
+PRIMARY KEY(id)
+);
+
+
+--初始化future_instrument_config，执行：factor_caculator->init_instrument_config
+--初始化index_constituent_config，执行：tools->init_index_constituent_config, 再执行：tools->update_stock_suspension_status 更新停盘数据
+
+
+insert into factor_config values ('FCT_02_002_10_GRADE_COMMISSION_RATIO','02','现货类','007','10档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_004_5_GRADE_COMMISSION_RATIO','02','现货类','007','5档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_007_SPREAD','02','现货类','007','价差因子','','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_017_RISING_FALLING_VOLUME_RATIO','02','现货类','017','涨跌成交量对比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','2.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_017_RISING_FALLING_AMOUNT_RATIO','02','现货类','017','涨跌成交额对比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_018_UNTRADED_STOCK_RATIO','02','现货类','018','未成交股票占比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_019_DAILY_ACCUMULATED_LARGE_ORDER_RATIO','02','现货类','019','日累计大单占比','','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_020_ROLLING_ACCUMULATED_LARGE_ORDER_RATIO','02','现货类','020','滚动累计大单占比','','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_021_DELTA_TOTAL_COMMISSION_RATIO','02','现货类','021','总委比增量','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_020_ROLLING_ACCUMULATED_LARGE_ORDER_RATIO','02','现货类','020','滚动累计大单占比','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_021_DELTA_TOTAL_COMMISSION_RATIO','02','现货类','021','总委比增量','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_022_OVER_NIGHT_YIELD','02','现货类','022','隔夜收益率','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_023_AMOUNT_AND_1ST_COMMISSION_RATIO','02','现货类','023','成交额和1档委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_024_RISING_LIMIT_STOCK_PROPORTION','02','现货类','024','涨停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION','02','现货类','025','跌停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE','02','现货类','035','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE','02','现货类','008','集合竞价二阶段涨幅','','1.0','OWN',SYSDATE(),SYSDATE());

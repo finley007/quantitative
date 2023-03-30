@@ -3,6 +3,7 @@
 import os
 import struct
 import datetime
+import pandas as pd
 
 
 def stock_csv(filepath, name, targetdir) -> None:
@@ -54,14 +55,57 @@ def stock_csv(filepath, name, targetdir) -> None:
             file_object.writelines(day_str)
         file_object.close()
 
+def read_tdx_lday_file(filename, filepath, targetpath):
+    data_set = []
+    with open(filepath, 'rb') as file:
+        buffer = file.read()
+        size = len(buffer)
+    row_size = 32
+    code = os.path.basename(filename).replace('.day', '')
+    for i in range(0, size, row_size):
+        row = list(struct.unpack('IIIIIfII', buffer[i : i + row_size]))
+        row[1] = row[1]/100
+        row[2] = row[2]/100
+        row[3] = row[3]/100
+        row[4] = row[4]/100
+        row.pop()
+        row.insert(0 , code)
+        data_set.append(row)
+    data = pd.DataFrame(data = data_set, columns=['code', 'date', 'open', 'high', 'low', 'close', 'amount', 'volume'])
+    data.to_csv(targetpath + filename + '.csv')
 
-# path_dir = '/Users/finley/Projects/stock-index-future/data/thirdparty/tdx'
-path_dir = 'C:\\new_tdx\\vipdoc\\sh\\lday'
-# target_dir = '/Users/finley/Projects/stock-index-future/data/temp/'
-target_dir = 'E:\\data\\thirdparty\\tdx\\'
-listfile = os.listdir(path_dir)
-for fname in listfile:
-    stock_csv(path_dir + os.path.sep + fname, fname, target_dir)
-else:
-    print('The for ' + path_dir + ' to ' + target_dir + ' loop is over')
-    print("Done!!")
+def download_stock_daily_data():
+    """
+    解析通达信的日线数据
+    Returns
+    -------
+
+    """
+    exchanges = ['sh','sz','bj']
+    for exchange in exchanges:
+        # path_dir = '/Users/finley/Projects/stock-index-future/data/thirdparty/tdx'
+        path_dir = 'C:\\new_tdx\\vipdoc\\' + exchange +'\\lday'
+        # target_dir = '/Users/finley/Projects/stock-index-future/data/temp/'
+        target_dir = 'E:\\data\\thirdparty\\tdx\\' + exchange + '\\lday\\'
+        listfile = os.listdir(path_dir)
+        for fname in listfile:
+            read_tdx_lday_file(fname, path_dir + os.path.sep + fname, target_dir)
+        else:
+            print('The for ' + path_dir + ' to ' + target_dir + ' loop is over')
+            print("Done!!")
+
+def load_order_data():
+    """
+    数据来源：金数源，逐笔委托数据
+    Returns
+    -------
+
+    """
+    data = pd.read_hdf("D:\\liuli\\data\\original\\stock\\tick\\stock_auction_2011-01-04.h5")
+    print(data.columns)
+    print(data)
+
+if __name__ == '__main__':
+    # download_stock_daily_data()
+    load_order_data()
+
