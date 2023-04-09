@@ -853,7 +853,7 @@ if __name__ == '__main__':
     # 生成股指k线
     create_k_line_for_future_tick('20230313-finley')
     # 拼接股指k线
-    # combine_k_line_for_future_tick('20230313-finley')
+    combine_k_line_for_future_tick('20230313-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')

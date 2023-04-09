@@ -12,7 +12,10 @@ from common.persistence.dbutils import create_session
 from common.persistence.dao import FutureConfigDao, IndexConstituentConfigDao
 from common.constants import STOCK_INDEX_PRODUCTS, FACTOR_PATH, FACTOR_STANDARD_FIELD_TYPE, RET_PERIOD, FUTURE_TICK_ORGANIZED_DATA_PATH
 from common.localio import save_compress, read_decompress
-from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRatioFactor, TenGradeCommissionRatioFactor, SpreadFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, FiveGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor
+from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRatioFactor, TenGradeCommissionRatioFactor, \
+    SpreadFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, FiveGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor
+from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from common.log import get_logger
 from common.timeutils import get_current_time
 from framework.localconcurrent import ProcessRunner
@@ -39,10 +42,11 @@ def recaculate_factor_to_ignore_invalid_data(factor_list, products=[], is_backup
     # index_constituent_config_dao = IndexConstituentConfigDao()
     # dates_to_be_fixed = index_constituent_config_dao.get_invalid_date_list([2])
     session = create_session()
+    #第一次修复 select distinct date from (select distinct date from stock_validation_result where validation_code = '20230309-finley' and result = 2 union select distinct date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count <= 10) t order by date
+    #第二次修复 select date from (select distinct date from stock_validation_result where validation_code = '20230309-finley' and tscode in ('600519','601318','600036','601012','600900','601166','600900','300750','000858') and issue_count > 100 union select distinct date from stock_validation_result where validation_code = '20230309-finley' and issue_count > 3000) t
     dates_to_be_fixed = session.execute(
-        "select distinct date from (select distinct date from stock_validation_result where validation_code = '20230309-finley' and result = 2 union select distinct date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count <= 10) t order by date").fetchall()
+        "select date from (select distinct date from stock_validation_result where validation_code = '20230309-finley' and tscode in ('600519','601318','600036','601012','600900','601166','600900','300750','000858') and issue_count > 100 union select distinct date from stock_validation_result where validation_code = '20230309-finley' and issue_count > 3000) t").fetchall()
     dates_to_be_fixed = list(map(lambda date:date[0][0:4] + '-' + date[0][4:6] + '-' + date[0][6:8], dates_to_be_fixed))
-    print(dates_to_be_fixed)
     fix_factor(factor_list, products, dates_to_be_fixed, is_backup)
 
 def fix_factor(factor_list, products=[], dates_to_be_fixed=[], is_backup=True):
@@ -72,7 +76,6 @@ def fix_factor(factor_list, products=[], dates_to_be_fixed=[], is_backup=True):
                 params_list = list(map(lambda date: create_params_for_fix_factor_by_date(date, factor, product), date_list))
                 while '' in params_list:
                     params_list.remove('')
-                print(params_list)
                 results = ProcessExcecutor(5).execute(fix_factor_by_date, params_list)
                 for result in results:
                     if len(factor.get_params()) > 0:
@@ -349,10 +352,12 @@ if __name__ == '__main__':
     # factor_list = [SpreadFactor()]
     # factor_list = [RisingFallingAmountRatioFactor()]
     # factor_list = [TenGradeCommissionRatioFactor()]
-    # factor_list = [FiveGradeCommissionRatioFactor()]
+    factor_list = [TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])]
     # factor_list = [UntradedStockRatioFactor()]
     # factor_list = [TotalCommissionRatioDifferenceFactor([20,50,100,200])]
-    # handle_factor(factor_list)
+    # factor_list = [WilliamFactor([100,200,500,1000,2000,5000])]
+    # factor_list = [CloseMinusMovingAverageFactor([200,500,1000,1500])]
+    handle_factor(factor_list)
 
     # factor = TotalCommissionRatioFactor()
     # data = factor.load('IC')
@@ -362,8 +367,8 @@ if __name__ == '__main__':
     # factor_list = [RisingFallingAmountRatioFactor()]
     # fix_factor(factor_list, ['IC'], dates_to_be_fixed=['2022-06-02'])
 
-    factor_list = [FiveGradeCommissionRatioFactor()]
-    recaculate_factor_to_ignore_invalid_data(factor_list)
+    # factor_list = [FiveGradeCommissionRatioFactor()]
+    # recaculate_factor_to_ignore_invalid_data(factor_list, ['IF'])
 
     # factor_list = [FiveGradeCommissionRatioFactor()]
     # fix_ret(factor_list)

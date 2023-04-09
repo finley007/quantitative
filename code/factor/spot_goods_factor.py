@@ -5,7 +5,7 @@ import time
 from memory_profiler import profile
 import numpy as np
 
-from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor
+from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor, StockTickDifferenceFactor
 from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME, \
     STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME, STOCK_INDEX_INFO, FACTOR_STANDARD_FIELD_TYPE
 from common.localio import read_decompress, save_compress
@@ -1714,6 +1714,36 @@ class TotalCommissionRatioDifferenceFactor(StockTickFactor):
                     temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = temp_data[self._total_commission_ratio_factor.get_key()] - temp_data.iloc[0][self._total_commission_ratio_factor.get_key()]
                 new_data = pd.concat([new_data, temp_data])
         return new_data
+
+class TenGradeCommissionRatioDifferenceFactor(StockTickDifferenceFactor):
+    """
+    十档委比差分因子
+    """
+    factor_code = 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_commission_ratio_factor
+
+class FiveGradeCommissionRatioDifferenceFactor(StockTickDifferenceFactor):
+    """
+    五档委比差分因子
+    """
+    factor_code = 'FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_commission_ratio_factor = FiveGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_commission_ratio_factor
 
 if __name__ == '__main__':
     # data = read_decompress(TEST_PATH + 'IF1810.pkl')

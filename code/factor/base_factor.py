@@ -3,11 +3,12 @@
 import os
 from abc import ABCMeta, abstractmethod
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 from scipy.stats import pearsonr
 
-from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, TEMP_PATH
+from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, TEMP_PATH, FACTOR_STANDARD_FIELD_TYPE
 from common.localio import read_decompress, save_compress
 from data.process import StockTickDataColumnTransform
 from data.access import StockDataAccess, StockDailyDataAccess
@@ -80,6 +81,15 @@ class Factor(metaclass=ABCMeta):
     # 全局计算因子值
     @abstractmethod
     def caculate(self, data):
+        pass
+
+class DifferenceFactor(Factor):
+    """
+    差分因子基类
+    """
+
+    @abstractmethod
+    def get_target_factor(self):
         pass
 
 class StockTickFactor(Factor):
@@ -427,5 +437,42 @@ class TimewindowStockTickFactor(StockTickFactor):
         return data
 
 
+class StockTickDifferenceFactor(StockTickFactor, DifferenceFactor):
+    """
+    差分因子基类
+    """
 
+    @abstractmethod
+    def get_target_factor(self):
+        pass
+
+    @timing
+    def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        original_data = self.get_target_factor().load(product)
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        for date in date_list:
+            temp_data = original_data[original_data['date'] == date]
+            if len(temp_data) > 0:  # 因为已经按主力合约交割日进行了截取，所以temp_data有可能是空的，必须做这个处理
+                for param in self._params:
+                    temp_data.loc[:, self.get_key(param)] = temp_data[self.get_target_factor().get_key()] - temp_data[self.get_target_factor().get_key()].shift(param)
+                    if temp_data.dtypes[self.get_key(param)] != FACTOR_STANDARD_FIELD_TYPE:
+                        temp_data[self.get_key(param)] = temp_data[self.get_key(param)].astype(FACTOR_STANDARD_FIELD_TYPE)
+                    # 不足param长度的用第一个时间点计算
+                    temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = temp_data[self.get_target_factor().get_key()] -  temp_data.iloc[0][self.get_target_factor().get_key()]
+                new_data = pd.concat([new_data, temp_data])
+        return new_data
 

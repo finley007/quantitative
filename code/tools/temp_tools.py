@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 # -*- coding:utf8 -*-
 
+import pandas as pd
+
 from common.persistence.dbutils import create_session
 from common.persistence.dao import IndexConstituentConfigDao
 from framework.pagination import Pagination
@@ -32,4 +34,7 @@ def update(*args):
 
 
 if __name__ == '__main__':
-    update_index_constituent_config()
+    # update_index_constituent_config()
+    data = pd.read_hdf('D:\\liuli\\data\\original\\stock\\stock_data_tick_2016-01-14.h5')
+    print(data.shape)
+    print(data.columns)

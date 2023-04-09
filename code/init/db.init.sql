@@ -193,6 +193,8 @@ PRIMARY KEY(id)
 --初始化index_constituent_config，执行：tools->init_index_constituent_config, 再执行：tools->update_stock_suspension_status 更新停盘数据
 
 
+insert into factor_config values ('FCT_01_001_WILLIAM','01','量价类','001','威廉因子','1000','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE','01','量价类','002','收盘价均值差','200|500|1000|1500','1.0','TSSB',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_002_10_GRADE_COMMISSION_RATIO','02','现货类','007','10档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_004_5_GRADE_COMMISSION_RATIO','02','现货类','007','5档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_007_SPREAD','02','现货类','007','价差因子','','1.0','OWN',SYSDATE(),SYSDATE());
@@ -207,4 +209,6 @@ insert into factor_config values ('FCT_02_023_AMOUNT_AND_1ST_COMMISSION_RATIO','
 insert into factor_config values ('FCT_02_024_RISING_LIMIT_STOCK_PROPORTION','02','现货类','024','涨停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION','02','现货类','025','跌停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE','02','现货类','035','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','036','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','037','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE','02','现货类','008','集合竞价二阶段涨幅','','1.0','OWN',SYSDATE(),SYSDATE());

@@ -478,11 +478,11 @@ class FutureTickDataProcessorPhase2(DataProcessor):
     def process(self, data):
         for period in self._ret_period:
             # 收益率从下一个tick开始计算
-            data['ret.' + str(period)] = (data['close'].shift(-(period * 20)-1) - data['close'].shift(-1))/data['close'].shift(-1)
+            data['ret.' + str(period)] = (data['close'].shift(-(period * 20)-1) - data['open'].shift(-1))/data['open'].shift(-1)
         closing_price = data.iloc[-1]['close']
         # 这里需要区分跨天和不跨天的计算
         for period in self._ret_period:
-            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['close'].shift(-1))/data['close'].shift(-1)
+            data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = (closing_price - data['open'].shift(-1))/data['open'].shift(-1)
         # 处理最后一条记录
         for period in self._ret_period:
             data.loc[np.isnan(data['ret.' + str(period)]), 'ret.' + str(period)] = 0

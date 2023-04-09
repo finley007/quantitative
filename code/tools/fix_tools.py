@@ -13,7 +13,7 @@ from common.aop import timing
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
     STOCK_TICK_ORGANIZED_DATA_PATH, STOCK_TRANSACTION_NOON_END_TIME, STOCK_TRANSACTION_NOON_START_TIME, STOCK_TRANSACTION_END_TIME, \
-    STOCK_TRANSACTION_START_TIME, RESULT_FAIL, STOCK_FILE_PREFIX, STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME
+    STOCK_TRANSACTION_START_TIME, RESULT_FAIL, STOCK_FILE_PREFIX, STOCK_CLOSE_CALL_AUACTION_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, STOCK_INDEX_INFO
 from common.localio import list_files_in_path, save_compress, read_decompress
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, FactorValidationResult, FutureValidationResult
@@ -310,6 +310,7 @@ def fix_future_organized_data_by_product(validation_code, checked_set, product_f
         data = read_decompress(organized_future_file_path)
         data['date'] = data['datetime'].str[0:10]
         data['instrument'] = instrument
+        data['product'] = product
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
         for date in date_list:
@@ -702,11 +703,15 @@ class DefaultDataFixer(DataFixer):
 class BidOrAskMissingDataFixer(DataFixer):
     """
     利用段兄给的数据源修复10档委买委卖数据
-    数据路径：D:\liuli\data\patch\stock\patch_for_ten_grade_commission
+    数据路径：
+    第一次：
+    D:\liuli\data\patch\stock\patch_for_ten_grade_commission
+    第二次
+    D:\liuli\data\patch\stock\patch_for_ten_grade_commission_new
     """
 
     def __init__(self):
-        self._path = 'D:\\liuli\\data\\patch\\stock\\patch_for_ten_grade_commission\\'
+        self._path = 'D:\\liuli\\data\\patch\\stock\\patch_for_ten_grade_commission_new\\'
         self._columns = ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5','bid_price6', 'bid_volume6','bid_price7', 'bid_volume7','bid_price8', 'bid_volume8','bid_price9', 'bid_volume9','bid_price10', 'bid_volume10',
                              'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5','ask_price6', 'ask_volume6','ask_price7', 'ask_volume7','ask_price8', 'ask_volume8','ask_price9', 'ask_volume9','ask_price10', 'ask_volume10']
         self.column_mapping = {
@@ -815,11 +820,30 @@ class FutrueDataMissingFixer(DataFixer):
 
     def __init__(self):
         self._path = 'D:\\liuli\\data\\patch\\future\\missed_data\\'
+        self._columns_mapping = {'current': 'CFFEX.{instrument}.last_price',
+                           'a1_p': 'CFFEX.{instrument}.ask_price1',
+                           'a1_v': 'CFFEX.{instrument}.ask_volume1',
+                           'b1_p': 'CFFEX.{instrument}.bid_price1',
+                           'b1_v': 'CFFEX.{instrument}.bid_volume1',
+                           'volume': 'CFFEX.{instrument}.volume',
+                           'position': 'CFFEX.{instrument}.open_interest'}
 
     def fix(self, data, date):
         """
         修复方法：
-        加载修复数据源填充到当前数据集中
+        先修复原始文件，保存为临时文件，在调用已有方法重新生成organized文件
+        获取缺少数据的时间区间，截取patch数据时间区间内的数据片段，做字段映射，拼到原始数据文件的结尾，按时间排序，reindex
+        列名映射：
+        current -> CFFEX.IC1705.last_price
+        a1_p -> CFFEX.IC1705.ask_price1
+        a1_v -> CFFEX.IC1705.ask_volume1
+        b1_p -> CFFEX.IC1705.bid_price1
+        b1_v -> CFFEX.IC1705.bid_volume1
+        volume -> CFFEX.IC1705.volume
+        current * volume -> CFFEX.IC1705.amount
+        position -> CFFEX.IC1705.open_interest
+        current -> CFFEX.IC1705.highest
+        current -> CFFEX.IC1705.lowest
         Parameters
         ----------
         data
@@ -828,21 +852,76 @@ class FutrueDataMissingFixer(DataFixer):
         -------
 
         """
+        # 2017 - 05 - 04 13: 50:49.000000000
+        # 2017 - 05 - 04 14: 09: 55.500000000
+        # 2017 - 05 - 04 14: 25:57.000000000
+        temp_original_data = self.create_temp_original_data(data, date)
+        instrument = data.iloc[0]['instrument']
+        temp_original_data.to_csv('E:\\data\\temp\\CFFEX.' + instrument + '.csv', index=False)
+        return ''
+
+    def create_temp_original_data(self, data, date):
+        """
+        patch数据 生成临时原始文件
+        Parameters
+        ----------
+        data
+        date
+
+        Returns
+        -------
+
+        """
+
+        product = data['product'].iloc[0]
         instrument = data['instrument'].iloc[0]
         data['date'] = data['datetime'].str[0:10]
+        for key in self._columns_mapping.keys():
+            self._columns_mapping[key] = self.get_key(self._columns_mapping[key], instrument)
+        print(self._columns_mapping)
         patch_filename = instrument + '.CCFX' + date + ' 13_50_10.pkl'
         patch_data_path = self._path + patch_filename
         patch_data = pd.DataFrame(pd.read_pickle(patch_data_path))
-        patch_data.to_csv('E:\\data\\temp\\patch_data.csv')
         patch_data['datetime'] = patch_data.apply(lambda item: self.time_transform(item), axis=1)
-        print(data[data['datetime'] == '2017-05-04 13:50:45.000000000'])
-        print(patch_data[patch_data['datetime'] == '2017-05-04 13:50:45.000000000'])
-        return data
+        # patch_data.to_csv('E:\\data\\temp\\patch_data.csv')
+        original_future_file_path = FUTURE_TICK_DATA_PATH + os.path.sep + product + os.path.sep + 'CFFEX.' + instrument + '.csv'
+        original_data = pd.read_csv(original_future_file_path)
+        original_data['date'] = original_data['datetime'].str[0:10]
+        temp_data = original_data[original_data['date'] == date]
+        # temp_data.to_csv('E:\\data\\temp\\original_data.csv')
+        temp_data['time'] = temp_data['datetime'].apply(lambda item: datetime.strptime(item[11:23], '%H:%M:%S.%f'))
+        temp_data['delta_time'] = temp_data['time'].shift(-1) - temp_data['time']
+        temp_data['delta_time_sec'] = temp_data['delta_time'].apply(lambda item: self.to_seconds(item))
+        filter = temp_data[(temp_data['delta_time_sec'] > 300) & (temp_data['delta_time_sec'] < 5400)]['datetime']
+        ranges = []
+        for start_time in filter.tolist():
+            end_time = temp_data[temp_data['datetime'] > start_time].iloc[0]['datetime']
+            ranges = ranges + [(start_time, end_time)]
+        for range in ranges:
+            temp_patch_data = patch_data[
+                (patch_data['datetime'] > range[0]) & (patch_data['datetime'] < range[1])].copy()
+            temp_patch_data = temp_patch_data.rename(columns=self._columns_mapping)
+            temp_patch_data[self.get_key('CFFEX.{instrument}.amount', instrument)] = temp_patch_data[self.get_key('CFFEX.{instrument}.last_price', instrument)] * temp_patch_data[
+                self.get_key('CFFEX.{instrument}.volume', instrument)] * STOCK_INDEX_INFO[product]['POINT_PRICE']
+            temp_patch_data[self.get_key('CFFEX.{instrument}.highest', instrument)] = temp_patch_data[self.get_key('CFFEX.{instrument}.last_price', instrument)]
+            temp_patch_data[self.get_key('CFFEX.{instrument}.lowest', instrument)] = temp_patch_data[self.get_key('CFFEX.{instrument}.last_price', instrument)]
+            temp_patch_data = temp_patch_data.drop(['time'], axis=1)
+            original_data = pd.concat([original_data, temp_patch_data])
+        original_data = original_data.drop(['date'], axis=1)
+        original_data = original_data.sort_values(['datetime'])
+        original_data = original_data.reset_index(drop=True)
+        return original_data
 
+    def get_key(self, key_templ, instrument):
+        sections = key_templ.split('.')
+        return sections[0] + '.' + instrument + '.' + sections[2]
     def time_transform(self, item):
         time = str(item['time'])
         time = time[0:4] + '-' + time[4:6] + '-' + time[6:8] + ' ' + time[8:10] + ':' + time[10:12] + ':' + time[12:] + '00000000'
         return time
+
+    def to_seconds(self, item):
+        return item.total_seconds()
 
 def fix_stock_organized_data_daily(data):
     """
@@ -1535,8 +1614,6 @@ class BidOrAskMissingDataValidator(Validator):
     def validate(self, data):
         tscode = data.iloc[0]['tscode']
         date = data.iloc[0]['date']
-        if tscode == '600340.SH' and date == '2017-04-05':
-            print('aa')
         result = DtoStockValidationResult(RESULT_SUCCESS, [], tscode.split('.')[0], date.replace('-', ''))
         temp_data = data[(data['time'] < add_milliseconds_suffix(STOCK_CLOSE_CALL_AUACTION_START_TIME)) & (
                     data['time'] > add_milliseconds_suffix(STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME)) &
@@ -1675,7 +1752,9 @@ def load_and_analyze_stock_patch_data_for_10_grade_commission():
     """
     session = create_session()
     # 针对第一次给段兄提供的查询条件
-    checked_list = session.execute("select concat(date, tscode) from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count > 4000")
+    # 第一次修复 select concat(date, tscode) from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count > 4000
+    # 第二次修复 select concat(date, tscode) from (select distinct tscode, date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and tscode in ('600519','601318','600036','601012','600900','601166','600900','300750','000858') and issue_count > 100 union select distinct tscode, date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count > 3000) t
+    checked_list = session.execute("select concat(date, tscode) from (select distinct tscode, date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and tscode in ('600519','601318','600036','601012','600900','601166','600900','300750','000858') and issue_count > 100 union select distinct tscode, date from stock_validation_result where validation_code = '20230309-finley' and result = 1 and issue_count > 3000) t")
     checked_set = set(map(lambda item: item[0], checked_list))
     runner = ProcessRunner(20)
     year_folder_list = list_files_in_path(STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep)
@@ -1748,7 +1827,6 @@ if __name__ == '__main__':
     #修复有问题的期货数据
     # fix_future_organized_data('20230329-future-finley')
 
-
     #检查收盘集合竞价数据是不是来迟了
     # data = read_decompress("E:\\data\\fix\\4th\\000333-20220617\\000333.original.pkl")
     # data = StockTickDataColumnTransform().process(data)
@@ -1801,9 +1879,10 @@ if __name__ == '__main__':
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202206\\20220602\\000563.pkl')
     # print(validator.validate(data))
 
-    # validator = BidOrAskMissingDataValidator()
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201702\\20170220\\000839.pkl')
-    # print(validator.validate(data))
+    validator = BidOrAskMissingDataValidator()
+    #20220510605358
+    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2022\\stk_tick10_w_202205\\20220510\\605358.pkl')
+    print(validator.validate(data))
 
     # validator = FutureDataMissingValidator()
     # data = pd.read_csv('D:\\liuli\\data\\original\\future\\tick\\IC\\CFFEX.IC1705.csv')
@@ -1876,15 +1955,17 @@ if __name__ == '__main__':
     # data = fixer.fix(data)
     # data.to_csv('E:\\data\\temp\\20190819_000006_fix.csv')
 
-    fixer = FutrueDataMissingFixer()
-    data = read_decompress('E:\\data\\organized\\future\\tick\\IC\\IC1705.pkl')
-    data['instrument'] = 'IC1705'
-    data = fixer.fix(data, '2017-05-04')
+    # fixer = FutrueDataMissingFixer()
+    # to_be_fixed = [('IC1705', 'IC'),('IH1705', 'IH'),('IF1705', 'IF')]
+    # for item in to_be_fixed:
+    #     data = read_decompress('E:\\data\\organized\\future\\tick\\' + item[1] + '\\' + item[0] + '.pkl')
+    #     data['instrument'] = item[0]
+    #     data['product'] = item[1]
+    #     data = fixer.fix(data, '2017-05-04')
 
     # 利用段兄给的数据修补股票数据
     # load_and_analyze_stock_patch_data()
 
     # 利用段兄给的数据修补10档委比数据
-    # load_and_analyze_stock_patch_data_for_10_grade_commission()
+    load_and_analyze_stock_patch_data_for_10_grade_commission()
 
-    # 利用琦哥给的数据修复

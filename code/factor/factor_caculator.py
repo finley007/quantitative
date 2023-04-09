@@ -18,7 +18,7 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommiss
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
     TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor,\
-    AmountAskTotalCommissionRatioFactor
+    AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor
 
 
 from factor.base_factor import StockTickFactor
@@ -273,7 +273,9 @@ if __name__ == '__main__':
     # factor = SecondStageCommissionRatioFactor()
     # factor = AmountAnd1stGradeCommissionRatioFactor()
     # factor = TotalCommissionRatioDifferenceFactor([20, 50, 100, 200])
-    factor = AmountAskTotalCommissionRatioFactor()
+    # factor = AmountAskTotalCommissionRatioFactor()
+    # factor = TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
+    factor = FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
     FactorCaculator().caculate_manually_check(factor)
 
     # session = create_session()

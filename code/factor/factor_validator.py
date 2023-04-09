@@ -17,10 +17,11 @@ from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
 from common.persistence.po import FutureInstrumentConfig
 from common.visualization import draw_line, join_two_images, draw_histogram
-from factor.volume_price_factor import WilliamFactor
+from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
-    RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, TotalCommissionRatioDifferenceFactor
+    RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor
 from common.exception.exception import ValidationFailed
 from data.access import StockDataAccess
 from common.timeutils import add_milliseconds_suffix
@@ -185,6 +186,9 @@ class BasicValidator(FactorValidator):
                             for param in factor.get_params():
                                 nan_count = nan_count + len(date_data[np.isnan(date_data[factor.get_key(param)])])
                                 zero_count = zero_count + len(date_data[date_data[factor.get_key(param)] == 0])
+                        # 量价因子文件没有time列，现货因子的time列是从股票数据带来的，所以对于量价因子需要特殊处理下
+                        if 'time' not in date_data.columns:
+                            date_data['time'] = date_data['datetime'].apply(lambda item: item[11:23])
                         morning_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_END_TIME))])
                         afternoon_market_count = len(date_data[(date_data['time'] >= add_milliseconds_suffix(STOCK_TRANSACTION_NOON_START_TIME)) & (date_data['time'] <= add_milliseconds_suffix(STOCK_TRANSACTION_END_TIME))])
                         date_info = DateInfo(date, nan_count, zero_count, morning_market_count, afternoon_market_count)
@@ -332,7 +336,8 @@ class StabilityValidator(FactorValidator):
                   {'x': 'date', 'y': [{'key': 'mean', 'label': 'Mean'}]}, save_path=mean_path)
         draw_line(groupby_data, key, 'Date', 'Std',
                   {'x': 'date', 'y': [{'key': 'std', 'label': 'Std'}]}, save_path=std_path)
-        os.remove(final_path)
+        if os.path.exists(final_path):
+            os.remove(final_path)
         join_two_images(mean_path, std_path, final_path, flag='vertical')
         os.remove(mean_path)
         os.remove(std_path)
@@ -606,10 +611,14 @@ if __name__ == '__main__':
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
     # factor_validator.validate([RisingFallingAmountRatioFactor()])
-    factor_validator.validate([TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor()])
-    # factor_validator.validate([FiveGradeCommissionRatioFactor()])
+    factor_validator.validate([TenGradeCommissionRatioDifferenceFactor([20,50,100,200])])
+    factor_validator.validate([FiveGradeCommissionRatioFactor()])
+    factor_validator.validate([TenGradeCommissionRatioFactor()])
     # factor_validator.validate([UntradedStockRatioFactor()])
     # factor_validator.validate([TotalCommissionRatioDifferenceFactor([20,50,100,200])])
+    factor_validator.validate([FiveGradeCommissionRatioDifferenceFactor([20,50,100,200])])
+    factor_validator.validate([WilliamFactor([100,200,500,1000,2000,5000])])
+    factor_validator.validate([CloseMinusMovingAverageFactor([200,500,1000,1500])])
 
     #检查片段
     # parse_factor_file('IC', [TenGradeCommissionRatioFactor()], '2018-02-12', is_organized=False)

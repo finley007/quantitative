@@ -30,7 +30,7 @@ class XGBoostTrainer(ModelTrainer):
         return data_train_x, data_train_y, data_test_x, data_test_y
 
     @timing
-    def train(self, model_name, version, data, config):
+    def train(self, model_name, version, data, config, for_test = False):
         get_logger().info('Begin to train model: {0}.{1}'.format(model_name, version))
         #生成划分训练集
         data_train_x, data_train_y, data_test_x, data_test_y = self.prepare(data, config)
@@ -49,8 +49,10 @@ class XGBoostTrainer(ModelTrainer):
         #回测
         data_train, data_test = ModelTrainer.prepare(self, data, config)
         data_test['predict_y'] = predict_test_y
-        self.customized_evaluate(model_name, version, data_test, config)
-        self.save_model(model_name, version, config)
+        # 测试不保存模型
+        if not for_test:
+            self.save_model(model_name, version, config)
+        self.post_train(model_name, version, data_test, config)
 
     def save_model(self, model_name, version, config):
         # 保存模型
@@ -64,10 +66,12 @@ class XGBoostTrainer(ModelTrainer):
         return read_decompress(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.pkl')
 
     def load_config(self, model_name, version):
-        return eval(read_txt(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.cfg'))
+        map_config = eval(read_txt(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.cfg'))
+        config = XGBoostConfig(map_config['因子集合'], map_config['目标收益率'], map_config['训练集分割'], map_config['数据集'], map_config['xgboost配置参数']['max_depth'], map_config['xgboost配置参数']['n_estimators'], map_config['xgboost配置参数']['objective'], map_config['xgboost配置参数']['booster'], map_config['xgboost配置参数']['learning_rate'])
+        return config
 
     def load_data(self, model_name, version):
-        dataset_code = load_config(model_name, version)['数据集']
+        dataset_code = self.load_config(model_name, version).get_dataset()
         return read_decompress(XGBOOST_MODEL_PATH + os.path.sep + 'input' + os.path.sep + dataset_code + '.pkl')
 
     def predict(self, x):
@@ -84,11 +88,8 @@ class XGBoostTrainer(ModelTrainer):
         print('损失MSE：' + str(LossFunctionEvaluator().evaluate(predict_y, y)))
 
 
-    def customized_evaluate(self, model_name, version, data, config):
+    def post_train(self, model_name, version, data, config):
         # 回测
-        # data['date'] = data['datetime'].str[0:10]
-        # 2022-05-09 - 2022-05-11
-        # test_data = data[(data['date'] >= '2022-05-09') & (data['date'] <= '2022-05-11')].copy()
         BackTestEvaluator(model_name, version, data, config, self._model).evaluate()
 
     def draw_diagram(self, data, config):

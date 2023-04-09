@@ -66,7 +66,7 @@ def create_factor_files(factor_list=[], current_transaction_id=''):
                     session.add(factor_operation_history)
                     session.commit()
                 except Exception as e:
-                    get_logger.error(e)
+                    get_logger().error(e)
                     time_cost = time.perf_counter() - t
                     factor_operation_history = FactorOperationHistory(id, factor.get_full_name(), 1, 0, time_cost, str(e))
                     session.add(factor_operation_history)
@@ -215,7 +215,7 @@ def to_params(str):
 
 if __name__ == '__main__':
     # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
-    create_factor_files(['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
+    # create_factor_files(['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
 
     # init_factor_list()
 
@@ -225,4 +225,4 @@ if __name__ == '__main__':
     # create_factor_single_instrument_performance_report('IC1803', factor_list=['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION_1.0'])
 
-    # prepare_training_data('data_20230325', ['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0'])
+    prepare_training_data('data_20230408', ['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0'])

@@ -60,13 +60,16 @@ STOCK_VALID_DATA_STARTTIME = '09:32:00'
 STOCK_INDEX_PRODUCTS = ['IC', 'IH', 'IF']
 STOCK_INDEX_INFO = {
     'IC': {
-        "STOCK_COUNT": 500
+        "STOCK_COUNT": 500,
+        "POINT_PRICE": 200
     },
     'IF': {
-            "STOCK_COUNT": 300
+        "STOCK_COUNT": 300,
+        "POINT_PRICE": 300
         },
     'IH': {
-            "STOCK_COUNT": 50
+        "STOCK_COUNT": 50,
+        "POINT_PRICE": 300
         },
 }
 YEAR_LIST = ['2017','2018','2019','2020','2021','2022']

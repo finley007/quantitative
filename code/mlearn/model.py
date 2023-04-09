@@ -134,6 +134,19 @@ class ModelTrainer(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def post_train(self, *args):
+        """
+        训练结束所要做的工作
+        Parameters
+        ----------
+        args
+
+        Returns
+        -------
+
+        """
+
 class ModelConfig(metaclass=ABCMeta):
     """
     模型配置基类
