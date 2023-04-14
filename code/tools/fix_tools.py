@@ -215,8 +215,7 @@ def validate_stock_organized_by_month(validate_code, checked_set, year_folder, m
         stock_file_list.sort()
         get_logger().debug('Handle date {0} for stock: {1}'.format(date, '|'.join(stock_file_list)))
         for stock in stock_file_list:
-            if date + stock.split('.')[0] not in cheq!
-            cked_set:
+            if date + stock.split('.')[0] not in checked_set:
                 try:
                     organized_stock_file_path = STOCK_TICK_ORGANIZED_DATA_PATH + os.path.sep + year_folder + os.path.sep + month_folder + os.path.sep + date + os.path.sep + stock
                     data = read_decompress(organized_stock_file_path)
