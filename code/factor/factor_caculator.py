@@ -8,7 +8,7 @@ import random
 import uuid
 
 from common.aop import timing
-from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH, STOCK_INDEX_PRODUCTS, TEMP_PATH
+from common.constants import FUTURE_TICK_ORGANIZED_DATA_PATH, CONFIG_PATH, FACTOR_PATH, STOCK_INDEX_PRODUCTS, TEMP_PATH, TEST_PATH
 from common.exception.exception import InvalidStatus
 from common.localio import read_decompress, list_files_in_path, save_compress
 from common.persistence.dbutils import create_session
@@ -58,7 +58,7 @@ class FactorCaculator():
         for product in include_product_list:
         # for product in ['IH']:
             # factor_data = pd.DataFrame(columns=columns)
-            temp_file = 'E:\\data\\temp\\' + product + '_' + '_'.join(
+            temp_file = TEMP_PATH + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
             check_handled = session.execute('select max(instrument) from factor_process_record where process_code = :process_code', {'process_code':process_code}).fetchall()
             current_instrument = check_handled[0][0]
@@ -97,7 +97,7 @@ class FactorCaculator():
                 target_factor_file = FACTOR_PATH + product + '_' + '_'.join(
                     list(map(lambda factor: factor.get_full_name(), factor_list)))
             else:
-                target_factor_file = 'E:\\data\\test\\' + product + '_' + '_'.join(
+                target_factor_file = TEST_PATH + product + '_' + '_'.join(
                     list(map(lambda factor: factor.get_full_name(), factor_list)))
             get_logger().info('Save factor file: {0}'.format(target_factor_file))
             save_compress(factor_data, target_factor_file)
