@@ -30,6 +30,7 @@ from common.timeutils import add_milliseconds_suffix, time_difference
 from common.log import get_logger
 from common.pandasutils import get_index_dict_by_value
 from common.stockutils import approximately_equal_to, get_rising_falling_limit, get_full_stockcode_for_duan
+from common.commonutils import local_round
 
 
 def check_issue_stock_process_data(record_id):
@@ -797,7 +798,7 @@ class BidOrAskMissingDataFixer(DataFixer):
         for index in index_dict.keys():
             daily_return = (data.loc[index]['price'] - data.loc[index]['close']) / data.loc[index]['close']
             # 涨停或跌停不处理
-            if approximately_equal_to(abs(daily_return), get_rising_falling_limit(date, stock)):
+            if approximately_equal_to(abs(daily_return), get_rising_falling_limit(stock, date)):
                 continue
             time = data.loc[index]['time']
             new_index = str(int(time[0:2]))+time[3:5]+time[6:8]
@@ -1765,15 +1766,17 @@ class BidOrAskMissingDataValidator(Validator):
                 print(temp_data[temp_data['rising_falling_not_limit']])
                 result.result = RESULT_FAIL
                 result.error_details.append('The bid or ask data is missing')
-                result.issue_count = len(set(temp_data[temp_data.values == 0].index.tolist()))
+                result.issue_count = len(temp_data[temp_data['rising_falling_not_limit']])
         return result
 
     def check_is_not_limit(self, item, date, tscode, st_set):
-        limit_percent = get_rising_falling_limit(date, tscode, date + '_' + tscode[0:6] in st_set)
+        if item['time'] == '13:34:27.000':
+            print('aa')
+        limit_percent = get_rising_falling_limit(tscode, date, date + '_' + tscode[0:6] in st_set)
         close = item['close']
         price = item['price']
-        up_limit = round(close * (1 + limit_percent), 2)
-        down_limit = round(close * (1 - limit_percent), 2)
+        up_limit = local_round(close * (1 + limit_percent), 2)
+        down_limit = local_round(close * (1 - limit_percent), 2)
         bid_price_list = np.array(item[['bid_price1','bid_price2','bid_price3','bid_price4','bid_price5','bid_price6','bid_price7','bid_price8','bid_price9','bid_price10']].tolist())
         if len(bid_price_list[bid_price_list == 0]) > 0:
             if np.count_nonzero(bid_price_list) == 0:
@@ -2003,7 +2006,7 @@ if __name__ == '__main__':
     # check_issue_stock_validation_data('081727da-a3ad-43be-b319-21c4f8cb382d')
 
     #检查已生成股票数据
-    validate_stock_organized_data('20230309-finley')
+    # validate_stock_organized_data('20230309-finley')
     #
     # #检查原始股票数据
     # validate_stock_original_data('20230320-finley')
@@ -2074,11 +2077,12 @@ if __name__ == '__main__':
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202006\\20200617\\601801.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201702\\20170203\\000002.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201701\\20170116\\000592.pkl')
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201701\\20170109\\000999.pkl')
+    # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201701\\20170109\\000999.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201811\\20181126\\002512.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2017\\stk_tick10_w_201701\\20170116\\000008.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201806\\20180601\\002122.pkl')
-    # print(validator.validate(data))
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202105\\20210527\\300223.pkl')
+    # print(validator.validate(data, ['2021-05-27_300023']))
 
     # validator = FutureDataMissingValidator()
     # data = pd.read_csv('D:\\liuli\\data\\original\\future\\tick\\IC\\CFFEX.IC1705.csv')
@@ -2138,10 +2142,10 @@ if __name__ == '__main__':
     # data = fixer.fix(data)
     # data.to_csv('E:\\data\\temp\\600859_fix.csv')
 
-    # fixer = TenGradeFiveGradeDataFixer()
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000039.pkl')
-    # data = fixer.fix(data)
-    # data.to_csv('E:\\data\\temp\\000039_fix.csv')
+    fixer = TenGradeFiveGradeDataFixer()
+    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000039.pkl')
+    data = fixer.fix(data)
+    data.to_csv('E:\\data\\temp\\000039_fix.csv')
 
     # fixer = DefaultDataFixer()
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202105\\20210507\\600338.pkl')
@@ -2151,7 +2155,7 @@ if __name__ == '__main__':
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202006\\20200617\\601801.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2019\\stk_tick10_w_201908\\20190819\\000006.pkl')
     # # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202107\\20210712\\000063.pkl')
-    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2018\\stk_tick10_w_201806\\20180601\\002122.pkl')
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202105\\20210527\\300223.pkl')
     # data = fixer.fix(data)
     # data.to_csv('E:\\data\\temp\\20200617_601801_fix.csv')
 

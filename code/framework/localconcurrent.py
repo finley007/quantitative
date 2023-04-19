@@ -2,11 +2,11 @@
 # -*- coding:utf8 -*-
 import os
 import time
-from multiprocessing import Pool
+
+from multiprocessing import Pool, Manager
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
-
 from common.aop import timing
-
+from common.localio import read_decompress
 
 class ProcessRunner():
     """
@@ -76,10 +76,14 @@ def worker(arg1, arg2):
     time.sleep(10)
     return arg1 + '|' + arg2
 
+global global_dict
 def task(arg):
     print(arg)
     time.sleep(10)
     return arg
+
+def df_task(ns):
+    print(ns.data)
 
 
 if __name__ == '__main__':
@@ -105,8 +109,25 @@ if __name__ == '__main__':
     #     print(result.get())
     # runner.close()
 
-    print(ProcessExcecutor(5).execute(task, [0,1,2,3,4,5,6,7,8,9]))
+    # global_dict = {1:'a',2:'b',3:'b',4:'d',5:'e',6:'f',7:'g',8:'h',9:'i',0:'j'}
+    # param_list = [0,1,2,3,4,5,6,7,8,9]
+    # param_list = list(map(lambda item: {item, global_dict}, param_list))
+    # print(ProcessExcecutor(5).execute(task, param_list))
 
     # 多线程测试
     # print(ThreadRunner(5).execute(task, [0,1,2,3,4,5,6,7,8,9]))
+
+    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000001.pkl')
+    mgr = Manager()
+    ns = mgr.Namespace()
+    ns.data = data
+    runner = ProcessRunner(5, False)
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    print(runner.execute(df_task, args=(ns,)))
+    runner.close()
 

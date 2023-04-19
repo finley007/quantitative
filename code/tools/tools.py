@@ -14,13 +14,13 @@ from common.aop import timing, deamon
 from common.constants import FUTURE_TICK_DATA_PATH, FUTURE_TICK_FILE_PREFIX, FUTURE_TICK_COMPARE_DATA_PATH, \
     STOCK_TICK_DATA_PATH, CONFIG_PATH, FUTURE_TICK_TEMP_DATA_PATH, FUTURE_TICK_ORGANIZED_DATA_PATH, RESULT_SUCCESS, \
     STOCK_TICK_ORGANIZED_DATA_PATH, REPORT_PATH, RESULT_FAIL, STOCK_TICK_COMBINED_DATA_PATH, YEAR_LIST, STOCK_FILE_PREFIX, \
-    STOCK_TICK_COMPARE_DATA_PATH, TDX_PATH, STOCK_INDEX_PRODUCTS
+    STOCK_TICK_COMPARE_DATA_PATH, TDX_PATH, STOCK_INDEX_PRODUCTS, STOCK_DATA_PATH
 from common.crawler import StockInfoCrawler
-from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter, read_txt
+from common.localio import list_files_in_path, save_compress, read_decompress, FileWriter, read_txt, get_ip
 from common.persistence.dbutils import create_session
 from common.persistence.po import StockValidationResult, FutrueProcessRecord, StockProcessRecord, IndexConstituentConfig
 from common.persistence.dao import StockReversionConfigDao
-from common.stockutils import get_full_stockcode, get_full_stockcode_for_tdx
+from common.stockutils import get_full_stockcode, get_full_stockcode_for_tdx, get_full_stockcode_for_duan
 from data.process import FutureTickDataColumnTransform, StockTickDataColumnTransform, StockTickDataCleaner, DataCleaner, \
     FutureTickDataProcessorPhase1, FutureTickDataProcessorPhase2, StockTickDataEnricher, IndexConstituentStocksInfo
 from common.timeutils import date_format_transform
@@ -222,6 +222,7 @@ def enrich_stock_tick_data(process_code, include_year_list=[], include_month_lis
     -------
 
     """
+    process_code = process_code + get_ip()
     runner = ProcessRunner(20)
     session = create_session()
     checked_list = session.execute('select concat(date, tscode) from stock_process_record where process_code = :pcode', {'pcode': process_code})
@@ -402,6 +403,7 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
     include_product : list 包含的产品.
     include_instrument : list 包含的合约.
     """
+    process_code = process_code + '_' + get_ip()
     products = ['IC', 'IF', 'IH']
     session = create_session()
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode',
@@ -420,8 +422,8 @@ def create_k_line_for_future_tick(process_code, include_product=[], include_inst
             instrument = instrument_file.split('.')[1]
             if len(include_instrument) > 0 and instrument not in include_instrument:
                 continue
-            create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file)
-            # runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
+            # create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file)
+            runner.execute(create_future_k_line_by_instrument, args=(process_code,  checked_set, product, instrument_file))
     time.sleep(100000)
 
 def create_future_k_line_by_instrument(process_code,  checked_set, product, instrument_file):
@@ -458,6 +460,7 @@ def combine_k_line_for_future_tick(process_code, include_product=[], include_ins
     include_instrument : list 包含的合约
     """
 
+    process_code = process_code + get_ip()
     products = ['IC', 'IF', 'IH']
     session = create_session()
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
@@ -679,7 +682,33 @@ def update_stock_suspension_status():
             if len(suspend_date_list) > 0:
                 session.execute('update index_constituent_config set status = 1 where tscode = :tscode and date in :dates', {'tscode': stock[0], 'dates' : set(suspend_date_list)})
                 session.commit()
-        print(date_list)
+
+def update_stock_st_status():
+    """
+    根据D:\liuli\data\original\stock\stock_data_1d.h5更新st状态
+    Returns
+    -------
+
+    """
+    session = create_session()
+    stock_list = session.execute('select distinct tscode from index_constituent_config order by tscode').fetchall()
+    stock_list.sort()
+    config_file_path = STOCK_DATA_PATH + os.path.sep + 'stock_data_1d.h5'
+    config = pd.read_hdf(config_file_path)
+    for stock in stock_list:
+        date_list = session.execute('select distinct date from index_constituent_config where tscode = :tscode order by date', {'tscode': stock[0]}).fetchall()
+        date_list = list(map(lambda date: date[0], date_list))
+        date_list.sort()
+        for date in date_list:
+            get_logger().debug('Handle date: {} for stock: {}'.format(date, stock[0]))
+            try:
+                if config.loc[date, get_full_stockcode_for_duan(stock[0])]['is_ST'] == 1:
+                    session.execute(
+                        'update index_constituent_config set is_st = 1 where tscode = :tscode and date = :date',
+                        {'tscode': stock[0], 'date': date})
+                    session.commit()
+            except Exception as e:
+                get_logger().error('Exception occur when handle date: {} for stock: {}'.format(date, stock[0]))
 
 def do_compare(future_file, instrument, product):
     target_data = pd.read_csv(FUTURE_TICK_DATA_PATH + product + '/' + future_file)
@@ -844,16 +873,16 @@ if __name__ == '__main__':
     #初始化表
     # init_index_constituent_config()
     #核对文件数量
-    # create_stock_files_statistics(year_list=['2017'], month_list=['01'], date_filter=['04'])
+    # create_stock_files_statistics(False, year_list=['2020'], month_list=['06'])
     #检查原始股票数据
     # validate_stock_data_integrity_check()
     #检查已处理股票数据
     # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
-    create_k_line_for_future_tick('20230313-finley')
+    # create_k_line_for_future_tick('20230411-finley')
     # 拼接股指k线
-    combine_k_line_for_future_tick('20230313-finley')
+    # combine_k_line_for_future_tick('20230313-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
@@ -905,6 +934,9 @@ if __name__ == '__main__':
 
     # 生成股票停盘信息
     # update_stock_suspension_status()
+
+    # 生成股票st信息
+    update_stock_st_status()
 
     # 生成股票复权信息
     # create_stock_reversion_info()

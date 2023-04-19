@@ -1,0 +1,112 @@
+性能优化
+115
+609.48032390 s 打日志
+620.13436480 s 不打日志
+
+107
+523.11037700 s 打日志
+541.69034410 s 不打日志
+
+思路：
+get_stock_tick_data 5.68763660 s 缓存
+两种思路都尝试失败了
+1. 在caculate_by_date方法中用多线程（进程）提前加载文件，失败的原因是多线程对于一天的数据提升优先，多进程开销太大，因此都是不快反慢
+2. 在每一个分页里提前用多进程获取数据：40-42行
+    def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        instrument = data.iloc[0]['instrument']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        pagination = Pagination(date_list, page_size=20)
+        while pagination.has_next():
+            date_list = pagination.next()
+            get_logger().debug('Handle date from {0} to {1} for instrument: {2}'.format(date_list[0], date_list[-1], instrument))
+            file_list = []
+            for date in date_list:
+                stock_list = self.get_stock_list_by_date(product, date)
+                file_list = file_list + list(map(lambda stock : (date, stock), stock_list))
+            batch_access = BatchStockDataAccess(file_list, concurrent_count = 10)
+            batch_stock_data = batch_access.batch_load_data()
+            params_list = list(map(lambda date: [date, instrument, product, batch_stock_data[date]], date_list))
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
+            temp_cache = {}
+            for result in results:
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
+            for date in date_list:
+                new_data = pd.concat([new_data, temp_cache[date]])
+        return new_data
+每一天省0.01 * 836 = 8s 多花费40s的数据加载时间
+enrich_stock_data 改成numpy返回
+
+5 10
+test_loadfile_pte.py::test_sequence_run cost time: 46.62818500 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 10
+cost time: 36.31712110 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 10
+cost time: 31.76191690 s
+
+5 20
+test_loadfile_pte.py::test_sequence_run cost time: 47.23244180 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 20
+cost time: 38.21143670 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 20
+cost time: 32.05368170 s
+
+5 5
+test_loadfile_pte.py::test_sequence_run cost time: 46.23306500 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 5
+cost time: 35.35759530 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 5
+cost time: 30.74610300 s
+PASSED
+
+6 5
+test_loadfile_pte.py::test_sequence_run cost time: 58.21607720 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 5
+cost time: 43.62907570 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 5
+cost time: 36.40942240 s
+PASSED
+
+7 5
+test_loadfile_pte.py::test_sequence_run cost time: 68.81986520 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 5
+cost time: 54.33602080 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 5
+cost time: 43.91429590 s
+
+7 10
+test_loadfile_pte.py::test_sequence_run cost time: 69.53964820 s
+PASSED
+test_loadfile_pte.py::test_concurrency_thread_run Init thread runner for 10
+cost time: 53.11254400 s
+PASSED
+test_loadfile_pte.py::test_concurrency_process_run Init process runner for 10
+cost time: 43.04185860 s
+PASSED
+
+更改代码之前先保存一份便于比较逻辑
+ProcessExcecutor variables share

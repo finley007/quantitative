@@ -3,6 +3,16 @@
 import gzip
 import os
 import _pickle as cPickle
+import socket
+
+def get_ip():
+    """
+    获取ip地址
+    Returns
+    -------
+
+    """
+    return socket.gethostbyname(socket.gethostname())
 
 def list_files_in_path(path):
     """列出给定目录下的所有文件
@@ -115,6 +125,8 @@ if __name__ == '__main__':
     # file_writer.close_file()
     # print(build_path('a','b'))
     # print(read_txt('D:\\liuli\\data\\original\\stock\\tdx\\qfq\\BJ#430047.txt', '\t'))
-    print(type(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
-    print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
-    print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg'))['数据集'])
+    # print(type(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
+    # print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg')))
+    # print(eval(read_txt('G:\\data\\model\\xgboost\\INITIAL_MODEL_0.1.cfg'))['数据集'])
+
+    print(get_ip())

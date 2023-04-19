@@ -119,6 +119,60 @@ class StockTickFactor(Factor):
         self._stock_filter = stock_filter
 
     @timing
+    def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        instrument = data.iloc[0]['instrument']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        pagination = Pagination(date_list, page_size=20)
+        while pagination.has_next():
+            date_list = pagination.next()
+            get_logger().debug(
+                'Handle date from {0} to {1} for instrument: {2}'.format(date_list[0], date_list[-1], instrument))
+            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
+            temp_cache = {}
+            for result in results:
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
+            for date in date_list:
+                new_data = pd.concat([new_data, temp_cache[date]])
+        return new_data
+
+    def caculate_by_date(self, *args):
+        """
+        按天计算
+        Parameters
+        ----------
+        args
+
+        Returns
+        -------
+
+        """
+        date = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
+        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        if len(stock_data_per_date) == 0:
+            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+            return date, stock_data_per_date
+        return self.execute_caculation(date, stock_data_per_date)
+
+    @timing
     def get_stock_tick_data(self, product, instrument, date):
         """按天获取相关的股票tick数据，
         因为一次处理一个股指合约文件，所包含的信息：
@@ -312,59 +366,10 @@ class StockTickFactor(Factor):
         cur_time = datetime.strptime(item['time'], '%H:%M:%S.%f')
         return cur_time.second % 3
 
-    @timing
-    def caculate(self, data):
-        """
-        现货因子计算逻辑，多进程按天计算
-        Parameters
-        ----------
-        data
 
-        Returns
-        -------
-
-        """
-        columns = self.get_factor_columns(data)
-        new_data = pd.DataFrame(columns=columns)
-        product = data.iloc[0]['product']
-        instrument = data.iloc[0]['instrument']
-        date_list = list(set(data['date'].tolist()))
-        date_list.sort()
-        pagination = Pagination(date_list, page_size=20)
-        while pagination.has_next():
-            date_list = pagination.next()
-            get_logger().debug('Handle date from {0} to {1} for instrument: {2}'.format(date_list[0], date_list[-1], instrument))
-            params_list = list(map(lambda date: [date, instrument, product], date_list))
-            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
-            temp_cache = {}
-            for result in results:
-                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
-                temp_cache[result[0]] = cur_date_data
-            for date in date_list:
-                new_data = pd.concat([new_data, temp_cache[date]])
-        return new_data
 
     # 全局计算因子值
-    def caculate_by_date(self, *args):
-        """
-        按天计算
-        Parameters
-        ----------
-        args
 
-        Returns
-        -------
-
-        """
-        date = args[0][0]
-        instrument = args[0][1]
-        product = args[0][2]
-        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
-        if len(stock_data_per_date) == 0:
-            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
-            return date, stock_data_per_date
-        return self.execute_caculation(date, stock_data_per_date)
 
 class TimewindowStockTickFactor(StockTickFactor):
     """用于因子计算需要跨天的情形
@@ -395,6 +400,7 @@ class TimewindowStockTickFactor(StockTickFactor):
             'where t1.date = t2.date and t1.product = t2.product and t2.status = 0 and t1.instrument = :instrument '
             'order by t2.product, t2.tscode, t2.date', {'instrument': instrument}).fetchall()
         # stock -> datelist
+
         stock_date_map = {}
         for item in result_list:
             if item[0] in stock_date_map:
@@ -436,6 +442,14 @@ class TimewindowStockTickFactor(StockTickFactor):
         """
         return data
 
+    def get_timewindow_size(self):
+        """
+        获取时间窗大小
+        Returns
+        -------
+
+        """
+        return 3
 
 class StockTickDifferenceFactor(StockTickFactor, DifferenceFactor):
     """

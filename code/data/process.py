@@ -185,15 +185,15 @@ class StockTickDataColumnTransform(DataProcessor):
     def __init__(self):
         self._columns = ['tscode', 'exchange_tscode', 'date', 'time', 'price', 'volume', 'amount', 'transaction_number',
                          'iopv', 'transaction_flag', 'bs_flag', 'daily_accumulated_volume', 'daily_amount', 'high',
-                         'low', 'open', 'close', 'bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5',
-                         'bid_price6', 'bid_price7', 'bid_price8', 'bid_price9', 'bid_price10', 'bid_volume1',
-                         'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5', 'bid_volume6', 'bid_volume7',
-                         'bid_volume8', 'bid_volume9', 'bid_volume10', 'ask_price1', 'ask_price2', 'ask_price3',
-                         'ask_price4', 'ask_price5', 'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9',
-                         'ask_price10', 'ask_volume1', 'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5',
-                         'ask_volume6', 'ask_volume7', 'ask_volume8', 'ask_volume9', 'ask_volume10',
-                         'weighted_average_bid_price', 'weighted_average_ask_price', 'total_bid_volume',
-                         'total_ask_volume', 'unwighted_index', 'total_varieties', 'total_increase_varieties',
+                         'low', 'open', 'close', 'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5',
+                         'ask_price6', 'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10', 'ask_volume1',
+                         'ask_volume2', 'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7',
+                         'ask_volume8', 'ask_volume9', 'ask_volume10', 'bid_price1', 'bid_price2', 'bid_price3',
+                         'bid_price4', 'bid_price5', 'bid_price6', 'bid_price7', 'bid_price8', 'bid_price9',
+                         'bid_price10', 'bid_volume1', 'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5',
+                         'bid_volume6', 'bid_volume7', 'bid_volume8', 'bid_volume9', 'bid_volume10',
+                         'weighted_average_ask_price', 'weighted_average_bid_price', 'total_ask_volume',
+                         'total_bid_volume', 'unwighted_index', 'total_varieties', 'total_increase_varieties',
                          'total_falling_varieties', 'total_equal_varieties']
 
     def get_columns(self):

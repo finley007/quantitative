@@ -19,4 +19,7 @@ pip3 install seaborn -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mi
 pip3 install graphviz -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install Jinja2 -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 pip3 install pandas -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install redis -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install pyarrow -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+pip3 install line_profiler -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 

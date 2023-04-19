@@ -16,6 +16,7 @@ def read_decompress(path):
         raw_data = file_object.read()
     return cPickle.loads(raw_data)
 
+@profile
 def load_stock_files(path):
     stock_files = list_files_in_path(path)
     print('Total stock: {0}'.format(len(stock_files)))

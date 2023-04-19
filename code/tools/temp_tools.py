@@ -35,6 +35,13 @@ def update(*args):
 
 if __name__ == '__main__':
     # update_index_constituent_config()
-    data = pd.read_hdf('D:\\liuli\\data\\original\\stock\\stock_data_tick_2016-01-14.h5')
+
+    # data = pd.read_hdf('D:\\liuli\\data\\original\\stock\\stock_data_tick_2016-01-14.h5')
+    # print(data.shape)
+    # print(data.columns)
+
+    data = pd.read_hdf('D:\\liuli\\data\\original\\stock\\stock_data_1d.h5')
     print(data.shape)
     print(data.columns)
+    print(data)
+    print(data.loc['2005-01-04'])

@@ -18,10 +18,10 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommiss
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
     TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor,\
-    AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor
+    AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, LargeOrderBidAskVolumeRatioFactor
 
 
-from factor.base_factor import StockTickFactor
+from factor.base_factor import StockTickFactor, TimewindowStockTickFactor
 from common.log import get_logger
 from framework.pagination import Pagination
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
@@ -204,6 +204,12 @@ class FactorCaculator():
                                 max_time = daily_data['time'].max()
                                 stock_data = stock_data[(stock_data['time'] >= min_time) & (stock_data['time'] <= max_time)]
                             stock_data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + stock + '.csv')
+                            if isinstance(factor, TimewindowStockTickFactor):
+                                days_before = get_last_or_next_trading_date(stock, date, factor.get_timewindow_size())
+                                for dt in days_before:
+                                    if dt != date:
+                                        stock_data_before = data_access.access(dt, stock)
+                                        stock_data_before.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + stock + '_' + dt + '.csv')
                     else:
                         daily_data.to_csv(
                             FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + str(i) + '.csv')
@@ -246,9 +252,15 @@ if __name__ == '__main__':
     # factor_list = [total_commission_ratio_factor]
     # ten_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
     # factor_list = [ten_grade_commission_ratio_factor]
+    dail_rising_stock_ratio_factor = DailyRisingStockRatioFactor()
+    factor_list = [dail_rising_stock_ratio_factor]
     # FactorCaculator().caculate('8f771a6c-4233-4239-a12c-defb23963e08', factor_list)
     # FactorCaculator().caculate(factor_list, ['IF1810','IF1811'])
     # FactorCaculator().caculate(factor_list, ['IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'])
+    # FactorCaculator().caculate('8f771a6c-4233-4239-a12c-defb23963e01', factor_list, include_instrument_list = ['IF1712'], performance_test=True)
+
+    # 直接调用caculate_by_instrument便于cprofile分析
+    FactorCaculator().caculate_by_instrument((factor_list, 'IF1712', 'IF'))
 
     #生成因子比对文件
     # factor = WilliamFactor([10])
@@ -275,8 +287,10 @@ if __name__ == '__main__':
     # factor = TotalCommissionRatioDifferenceFactor([20, 50, 100, 200])
     # factor = AmountAskTotalCommissionRatioFactor()
     # factor = TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
-    factor = FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
-    FactorCaculator().caculate_manually_check(factor)
+    # factor = FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
+    # factor = DailyRisingStockRatioFactor()
+    # factor = LargeOrderBidAskVolumeRatioFactor()
+    # FactorCaculator().caculate_manually_check(factor, 3)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

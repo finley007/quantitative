@@ -100,6 +100,7 @@ product VARCHAR(2),
 date    VARCHAR(10),
 tscode  VARCHAR(10),
 status  int comment '0-正常，1-停牌，2-数据异常',
+is_st   int comment '0-正常，1-st'
 created_time datetime,
 modified_time datetime,
 PRIMARY KEY(id),
@@ -212,3 +213,4 @@ insert into factor_config values ('FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE'
 insert into factor_config values ('FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','036','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','037','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE','02','现货类','008','集合竞价二阶段涨幅','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_038_DAILY_RISING_STOCK_RATIO','02','现货类','038','当日上涨股票比例','','1.0','OWN',SYSDATE(),SYSDATE());

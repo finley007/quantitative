@@ -15,6 +15,7 @@ FUTURE_TICK_COMPARE_DATA_PATH = config.get('common', 'data_path') + 'compare' + 
 FUTURE_TICK_REPORT_DATA_PATH = config.get('common', 'data_path') + 'report' + os.path.sep + 'future' + os.path.sep + 'tick' + os.path.sep
 # FUTURE_TICK_ORGANIZED_DATA_PATH = config.get('common', 'data_path') + 'organized' + os.path.sep + 'future' + os.path.sep + 'tick' + os.path.sep
 FUTURE_TICK_ORGANIZED_DATA_PATH = 'E:\\data\\' + 'organized' + os.path.sep + 'future' + os.path.sep + 'tick' + os.path.sep
+STOCK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/'
 STOCK_TICK_DATA_PATH = config.get('common', 'data_path') + '/original/stock/tick/'
 STOCK_TICK_TEMP_DATA_PATH = config.get('common', 'data_path') + '/temp/stock/tick/'
 STOCK_TICK_ORGANIZED_DATA_PATH = 'E:\\data\\' + 'organized' + os.path.sep + 'stock' + os.path.sep + 'tick' + os.path.sep
@@ -100,3 +101,5 @@ FACTOR_TYPE_DETAILS = {
 FACTOR_STANDARD_FIELD_TYPE = 'float64'
 
 RET_PERIOD = [1, 2, 5, 10, 20, 30]
+
+REDIS_KEY_STOCK_FILE = 'stock_file'

@@ -66,6 +66,9 @@ class IndexConstituentConfigDao(BaseDao):
         self._session.query(IndexConstituentConfig).filter(and_(IndexConstituentConfig.date == date, IndexConstituentConfig.tscode == tscode)).update({IndexConstituentConfig.status: status})
         self._session.commit()
 
+    def get_st_list(self):
+        return self._session.execute('select distinct date, tscode from index_constituent_config where is_st = 1 order by tscode, date').fetchall()
+
 class FactorConfigDao(BaseDao):
 
     def get_all_factors(self):
@@ -137,7 +140,8 @@ if __name__ == '__main__':
     # # print(constituent_config_dao.query_trading_date_by_tscode('600519'))
     # # constituent_config_dao.update_status('2018-11-02', '601200', 0)
     # print(constituent_config_dao.get_invalid_list([1,2]))
-    print(constituent_config_dao.get_invalid_date_list([2]))
+    # print(constituent_config_dao.get_invalid_date_list([2]))
+    print(constituent_config_dao.get_st_list())
 
     # session = create_session()
 

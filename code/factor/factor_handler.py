@@ -14,7 +14,7 @@ from common.constants import STOCK_INDEX_PRODUCTS, FACTOR_PATH, FACTOR_STANDARD_
 from common.localio import save_compress, read_decompress
 from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRatioFactor, TenGradeCommissionRatioFactor, \
     SpreadFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, FiveGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
-    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor
 from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from common.log import get_logger
 from common.timeutils import get_current_time
@@ -352,11 +352,12 @@ if __name__ == '__main__':
     # factor_list = [SpreadFactor()]
     # factor_list = [RisingFallingAmountRatioFactor()]
     # factor_list = [TenGradeCommissionRatioFactor()]
-    factor_list = [TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])]
+    # factor_list = [TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])]
     # factor_list = [UntradedStockRatioFactor()]
     # factor_list = [TotalCommissionRatioDifferenceFactor([20,50,100,200])]
     # factor_list = [WilliamFactor([100,200,500,1000,2000,5000])]
     # factor_list = [CloseMinusMovingAverageFactor([200,500,1000,1500])]
+    factor_list = [DailyRisingStockRatioFactor()]
     handle_factor(factor_list)
 
     # factor = TotalCommissionRatioFactor()
