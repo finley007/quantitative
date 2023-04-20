@@ -306,6 +306,7 @@ class RisingStockRatioFactor(StockTickFactor):
 
     def get_rise_ratio(self, item):
         rise_ratio = item[item > 0].count() / item.count()
+        # rise_ratio = np.sum(item > 0) / len(item)
         return rise_ratio
 
 class SpreadFactor(StockTickFactor):
@@ -1772,6 +1773,8 @@ class DailyRisingStockRatioFactor(StockTickFactor):
         columns = data.columns.tolist() + key_columns + ['time', 'second_remainder']
         return columns
 
+
+    @timing
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[
             stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
@@ -1798,7 +1801,8 @@ class DailyRisingStockRatioFactor(StockTickFactor):
         return data
 
     def get_rise_ratio(self, item):
-        rise_ratio = item[item > 0].count() / item.count()
+        # rise_ratio = item[item > 0].count() / item.count()
+        rise_ratio = np.sum(item > 0) / len(item)
         return rise_ratio
 
 class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
