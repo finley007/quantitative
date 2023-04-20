@@ -1,0 +1,171 @@
+原版
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   154                                               @profile
+   155                                               def caculate_by_date(self, *args):
+   156                                                   """
+   157                                                   按天计算
+   158                                                   Parameters
+   159                                                   ----------
+   160                                                   args
+   161
+   162                                                   Returns
+   163                                                   -------
+   164
+   165                                                   """
+   166         1          1.2      1.2      0.0          date = args[0][0]
+   167         1          0.4      0.4      0.0          instrument = args[0][1]
+   168         1          0.4      0.4      0.0          product = args[0][2]
+   169         1       2591.7   2591.7      0.0          get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+   170         1   23842676.7 23842676.7     76.2          stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+   171         1          8.7      8.7      0.0          if len(stock_data_per_date) == 0:
+   172                                                       get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+   173                                                       return date, stock_data_per_date
+   174         1    7427461.8 7427461.8     23.8          return self.execute_caculation(date, stock_data_per_date)
+
+详细信息版
+Total time: 30.5809 s
+Function: caculate_by_date at line 155
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   155                                               @profile
+   156                                               def caculate_by_date(self, *args):
+   157                                                   """
+   158                                                   按天计算
+   159                                                   Parameters
+   160                                                   ----------
+   161                                                   args
+   162
+   163                                                   Returns
+   164                                                   -------
+   165
+   166                                                   """
+   167         1          1.5      1.5      0.0          date = args[0][0]
+   168         1          0.4      0.4      0.0          instrument = args[0][1]
+   169         1          0.1      0.1      0.0          product = args[0][2]
+   170         1       2588.6   2588.6      0.0          get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+   171         1       3165.5   3165.5      0.0          stock_list = self.get_stock_list_by_date(product, date)
+   172         1          1.0      1.0      0.0          if len(self._stock_filter) > 0:  # 用于生成人工检测文件
+   173                                                       stock_list = self._stock_filter
+   174         1          5.7      5.7      0.0          columns = self.get_columns()
+   175         1       1597.0   1597.0      0.0          data = pd.DataFrame(columns=columns)
+   176         1          0.6      0.6      0.0          if stock_list and len(stock_list) > 0:
+   177                                                       # 过滤异常数据
+   178         1        197.9    197.9      0.0              stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
+   179       398        402.3      1.0      0.0              for stock in stock_list:
+   180       398    1056127.9   2653.6      3.4                  get_logger().debug('Handle stock {0}'.format(stock))
+   181       398         81.1      0.2      0.0                  try:
+   182       398    6225976.3  15643.2     20.0                      daily_stock_data = self.get_stock_data(date, stock)
+   183                                                           except Exception as e:
+   184                                                               get_logger().warning('Stock data is missing for date: {0} and stock: {1}'.format(date, stock))
+   185                                                               # session = create_session()
+   186                                                               # stock_missing_data = StockMissingData(date, stock)
+   187                                                               # session.add(stock_missing_data)
+   188                                                               # session.commit()
+   189                                                               continue
+   190       398       3051.2      7.7      0.0                  if len(daily_stock_data) == 0:
+   191                                                               get_logger().warning('Stock data is empty for date: {0} and stock: {1}'.format(date, stock))
+   192                                                               continue
+   193       398     813155.7   2043.1      2.6                  daily_stock_data = daily_stock_data.loc[:, columns]
+   194       398    4773885.7  11994.7     15.3                  daily_stock_data = self.enrich_stock_data(instrument, date, stock, daily_stock_data)
+   195       398   10633231.3  26716.7     34.2                  data = pd.concat([data, daily_stock_data])
+   196                                                   else:
+   197                                                       get_logger().warning(
+   198                                                           'Stock data configuration is missing for product: {0} and date: {1}'.format(product, date))
+   199         1      54899.7  54899.7      0.2          stock_data_per_date = data.reset_index()
+   200         1          2.0      2.0      0.0          if len(stock_data_per_date) == 0:
+   201                                                       get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+   202                                                       return date, stock_data_per_date
+   203         1     109489.4 109489.4      0.4          stock_data_per_date = stock_data_per_date[
+   204         1      49226.6  49226.6      0.2              stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+   205         1          0.8      0.8      0.0          change_columns = []
+   206         1          0.3      0.3      0.0          columns_replace = {}
+   207         4          3.6      0.9      0.0          for param in self._params:
+   208         4          4.6      1.2      0.0              change_columns = change_columns + ['change.' + str(param)]
+   209         4          8.9      2.2      0.0              columns_replace['change.' + str(param)] = self.get_key(param)
+   210         1      46471.4  46471.4      0.1          stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+   211         1          6.6      6.6      0.0          if len(stock_data_per_date) == 0:
+   212                                                       return date, stock_data_per_date
+   213         1    7350300.4 7350300.4     23.6          stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[change_columns].apply(
+   214         1          0.8      0.8      0.0              lambda item: self.get_rise_ratio(item))
+   215         1        348.2    348.2      0.0          stock_data_per_date_group_by['time'] = stock_data_per_date_group_by.index
+   216                                                   # 替换列名
+   217         1        400.9    400.9      0.0          stock_data_per_date_group_by = stock_data_per_date_group_by.rename(columns=columns_replace)
+   218         1          0.3      0.3      0.0          return date, stock_data_per_date_group_by
+
+
+第一版优化
+Total time: 20.8518 s
+Function: caculate_by_date at line 155
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   155                                               @profile
+   156                                               def caculate_by_date(self, *args):
+   157                                                   """
+   158                                                   按天计算
+   159                                                   Parameters
+   160                                                   ----------
+   161                                                   args
+   162
+   163                                                   Returns
+   164                                                   -------
+   165
+   166                                                   """
+   167         1          1.5      1.5      0.0          date = args[0][0]
+   168         1          0.5      0.5      0.0          instrument = args[0][1]
+   169         1          0.8      0.8      0.0          product = args[0][2]
+   170         1       2743.3   2743.3      0.0          get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+   171         1       2996.2   2996.2      0.0          stock_list = self.get_stock_list_by_date(product, date)
+   172         1          1.0      1.0      0.0          if len(self._stock_filter) > 0:  # 用于生成人工检测文件
+   173                                                       stock_list = self._stock_filter
+   174         1          4.8      4.8      0.0          columns = self.get_columns()
+   175         1          0.1      0.1      0.0          temp_data_cache = []
+   176         1          0.4      0.4      0.0          if stock_list and len(stock_list) > 0:
+   177                                                       # 过滤异常数据
+   178         1        237.5    237.5      0.0              stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
+   179       398        317.8      0.8      0.0              for stock in stock_list:
+   180       398    1012935.5   2545.1      4.9                  get_logger().debug('Handle stock {0}'.format(stock))
+   181       398         74.9      0.2      0.0                  try:
+   182       398    6378055.3  16025.3     30.6                      daily_stock_data = self.get_stock_data(date, stock)
+   183                                                           except Exception as e:
+   184                                                               get_logger().warning('Stock data is missing for date: {0} and stock: {1}'.format(date, stock))
+   185                                                               # session = create_session()
+   186                                                               # stock_missing_data = StockMissingData(date, stock)
+   187                                                               # session.add(stock_missing_data)
+   188                                                               # session.commit()
+   189                                                               continue
+   190       398       2311.6      5.8      0.0                  if len(daily_stock_data) == 0:
+   191                                                               get_logger().warning('Stock data is empty for date: {0} and stock: {1}'.format(date, stock))
+   192                                                               continue
+   193       398     722278.6   1814.8      3.5                  daily_stock_data = daily_stock_data.loc[:, columns]
+   194       398    4970478.1  12488.6     23.8                  daily_stock_data = self.enrich_stock_data(instrument, date, stock, daily_stock_data)
+   195       398        297.4      0.7      0.0                  temp_data_cache.append(daily_stock_data)
+   196                                                   else:
+   197                                                       get_logger().warning(
+   198                                                           'Stock data configuration is missing for product: {0} and date: {1}'.format(product, date))
+   199         1     125803.6 125803.6      0.6          stock_data_per_date = pd.concat(temp_data_cache)
+   200         1      77398.7  77398.7      0.4          stock_data_per_date = stock_data_per_date.reset_index()
+   201         1          6.9      6.9      0.0          if len(stock_data_per_date) == 0:
+   202                                                       get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+   203                                                       return date, stock_data_per_date
+   204         1     102832.3 102832.3      0.5          stock_data_per_date = stock_data_per_date[
+   205         1      47920.6  47920.6      0.2              stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+   206         1          1.5      1.5      0.0          change_columns = []
+   207         1          0.8      0.8      0.0          columns_replace = {}
+   208         4          8.8      2.2      0.0          for param in self._params:
+   209         4         11.8      3.0      0.0              change_columns = change_columns + ['change.' + str(param)]
+   210         4         24.8      6.2      0.0              columns_replace['change.' + str(param)] = self.get_key(param)
+   211         1      56332.3  56332.3      0.3          stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+   212         1          6.5      6.5      0.0          if len(stock_data_per_date) == 0:
+   213                                                       return date, stock_data_per_date
+   214         1    7347922.5 7347922.5     35.2          stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[change_columns].apply(
+   215         1          0.9      0.9      0.0              lambda item: self.get_rise_ratio(item))
+   216         1        338.2    338.2      0.0          stock_data_per_date_group_by['time'] = stock_data_per_date_group_by.index
+   217                                                   # 替换列名
+   218         1        414.7    414.7      0.0          stock_data_per_date_group_by = stock_data_per_date_group_by.rename(columns=columns_replace)
+   219         1          0.3      0.3      0.0          return date, stock_data_per_date_group_by
+
+
+

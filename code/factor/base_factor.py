@@ -189,6 +189,7 @@ class StockTickFactor(Factor):
             stock_list = self._stock_filter
         columns = self.get_columns()
         data = pd.DataFrame(columns=columns)
+        temp_data_cache = []
         if stock_list and len(stock_list) > 0:
             # 过滤异常数据
             stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
@@ -208,10 +209,12 @@ class StockTickFactor(Factor):
                     continue
                 daily_stock_data = daily_stock_data.loc[:, columns]
                 daily_stock_data = self.enrich_stock_data(instrument, date, stock, daily_stock_data)
-                data = pd.concat([data, daily_stock_data])
+                temp_data_cache.append(daily_stock_data)
         else:
             get_logger().warning('Stock data configuration is missing for product: {0} and date: {1}'.format(product, date))
-        data = data.reset_index()
+        if len(temp_data_cache) > 0:
+            data = pd.concat(temp_data_cache)
+            data = data.reset_index(drop = True)
         return data
         # return self._daily_data_access.access(date)
 
