@@ -89,7 +89,7 @@ class FactorCaculator():
                     temp_cache[result[0]] = result[1]
                 for instrument in sub_instrument_list:
                     factor_data = pd.concat([factor_data, temp_cache[instrument]])
-                    factor_process_record = FactorProcessRecord(process_code, instrument)
+                    factor_process_record = FactorProcessRecord(process_code, product, instrument)
                     session.add(factor_process_record)
                 # 每一个分页结束保存临时文件并提交
                 get_logger().info('Save temp file for instrument list: {}'.format(sub_instrument_list))
