@@ -92,6 +92,25 @@ class DifferenceFactor(Factor):
     def get_target_factor(self):
         pass
 
+class MeanFactor(Factor):
+    """
+    均值因子基类
+    """
+
+    @abstractmethod
+    def get_target_factor(self):
+        pass
+
+
+class StdFactor(Factor):
+    """
+    标准差因子基类
+    """
+
+    @abstractmethod
+    def get_target_factor(self):
+        pass
+
 class StockTickFactor(Factor):
     """现货类基类，可以加载股票Tick数据
 
@@ -456,7 +475,7 @@ class TimewindowStockTickFactor(StockTickFactor):
 
 class StockTickDifferenceFactor(StockTickFactor, DifferenceFactor):
     """
-    差分因子基类
+    股票差分因子基类
     """
 
     @abstractmethod
@@ -493,3 +512,98 @@ class StockTickDifferenceFactor(StockTickFactor, DifferenceFactor):
                 new_data = pd.concat([new_data, temp_data])
         return new_data
 
+
+class StockTickMeanFactor(StockTickFactor, MeanFactor):
+    """
+    股票均值因子基类
+    """
+
+    @abstractmethod
+    def get_target_factor(self):
+        pass
+
+    @timing
+    def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        original_data = self.get_target_factor().load(product)
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        for date in date_list:
+            temp_data = original_data[original_data['date'] == date]
+            if len(temp_data) > 0:  # 因为已经按主力合约交割日进行了截取，所以temp_data有可能是空的，必须做这个处理
+                for param in self._params:
+                    temp_data.loc[:, self.get_key(param)] = temp_data[self.get_target_factor().get_key()].rolling(param).mean()
+                    if temp_data.dtypes[self.get_key(param)] != FACTOR_STANDARD_FIELD_TYPE:
+                        temp_data[self.get_key(param)] = temp_data[self.get_key(param)].astype(FACTOR_STANDARD_FIELD_TYPE)
+                    # 两种方式补0或者滑动时间窗
+                    # temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = 0
+                    filled_data_arr = np.zeros(len(temp_data.loc[np.isnan(temp_data[self.get_key(param)])]))
+                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][self.get_target_factor().get_key()]
+                    for i in range(len(temp_arr)):
+                        if i == 0:
+                            filled_data_arr[i] = temp_arr[i]
+                        else:
+                            filled_data_arr[i] = np.mean(temp_arr[:i + 1])
+                    temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = filled_data_arr
+                new_data = pd.concat([new_data, temp_data])
+        return new_data
+
+class StockTickStdFactor(StockTickFactor, StdFactor):
+    """
+    股票标准差因子基类
+    """
+
+    @abstractmethod
+    def get_target_factor(self):
+        pass
+
+    @timing
+    def caculate(self, data):
+        """
+        现货因子计算逻辑，多进程按天计算
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        original_data = self.get_target_factor().load(product)
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        for date in date_list:
+            temp_data = original_data[original_data['date'] == date]
+            if len(temp_data) > 0:  # 因为已经按主力合约交割日进行了截取，所以temp_data有可能是空的，必须做这个处理
+                for param in self._params:
+                    temp_data.loc[:, self.get_key(param)] = temp_data[self.get_target_factor().get_key()].rolling(param).std()
+                    if temp_data.dtypes[self.get_key(param)] != FACTOR_STANDARD_FIELD_TYPE:
+                        temp_data[self.get_key(param)] = temp_data[self.get_key(param)].astype(FACTOR_STANDARD_FIELD_TYPE)
+                    # 两种方式补0或者滑动时间窗
+                    # temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = 0
+                    filled_data_arr = np.zeros(len(temp_data.loc[np.isnan(temp_data[self.get_key(param)])]))
+                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][
+                        self.get_target_factor().get_key()]
+                    for i in range(len(temp_arr)):
+                        if i == 0:
+                            filled_data_arr[i] = 0
+                        else:
+                            filled_data_arr[i] = np.std(temp_arr[:i + 1])
+                    temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = filled_data_arr
+                new_data = pd.concat([new_data, temp_data])
+        return new_data

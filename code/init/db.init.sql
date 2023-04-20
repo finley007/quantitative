@@ -197,8 +197,10 @@ PRIMARY KEY(id)
 
 insert into factor_config values ('FCT_01_001_WILLIAM','01','量价类','001','威廉因子','1000','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE','01','量价类','002','收盘价均值差','200|500|1000|1500','1.0','TSSB',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_002_10_GRADE_COMMISSION_RATIO','02','现货类','007','10档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_004_5_GRADE_COMMISSION_RATIO','02','现货类','007','5档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_002_10_GRADE_COMMISSION_RATIO','02','现货类','002','10档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_003_10_GRADE_WEIGHTED_COMMISSION_RATIO','02','现货类','003','10档加权委比因子','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_004_5_GRADE_COMMISSION_RATIO','02','现货类','004','5档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_005_5_GRADE_WEIGHTED_COMMISSION_RATIO','02','现货类','004','5档加权委比因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_007_SPREAD','02','现货类','007','价差因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_017_RISING_FALLING_AMOUNT_RATIO','02','现货类','017','涨跌成交额对比','','1.0','OWN',SYSDATE(),SYSDATE());
