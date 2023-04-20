@@ -56,11 +56,9 @@ class FactorCaculator():
         if len(include_product_list) == 0:
             include_product_list = STOCK_INDEX_PRODUCTS
         for product in include_product_list:
-        # for product in ['IH']:
-            # factor_data = pd.DataFrame(columns=columns)
             temp_file = TEMP_PATH + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
-            check_handled = session.execute('select max(instrument) from factor_process_record where process_code = :process_code', {'process_code':process_code}).fetchall()
+            check_handled = session.execute('select max(instrument) from factor_process_record where process_code = :process_code and product = :product', {'process_code':process_code,'product':product}).fetchall()
             current_instrument = check_handled[0][0]
             if current_instrument:
                 factor_data = read_decompress(temp_file)

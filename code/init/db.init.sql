@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS factor_process_record
 (
 id VARCHAR(40),
 process_code VARCHAR(40) comment '关联factor_operation_history表',
+product  VARCHAR(2),
 instrument  VARCHAR(10),
 created_time datetime,
 modified_time datetime,

@@ -271,6 +271,7 @@ class FactorProcessRecord(Base):
     """缺失股票数据表po：
     id VARCHAR(40),
     process_code VARCHAR(40) comment '关联factor_operation_history表',
+    product  VARCHAR(2),
     instrument  VARCHAR(10),
     created_time datetime,
     modified_time datetime,
@@ -279,13 +280,15 @@ class FactorProcessRecord(Base):
 
     id = Column(String(40), primary_key=True)
     process_code = Column(String(40))
+    product = Column(String(2))
     instrument = Column(String(10))
     created_time = Column(DateTime)
     modified_time = Column(DateTime)
 
-    def __init__(self, process_code, instrument):
+    def __init__(self, process_code, product, instrument):
         self.id = uuid.uuid4()
         self.process_code = process_code
+        self.product = product
         self.instrument = instrument
         self.created_time = datetime.datetime.now()
         self.modified_time = datetime.datetime.now()
