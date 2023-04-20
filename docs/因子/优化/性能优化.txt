@@ -2,6 +2,8 @@
 115
 609.48032390 s 打日志
 620.13436480 s 不打日志
+289.15890180 s 一次优化
+279.56245480 s 二次优化
 
 107
 523.11037700 s 打日志
@@ -127,7 +129,7 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
    127         1          0.1      0.1      0.0          'E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000031.pkl')
    128         1     116434.0 116434.0     77.8      decompress.to_csv('E:\\data\\temp\\test.csv')
    129         1      22564.1  22564.1     15.1      decompress1 = pd.read_csv('E:\\data\\temp\\test.csv')
-pickel已经是最快的包
+pickel已经是最快的包，这个可以考虑用并发优化
 
 
 
