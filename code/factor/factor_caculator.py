@@ -37,7 +37,7 @@ class FactorCaculator():
     """
 
     @timing
-    def caculate(self, process_code, factor_list, include_product_list=[], include_instrument_list=[], performance_test=False):
+    def caculate(self, process_code, factor_list, include_product_list=[], include_instrument_list=[], performance_test=False, need_resume=True):
         '''
         生成因子文件
 
@@ -58,8 +58,13 @@ class FactorCaculator():
         for product in include_product_list:
             temp_file = TEMP_PATH + product + '_' + '_'.join(
                 list(map(lambda factor: factor.get_full_name(), factor_list))) + '.temp'
-            check_handled = session.execute('select max(instrument) from factor_process_record where process_code = :process_code and product = :product', {'process_code':process_code,'product':product}).fetchall()
-            current_instrument = check_handled[0][0]
+            if need_resume:
+                check_handled = session.execute(
+                    'select max(instrument) from factor_process_record where process_code = :process_code and product = :product',
+                    {'process_code': process_code, 'product': product}).fetchall()
+                current_instrument = check_handled[0][0]
+            else:
+                current_instrument = None
             if current_instrument:
                 factor_data = read_decompress(temp_file)
             else:
@@ -89,7 +94,8 @@ class FactorCaculator():
                 # 每一个分页结束保存临时文件并提交
                 get_logger().info('Save temp file for instrument list: {}'.format(sub_instrument_list))
                 session.commit()
-                save_compress(factor_data, temp_file)
+                if need_resume:
+                    save_compress(factor_data, temp_file)
             factor_data = factor_data.reset_index(drop=True)
             if not performance_test:
                 target_factor_file = FACTOR_PATH + product + '_' + '_'.join(

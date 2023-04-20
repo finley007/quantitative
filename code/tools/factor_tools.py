@@ -18,7 +18,7 @@ from common.aop import timing
 from common.localio import save_compress
 
 @timing
-def create_factor_files(factor_list=[], current_transaction_id=''):
+def create_factor_files(factor_list=[], current_transaction_id='',  need_resume=True):
     """
 
     Parameters
@@ -60,7 +60,7 @@ def create_factor_files(factor_list=[], current_transaction_id=''):
                     id = current_transaction_id
                 try:
                     t = time.perf_counter()
-                    factor_caculator.caculate(id, [factor])
+                    factor_caculator.caculate(id, [factor], need_resume=need_resume)
                     time_cost = time.perf_counter() - t
                     factor_operation_history = FactorOperationHistory(id, factor.get_full_name(), 1, 0, time_cost)
                     session.add(factor_operation_history)
