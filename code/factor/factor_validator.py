@@ -601,12 +601,12 @@ def check_factor_value_trend(factor, product, param):
 
 if __name__ == '__main__':
     #测试因子检测基类
-    factor_validator = FactorValidator([
-        BasicValidator(),
-        StatisticsAnalysis(),
-        StabilityValidator(),
-        SingleFactorBackTestValidator()
-    ])
+    # factor_validator = FactorValidator([
+    #     BasicValidator(),
+    #     StatisticsAnalysis(),
+    #     StabilityValidator(),
+    #     SingleFactorBackTestValidator()
+    # ])
     # factor_validator.validate([TotalCommissionRatioFactor()])
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
@@ -619,21 +619,21 @@ if __name__ == '__main__':
     # factor_validator.validate([FiveGradeCommissionRatioDifferenceFactor([20,50,100,200])])
     # factor_validator.validate([WilliamFactor([100,200,500,1000,2000,5000])])
     # factor_validator.validate([CloseMinusMovingAverageFactor([200,500,1000,1500])])
-    factor_validator.validate([DailyRisingStockRatioFactor()])
+    # factor_validator.validate([DailyRisingStockRatioFactor()])
 
     #检查片段
-    # parse_factor_file('IC', [TenGradeCommissionRatioFactor()], '2018-02-12', is_organized=False)
+    # parse_factor_file('IC', [TenGradeCommissionRatioFactor()], '2022-02-14', is_organized=False)
     # parse_factor_file('IH', [RisingStockRatioFactor()], '2022-03-09')
 
     #检查现货相关股票文件
-    # parse_spot_goods_stock_data('IH', '2022-03-09', '13:49:00')
+    parse_spot_goods_stock_data('IC', '2022-02-14', '14:02:45')
 
     #分析因子极值
     # print(analyze_stability_extreme_value(RisingFallingAmountRatioFactor(), 'IC', RisingFallingAmountRatioFactor().get_key(), 5))
 
     #生成因子片段检查计算逻辑
-    # factor = SpreadFactor()
-    # date, data = factor.caculate_by_date(['2018-02-12', 'IC1803', 'IC'])
+    # factor = TenGradeCommissionRatioFactor()
+    # date, data = factor.caculate_by_date(['2022-02-14', 'IC2203', 'IC'])
     # print(data[factor.get_key()])
 
     #因子的趋势性分析
