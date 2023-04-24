@@ -550,7 +550,7 @@ class StockTickMeanFactor(StockTickFactor, MeanFactor):
                     # 两种方式补0或者滑动时间窗
                     # temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = 0
                     filled_data_arr = np.zeros(len(temp_data.loc[np.isnan(temp_data[self.get_key(param)])]))
-                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][self.get_target_factor().get_key()]
+                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][self.get_target_factor().get_key()].tolist()
                     for i in range(len(temp_arr)):
                         if i == 0:
                             filled_data_arr[i] = temp_arr[i]
@@ -597,8 +597,7 @@ class StockTickStdFactor(StockTickFactor, StdFactor):
                     # 两种方式补0或者滑动时间窗
                     # temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = 0
                     filled_data_arr = np.zeros(len(temp_data.loc[np.isnan(temp_data[self.get_key(param)])]))
-                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][
-                        self.get_target_factor().get_key()]
+                    temp_arr = temp_data.loc[np.isnan(temp_data[self.get_key(param)])][self.get_target_factor().get_key()].tolist()
                     for i in range(len(temp_arr)):
                         if i == 0:
                             filled_data_arr[i] = 0

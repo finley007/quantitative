@@ -50,8 +50,9 @@ xgboost
 对于给定时间，打印出如下信息：基本信息（OHLC, volume），因子值，收益率，模型预测值，开仓信号
 
 超参测试
-原则：
+设计：
 1. 为了提升测试效率，多进程并发
 2. 待测参数：labels target xgboost(max_depth, n_estimators, learning_rate)
-3. 输出：分析报告 收益图
+3. 输出：分析报告 回测图表
+4. 每一个测试用例建一个目录，包含用例说明，测试用例可以按labels target划分
     

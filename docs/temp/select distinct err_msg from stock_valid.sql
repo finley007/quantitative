@@ -1,7 +1,8 @@
-select distinct err_msg from stock_validation_result where validation_code = '20230309-finley' and result = 1 order by err_msg; 
-select count(1), result from stock_validation_result where validation_code = '20230320-finley' group by result;
-select date from stock_validation_result where validation_code = '20230320-finley' group by date order by date;
-select count(1) from stock_validation_result where validation_code = '20230320-finley';
+select distinct err_msg from stock_validation_result where validation_code = '20230309-finley192.168.0.115' and result = 1 order by err_msg; 
+select * from stock_validation_result where validation_code = '20230309-finley192.168.0.115' and result = 1 order by err_msg; 
+select count(1), result from stock_validation_result where validation_code = '20230228-finley192.168.0.107' group by result;
+select date from stock_validation_result where validation_code = '20230228-finley192.168.0.107' group by date order by date;
+select count(1) from stock_validation_result where validation_code = '20230309-finley192.168.0.115';
 
 
 | The validation result for stock: 000627 date: 20181226 is fail and error details: 数据未生成

@@ -18,7 +18,8 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommiss
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
     TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor,\
-    AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, LargeOrderBidAskVolumeRatioFactor
+    AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, LargeOrderBidAskVolumeRatioFactor,\
+    TenGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeWeightedCommissionRatioFactor
 
 
 from factor.base_factor import StockTickFactor, TimewindowStockTickFactor
@@ -256,15 +257,15 @@ if __name__ == '__main__':
     # factor_list = [total_commission_ratio_factor]
     # ten_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
     # factor_list = [ten_grade_commission_ratio_factor]
-    dail_rising_stock_ratio_factor = DailyRisingStockRatioFactor()
-    factor_list = [dail_rising_stock_ratio_factor]
+    # dail_rising_stock_ratio_factor = DailyRisingStockRatioFactor()
+    # factor_list = [dail_rising_stock_ratio_factor]
     # FactorCaculator().caculate('8f771a6c-4233-4239-a12c-defb23963e08', factor_list)
     # FactorCaculator().caculate(factor_list, ['IF1810','IF1811'])
     # FactorCaculator().caculate(factor_list, ['IF1810','IF1811','IF1812','IF1901','IF1902','IF1903','IF1904','IF1905','IF1906','IF1907'])
     # FactorCaculator().caculate('8f771a6c-4233-4239-a12c-defb23963e01', factor_list, include_instrument_list = ['IF1712'], performance_test=True)
 
     # 直接调用caculate_by_instrument便于cprofile分析
-    FactorCaculator().caculate_by_instrument((factor_list, 'IF1712', 'IF'))
+    # FactorCaculator().caculate_by_instrument((factor_list, 'IF1712', 'IF'))
 
     #生成因子比对文件
     # factor = WilliamFactor([10])
@@ -294,7 +295,13 @@ if __name__ == '__main__':
     # factor = FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200])
     # factor = DailyRisingStockRatioFactor()
     # factor = LargeOrderBidAskVolumeRatioFactor()
-    # FactorCaculator().caculate_manually_check(factor, 3)
+    # factor = TenGradeCommissionRatioMeanFactor([20,50,100,300,500])
+    # factor = FiveGradeCommissionRatioMeanFactor([20,50,100,300,500])
+    # factor = FiveGradeCommissionRatioStdFactor([50,100,300,500])
+    # factor = FiveGradeCommissionRatioStdFactor([50,100,300,500])
+    # factor = TenGradeWeightedCommissionRatioFactor()
+    factor = FiveGradeWeightedCommissionRatioFactor()
+    FactorCaculator().caculate_manually_check(factor, is_accumulated=True)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

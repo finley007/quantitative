@@ -460,7 +460,7 @@ def combine_k_line_for_future_tick(process_code, include_product=[], include_ins
     include_instrument : list 包含的合约
     """
 
-    process_code = process_code + get_ip()
+    process_code = process_code + '_' + get_ip()
     products = ['IC', 'IF', 'IH']
     session = create_session()
     checked_list = session.execute('select concat(instrument, date) from future_process_record where process_code = :pcode and status = 0',
@@ -880,9 +880,9 @@ if __name__ == '__main__':
     # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
-    # create_k_line_for_future_tick('20230411-finley')
+    # create_k_line_for_future_tick('20230421-finley')
     # 拼接股指k线
-    # combine_k_line_for_future_tick('20230313-finley')
+    combine_k_line_for_future_tick('20230421-finley')
 
     # 分析股指成分股
     # stocks_50 = pd.read_pickle(CONFIG_PATH + os.path.sep + '50_stocks.pkl')
@@ -936,7 +936,7 @@ if __name__ == '__main__':
     # update_stock_suspension_status()
 
     # 生成股票st信息
-    update_stock_st_status()
+    # update_stock_st_status()
 
     # 生成股票复权信息
     # create_stock_reversion_info()

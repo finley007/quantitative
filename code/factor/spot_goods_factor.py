@@ -5,7 +5,7 @@ import time
 from memory_profiler import profile
 import numpy as np
 
-from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor, StockTickDifferenceFactor
+from factor.base_factor import Factor, StockTickFactor, TimewindowStockTickFactor, StockTickDifferenceFactor, StockTickMeanFactor, StockTickStdFactor
 from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN_CALL_AUACTION_2ND_STAGE_START_TIME, \
     STOCK_OPEN_CALL_AUACTION_2ND_STAGE_END_TIME, STOCK_OPEN_CALL_AUACTION_1ST_STAGE_START_TIME, STOCK_INDEX_INFO, FACTOR_STANDARD_FIELD_TYPE
 from common.localio import read_decompress, save_compress
@@ -117,8 +117,13 @@ class TenGradeWeightedCommissionRatioFactor(TenGradeCommissionRatioFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5','bid_price6', 'bid_volume6','bid_price7', 'bid_volume7','bid_price8', 'bid_volume8','bid_price9', 'bid_volume9','bid_price10', 'bid_volume10',
-                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5','ask_price6', 'ask_volume6','ask_price7', 'ask_volume7','ask_price8', 'ask_volume8','ask_price9', 'ask_volume9','ask_price10', 'ask_volume10']
+        columns = columns + ['bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5', 'bid_price6',
+                             'bid_price7', 'bid_price8', 'bid_price9', 'bid_price10', 'bid_volume1', 'bid_volume2',
+                             'bid_volume3', 'bid_volume4', 'bid_volume5', 'bid_volume6', 'bid_volume7', 'bid_volume8',
+                             'bid_volume9', 'bid_volume10', 'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_price6',
+                             'ask_price7', 'ask_price8', 'ask_price9', 'ask_price10', 'ask_volume1', 'ask_volume2',
+                             'ask_volume3', 'ask_volume4', 'ask_volume5', 'ask_volume6', 'ask_volume7', 'ask_volume8',
+                             'ask_volume9', 'ask_volume10']
         return columns
 
     def get_key(self):
@@ -139,17 +144,14 @@ class TenGradeWeightedCommissionRatioFactor(TenGradeCommissionRatioFactor):
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
-    def amount_sum(self, item, type):
-        weighted_list = [10 ,9 , 8 , 7 , 6 , 5, 4, 3 ,2 ,1]
-        sum = 0
-        for i in range(1, 11):
-            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]) * weighted_list[i - 1])
-        return sum
+    def amount_sum(self, item):
+        weighted_list = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+        return np.dot(item[3:13] * item[13:23], weighted_list), np.dot(item[23:33] * item[33:43], weighted_list)
 
     def enrich_stock_data(self, instrument, date, stock, data):
         data = data[data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
-        data['10_grade_ask_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'ask'), axis=1)
-        data['10_grade_bid_commission_amount'] = data.apply(lambda item: self.amount_sum(item, 'bid'), axis=1)
+        data[['10_grade_bid_commission_amount', '10_grade_ask_commission_amount']] = np.apply_along_axis(
+            lambda item: self.amount_sum(item), axis=1, arr=data.values)
         data['10_grade_total_commission_amount'] = data['10_grade_ask_commission_amount'] + data['10_grade_bid_commission_amount']
         return data
 
@@ -208,8 +210,8 @@ class FiveGradeWeightedCommissionRatioFactor(FiveGradeCommissionRatioFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'bid_volume1', 'bid_price2', 'bid_volume2','bid_price3', 'bid_volume3','bid_price4', 'bid_volume4','bid_price5', 'bid_volume5',
-                             'ask_price1', 'ask_volume1', 'ask_price2', 'ask_volume2', 'ask_price3', 'ask_volume3','ask_price4', 'ask_volume4','ask_price5', 'ask_volume5']
+        columns = columns + ['bid_price1', 'bid_price2', 'bid_price3', 'bid_price4', 'bid_price5', 'bid_volume1', 'bid_volume2', 'bid_volume3', 'bid_volume4', 'bid_volume5',
+                             'ask_price1', 'ask_price2', 'ask_price3', 'ask_price4', 'ask_price5', 'ask_volume1', 'ask_volume2', 'ask_volume3','ask_volume4','ask_volume5']
         return columns
 
     def get_key(self):
@@ -220,12 +222,6 @@ class FiveGradeWeightedCommissionRatioFactor(FiveGradeCommissionRatioFactor):
 
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
-        stock_data_per_date['5_grade_ask_commission_amount'] = stock_data_per_date.apply(
-            lambda item: self.amount_sum(item, 'ask'), axis=1)
-        stock_data_per_date['5_grade_bid_commission_amount'] = stock_data_per_date.apply(
-            lambda item: self.amount_sum(item, 'bid'), axis=1)
-        stock_data_per_date['5_grade_total_commission_amount'] = stock_data_per_date['5_grade_ask_commission_amount'] + \
-                                                                 stock_data_per_date['5_grade_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
             '5_grade_bid_commission_amount', '5_grade_total_commission_amount'].sum()
@@ -236,12 +232,17 @@ class FiveGradeWeightedCommissionRatioFactor(FiveGradeCommissionRatioFactor):
             {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
-    def amount_sum(self, item, type):
+    def amount_sum(self, item):
         weighted_list = [5, 4, 3 ,2 ,1]
-        sum = 0
-        for i in range(1, 6):
-            sum = sum + ((item[type + '_price' + str(i)]) * (item[type + '_volume' + str(i)]) * weighted_list[i - 1])
-        return sum
+        return np.dot(item[3:8] * item[8:13], weighted_list), np.dot(item[13:18] * item[18:23], weighted_list)
+
+    def enrich_stock_data(self, instrument, date, stock, data):
+        data = data[data['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
+        data[['5_grade_bid_commission_amount', '5_grade_ask_commission_amount']] = np.apply_along_axis(
+            lambda item: self.amount_sum(item), axis=1, arr=data.values)
+        data['5_grade_total_commission_amount'] = data['5_grade_ask_commission_amount'] + data[
+            '5_grade_bid_commission_amount']
+        return data
 
 
 class RisingStockRatioFactor(StockTickFactor):
@@ -730,8 +731,7 @@ class BidLargeAmountBillFactor(TimewindowStockTickFactor):
             for date in date_list:
                 cur_date_data = temp_cache[date]
                 cur_date_data[self.get_key()] = 0
-                cur_date_data.loc[cur_date_data['bid_commission_amount'] > cur_date_data[
-                    'mean_bid_commission_amount'] * 1.5, self.get_key()] = 1
+                cur_date_data.loc[cur_date_data['bid_commission_amount'] > cur_date_data['mean_bid_commission_amount'] * 1.5, self.get_key()] = 1
                 new_data = pd.concat([new_data, cur_date_data])
         return new_data
 
@@ -1919,6 +1919,157 @@ class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
 
         """
         return 4
+
+class TenGradeCommissionRatioMeanFactor(StockTickMeanFactor):
+    """
+    十档委比均值因子
+    """
+    factor_code = 'FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_commission_ratio_factor
+
+class TenGradeCommissionRatioStdFactor(StockTickStdFactor):
+    """
+    十档委比均值因子
+    """
+    factor_code = 'FCT_02_041_10_GRADE_COMMISSION_RATIO_STD'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_commission_ratio_factor = TenGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_commission_ratio_factor
+
+class FiveGradeCommissionRatioMeanFactor(StockTickMeanFactor):
+    """
+    五档委比均值因子
+    """
+    factor_code = 'FCT_02_042_5_GRADE_COMMISSION_RATIO_MEAN'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_commission_ratio_factor = FiveGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_commission_ratio_factor
+
+class FiveGradeCommissionRatioStdFactor(StockTickStdFactor):
+    """
+    五档委比标准差因子
+    """
+    factor_code = 'FCT_02_043_5_GRADE_COMMISSION_RATIO_STD'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_commission_ratio_factor = FiveGradeCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_commission_ratio_factor
+
+class TenGradeWeightedCommissionRatioDifferenceFactor(StockTickDifferenceFactor):
+    """
+    十档加权委比差分因子
+    """
+    factor_code = 'FCT_02_044_10_GRADE_WEIGHTED_COMMISSION_RATIO_DIFFERENCE'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_weighted_commission_ratio_factor = TenGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_weighted_commission_ratio_factor
+
+class TenGradeWeightedCommissionRatioMeanFactor(StockTickMeanFactor):
+    """
+    十档加权委比均值因子
+    """
+    factor_code = 'FCT_02_045_10_GRADE_WEIGHTED_COMMISSION_RATIO_MEAN'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_weighted_commission_ratio_factor = TenGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_weighted_commission_ratio_factor
+
+class TenGradeWeightedCommissionRatioStdFactor(StockTickStdFactor):
+    """
+    十档加权委比标准差因子
+    """
+    factor_code = 'FCT_02_046_10_GRADE_WEIGHTED_COMMISSION_RATIO_STD'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._10_grade_weighted_commission_ratio_factor = TenGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._10_grade_weighted_commission_ratio_factor
+
+
+class FiveGradeWeightedCommissionRatioDifferenceFactor(StockTickDifferenceFactor):
+    """
+    五档加权委比差分因子
+    """
+    factor_code = 'FCT_02_047_5_GRADE_WEIGHTED_COMMISSION_RATIO_DIFFERENCE'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_weighted_commission_ratio_factor = FiveGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_weighted_commission_ratio_factor
+
+class FiveGradeWeightedCommissionRatioMeanFactor(StockTickMeanFactor):
+    """
+    五档加权委比均值因子
+    """
+    factor_code = 'FCT_02_048_5_GRADE_WEIGHTED_COMMISSION_RATIO_MEAN'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_weighted_commission_ratio_factor = FiveGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_weighted_commission_ratio_factor
+
+class FiveGradeWeightedCommissionRatioStdFactor(StockTickStdFactor):
+    """
+    五档加权委比标准差因子
+    """
+    factor_code = 'FCT_02_049_5_GRADE_WEIGHTED_COMMISSION_RATIO_STD'
+    version = '1.0'
+
+    def __init__(self, params):
+        StockTickFactor.__init__(self)
+        self._params = params
+        self._5_grade_weighted_commission_ratio_factor = FiveGradeWeightedCommissionRatioFactor()
+
+    def get_target_factor(self):
+        return self._5_grade_weighted_commission_ratio_factor
 
 if __name__ == '__main__':
     # data = read_decompress(TEST_PATH + 'IF1810.pkl')

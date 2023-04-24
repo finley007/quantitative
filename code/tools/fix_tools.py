@@ -260,8 +260,8 @@ def fix_stock_organized_data(validation_code, include_year_list=[]):
         for month_folder in month_folder_list:
             if not re.search('[0-9]{6}', month_folder):
                 continue
-            # runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
-            fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder)
+            runner.execute(fix_stock_organized_data_by_month, args=(validation_code, checked_set, year_folder, month_folder))
+            # fix_stock_organized_data_by_month(validation_code, checked_set, year_folder, month_folder)
     time.sleep(100000)
 
 def fix_future_organized_data(validation_code, product_list=[], instrument_list=[], date_list=[]):
@@ -373,7 +373,7 @@ def fix_stock_organized_data_by_month(validation_code, checked_set, year_folder,
                     get_logger().error('Load file: {0} error'.format(organized_stock_file_path))
                     continue
                 get_logger().debug('Fix for {0} and {1}'.format(date, stock))
-                data = RecoverBidOrAskMissingDataFixer().fix(data)
+                data = TenGradeFiveGradeDataFixer().fix(data)
                 if len(data) > 0:
                     save_compress(data, organized_stock_file_path)
                     validation_result = session.query(StockValidationResult).filter(StockValidationResult.validation_code == validation_code, StockValidationResult.tscode == stock.split('.')[0], StockValidationResult.date == date).one()
@@ -2012,7 +2012,7 @@ if __name__ == '__main__':
     # validate_stock_original_data('20230320-finley')
     #
     # #修复有问题股票数据
-    # fix_stock_organized_data('20230410-finley')
+    fix_stock_organized_data('20230228-finley')
     #
     # #检查原始期货数据
     # validate_future_original_data('20230329-future-finley')
@@ -2142,10 +2142,10 @@ if __name__ == '__main__':
     # data = fixer.fix(data)
     # data.to_csv('E:\\data\\temp\\600859_fix.csv')
 
-    fixer = TenGradeFiveGradeDataFixer()
-    data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000039.pkl')
-    data = fixer.fix(data)
-    data.to_csv('E:\\data\\temp\\000039_fix.csv')
+    # fixer = TenGradeFiveGradeDataFixer()
+    # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2020\\stk_tick10_w_202001\\20200102\\000039.pkl')
+    # data = fixer.fix(data)
+    # data.to_csv('E:\\data\\temp\\000039_fix.csv')
 
     # fixer = DefaultDataFixer()
     # data = read_decompress('E:\\data\\organized\\stock\\tick\\stk_tick10_w_2021\\stk_tick10_w_202105\\20210507\\600338.pkl')
