@@ -19,8 +19,9 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommiss
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, CallAuctionSecondStageIncreaseFactor,\
     TwoCallAuctionStageDifferenceFactor, CallAuctionSecondStageReturnVolatilityFactor, FirstStageCommissionRatioFactor, SecondStageCommissionRatioFactor, AmountAnd1stGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor,\
     AmountAskTotalCommissionRatioFactor, TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, LargeOrderBidAskVolumeRatioFactor,\
-    TenGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeWeightedCommissionRatioFactor
-
+    TenGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeWeightedCommissionRatioFactor, AuxiliaryFileGenerationFactor,\
+    BidLargeAmountBillFactor, AmountBid10GradeCommissionRatioFactor, AskLargeAmountBillFactor, AmountBid10GradeCommissionRatioStdFactor, AmountAsk10GradeCommissionRatioStdFactor, Commission10GradeVolatilityRatioFactor, AmountAndCommissionRatioMeanFactor,\
+    AmountAndCommissionRatioStdFactor
 
 from factor.base_factor import StockTickFactor, TimewindowStockTickFactor
 from common.log import get_logger
@@ -28,7 +29,8 @@ from framework.pagination import Pagination
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 from common.persistence.po import FactorProcessRecord
 from data.access import StockDataAccess
-from common.timeutils import add_milliseconds_suffix
+from common.timeutils import add_milliseconds_suffix, get_last_or_next_trading_date_by_stock
+from common.persistence.dao import FutureInstrumentConfigDao
 
 class FactorCaculator():
     """因子文件生成类
@@ -149,7 +151,7 @@ class FactorCaculator():
         return instrument, data
 
     @timing
-    def caculate_manually_check(self, factor, stock_count = 2, manually_check_file_count = 2, is_accumulated = False):
+    def caculate_manually_check(self, factor, stock_count = 2, manually_check_file_count = 2, is_accumulated = False, product_list = [], instrument_list=[]):
         '''
         生成用于检测的因子文件
 
@@ -164,11 +166,15 @@ class FactorCaculator():
         # 获取k线文件列模板
         window_size = 100
         session = create_session()
-        for product in STOCK_INDEX_PRODUCTS:
+        future_instrument_config_dao = FutureInstrumentConfigDao()
+        if len(product_list) == 0:
+            product_list = STOCK_INDEX_PRODUCTS
+        for product in product_list:
             get_logger().info('Handle product {0}'.format(product))
-            instrument_list = session.execute(
-                'select distinct instrument from future_instrument_config where product = :product order by instrument',
-                {'product': product}).fetchall()
+            if len(instrument_list) == 0:
+                instrument_list = session.execute(
+                    'select distinct instrument from future_instrument_config where product = :product order by instrument',
+                    {'product': product}).fetchall()
             for i in range(manually_check_file_count):
                 rdm_number = random.randint(0, len(instrument_list) - 1)
                 instrument = instrument_list[rdm_number]
@@ -210,7 +216,7 @@ class FactorCaculator():
                                 stock_data = stock_data[(stock_data['time'] >= min_time) & (stock_data['time'] <= max_time)]
                             stock_data.to_csv(FACTOR_PATH + 'manually' + os.path.sep + product + '_' + factor.get_full_name() + '_' + stock + '.csv')
                             if isinstance(factor, TimewindowStockTickFactor):
-                                days_before = get_last_or_next_trading_date(stock, date, factor.get_timewindow_size())
+                                days_before = future_instrument_config_dao.get_last_n_transaction_date_list(date, 3)
                                 for dt in days_before:
                                     if dt != date:
                                         stock_data_before = data_access.access(dt, stock)
@@ -300,8 +306,16 @@ if __name__ == '__main__':
     # factor = FiveGradeCommissionRatioStdFactor([50,100,300,500])
     # factor = FiveGradeCommissionRatioStdFactor([50,100,300,500])
     # factor = TenGradeWeightedCommissionRatioFactor()
-    factor = FiveGradeWeightedCommissionRatioFactor()
-    FactorCaculator().caculate_manually_check(factor, is_accumulated=True)
+    # factor = FiveGradeWeightedCommissionRatioFactor()
+    # factor = AuxiliaryFileGenerationFactor()
+    # factor = BidLargeAmountBillFactor()
+    # factor = AskLargeAmountBillFactor()
+    # factor = AmountBid10GradeCommissionRatioFactor([20,50,100,300,500])
+    # factor = AmountAsk10GradeCommissionRatioStdFactor([20,50,100,300,500])
+    # factor = Commission10GradeVolatilityRatioFactor([20, 50 ,100 ,200])
+    # factor = AmountAndCommissionRatioMeanFactor([20, 50 ,100 ,300, 500])
+    factor = AmountAndCommissionRatioStdFactor([50 ,100 ,300, 500])
+    FactorCaculator().caculate_manually_check(factor)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

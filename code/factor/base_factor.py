@@ -213,7 +213,7 @@ class StockTickFactor(Factor):
             # 过滤异常数据
             stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
             for stock in stock_list:
-                get_logger().debug('Handle stock {0}'.format(stock))
+                # get_logger().debug('Handle stock {0}'.format(stock))
                 try:
                     daily_stock_data = self.get_stock_data(date, stock)
                 except Exception as e:
@@ -282,7 +282,7 @@ class StockTickFactor(Factor):
     #     temp_data = self.enrich_stock_data(instrument, date, stock, temp_data)
     #     return temp_data
 
-    @timing
+    # @timing
     def get_stock_data(self, date, stock):
         """
         按天获取单个股票数据，可包含一些计算逻辑
@@ -297,7 +297,8 @@ class StockTickFactor(Factor):
         """
         temp_data = self._data_access.access(date, stock)
         return temp_data
-    @timing
+
+    # @timing
     def enrich_stock_data(self, instrument, date, stock, data):
         """
         时间维度上处理股票数据
@@ -336,7 +337,7 @@ class StockTickFactor(Factor):
 
         """
         return ['tscode','date','time']
-    @timing
+    # @timing
     def get_stock_list_by_date(self, product, date):
         """获取股票列表
         Parameters
@@ -352,7 +353,7 @@ class StockTickFactor(Factor):
             if date >= start_date and date <= end_date:
                 return stock_abstract[key]
 
-    @timing
+    # @timing
     def merge_with_stock_data(self, data, date, df_stock_data_per_date):
         """
         和股票数据join，获取现货指标
@@ -450,7 +451,7 @@ class TimewindowStockTickFactor(StockTickFactor):
         # self._instrument_stock_data[instrument] = stock_data
         return stock_data
 
-    def enrich_stock_data(self, date, stock, data):
+    def enrich_stock_data(self, instrument, date, stock, data):
         """
         时间维度上处理股票数据
 

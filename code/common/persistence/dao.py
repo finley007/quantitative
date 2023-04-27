@@ -127,21 +127,45 @@ class FutureInstrumentConfigDao(BaseDao):
     def get_next_n_transaction_date(self, current_date, n):
         result_list = self._session.execute('select distinct date from future_instrument_config where date > :current_date order by date', {'current_date': current_date}).fetchall()
         if len(result_list) > n:
-            return result_list[n][0]
+            return result_list[n-1][0]
         else:
-            return result_list[-1][0]
+            return ''
+
+    def get_next_n_transaction_date_list(self, current_date, n):
+        result_list = self._session.execute('select distinct date from future_instrument_config where date > :current_date order by date', {'current_date': current_date}).fetchall()
+        if len(result_list) > n:
+            return list(map(lambda item: item[0], result_list[:n]))
+        else:
+            return []
+
+    def get_last_n_transaction_date(self, current_date, n):
+        result_list = self._session.execute('select distinct date from future_instrument_config where date < :current_date order by date desc', {'current_date': current_date}).fetchall()
+        if len(result_list) > n:
+            return result_list[n-1][0]
+        else:
+            return ''
+
+    def get_last_n_transaction_date_list(self, current_date, n):
+        result_list = self._session.execute('select distinct date from future_instrument_config where date < :current_date order by date desc', {'current_date': current_date}).fetchall()
+        if len(result_list) > n:
+            result_list = list(map(lambda item: item[0], result_list[:n]))
+            result_list.reverse()
+            return result_list
+        else:
+            return []
+
 class StockReversionConfigDao(BaseDao):
 
     def delete_records_by_stocks(self, stocks):
         self._session.query(StockReversionConfig).filter(StockReversionConfig.tscode.in_(stocks)).delete()
 
 if __name__ == '__main__':
-    constituent_config_dao = IndexConstituentConfigDao()
+    # constituent_config_dao = IndexConstituentConfigDao()
     # # print(constituent_config_dao.query_trading_date_by_tscode('600519'))
     # # constituent_config_dao.update_status('2018-11-02', '601200', 0)
     # print(constituent_config_dao.get_invalid_list([1,2]))
     # print(constituent_config_dao.get_invalid_date_list([2]))
-    print(constituent_config_dao.get_st_list())
+    # print(constituent_config_dao.get_st_list())
 
     # session = create_session()
 
@@ -165,5 +189,13 @@ if __name__ == '__main__':
 
     # future_instrument_config_dao = FutureInstrumentConfigDao()
     # print(future_instrument_config_dao.get_next_n_transaction_date('2017-01-03', 5))
+    # print(future_instrument_config_dao.get_next_n_transaction_date_list('2017-01-03', 5))
+    # print(future_instrument_config_dao.get_last_n_transaction_date('2017-01-03', 5))
+    # print(future_instrument_config_dao.get_last_n_transaction_date_list('2017-01-03', 5))
+
+    # 因子配置表查询
+    facto_config_dao = FactorConfigDao()
+    for factor in facto_config_dao.get_all_factors():
+        print(factor.code)
 
 

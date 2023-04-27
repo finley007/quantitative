@@ -404,11 +404,12 @@ class FutureTickDataProcessorPhase1(DataProcessor):
     @timing
     def process(self, data):
         date = data.iloc[1]['date']
+        # 将数据对齐到0.5s的整数倍
         data['datetime'] = data.apply(lambda item: date_alignment(str(item['datetime'])), axis=1)
+        # 只取有成交的记录
         data['delta_volume'] = data['volume'] - data['volume'].shift(1)
         first_index = data.head(1).index.tolist()[0]
-        data.loc[first_index, 'delta_volume'] = data.loc[
-            first_index, 'volume']  # 这里要处理边界情况，主要是第一个值的delta_volume为空
+        data.loc[first_index, 'delta_volume'] = data.loc[first_index, 'volume']  # 这里要处理边界情况，主要是第一个值的delta_volume为空
         # data['cur_price'] = data['last_price'].shift(-1) #对于last_price有点误解，这个就是当前时间
         data['cur_price'] = data['last_price']
         data = data[data['delta_volume'] > 0]
@@ -583,18 +584,18 @@ if __name__ == '__main__':
     # content.to_csv('/Users/finley/Projects/stock-index-future/data/temp/IC1701_enriched.csv')
 
     # 期货tick处理测试
-    # product = 'IH'
-    # instrument = 'IH2208'
-    # content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
-    # content = FutureTickDataColumnTransform(product, instrument).process(content)
-    # content = DataCleaner().process(content)
-    # content['date'] = content['datetime'].str[0:10]
-    # date_list = sorted(list(set(content['date'].tolist())))
-    # date = '2022-06-20'
-    # # date = date_list[0]
-    # print(date)
-    # data = content[content['date'] == date]
-    # print(FutureTickDataProcessorPhase1().process(data).iloc[0:50][['datetime','open','close','high','low','volume','interest']])
+    product = 'IH'
+    instrument = 'IH2208'
+    content = pd.read_csv(constants.FUTURE_TICK_DATA_PATH + product + os.path.sep + FutureTickerHandler().build(instrument))
+    content = FutureTickDataColumnTransform(product, instrument).process(content)
+    content = DataCleaner().process(content)
+    content['date'] = content['datetime'].str[0:10]
+    date_list = sorted(list(set(content['date'].tolist())))
+    date = '2022-06-20'
+    # date = date_list[0]
+    print(date)
+    data = content[content['date'] == date]
+    print(FutureTickDataProcessorPhase1().process(data)[['datetime','open','close','high','low','volume','interest']].to_csv('E:\\data\\temp\\IH2208_2022-06-20.csv'))
 
     # 期货tick处理phase2测试
     # product = 'IF'
@@ -668,6 +669,6 @@ if __name__ == '__main__':
     # print(data500)
     # pd.to_pickle(data500, '/Users/finley/Projects/stock-index-future/data/config/500_stocks_abstract.pkl')
 
-    print(IndexConstituentStocksInfo().get_constituent_info("IH"))
-    print(len(IndexConstituentStocksInfo().get_all_constituent_stocks("IH")))
-    print(IndexConstituentStocksInfo().get_all_constituent_stocks("IH"))
+    # print(IndexConstituentStocksInfo().get_constituent_info("IH"))
+    # print(len(IndexConstituentStocksInfo().get_all_constituent_stocks("IH")))
+    # print(IndexConstituentStocksInfo().get_all_constituent_stocks("IH"))

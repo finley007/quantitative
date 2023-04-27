@@ -215,7 +215,7 @@ def to_params(str):
 
 if __name__ == '__main__':
     # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
-    # create_factor_files(['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
+    create_factor_files(['FCT_02_013_BID_LARGE_AMOUNT_BILL_1.0'])
 
     # init_factor_list()
 
@@ -225,6 +225,23 @@ if __name__ == '__main__':
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0', 'FCT_01_003_LINEAR_PER_ATR_1.0', 'FCT_01_004_LINEAR_DEVIATION_1.0', 'FCT_01_005_QUADRATIC_DEVIATION_1.0', 'FCT_01_006_CUBIC_DEVIATION_1.0', 'FCT_01_007_PRICE_MOMENTUM_1.0', 'FCT_01_008_ADX_1.0', 'FCT_01_009_MIN_ADX_1.0', 'FCT_01_010_RESIDUAL_MIN_ADX_1.0'])
     # create_factor_single_instrument_performance_report('IC1803', factor_list=['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION_1.0'])
-    create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_AUXILIARY_FILE_GENERATION_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_014_ASK_LARGE_AMOUNT_BILL_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_033_10_GRADE_COMMISSION_VOLATILITY_RATIO_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_016_AMOUNT_AND_COMMISSION_RATIO_2.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_031_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_052_AMOUNT_BID_5_GRADE_COMMISSION_RATIO_STD_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_030_AMOUNT_BID_5_GRADE_COMMISSION_RATIO_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0'])
+    # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0'])
 
-    # prepare_training_data('data_20230408', ['FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0'])
+    # prepare_training_data('data_20230425', ['FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0',
+    #                                         'FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_041_10_GRADE_COMMISSION_RATIO_STD_1.0', 'FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0',
+    #                                         'FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_043_5_GRADE_COMMISSION_RATIO_STD_1.0', 'FCT_02_042_5_GRADE_COMMISSION_RATIO_MEAN_1.0',
+    #                                         'FCT_02_003_10_GRADE_WEIGHTED_COMMISSION_RATIO_1.0', 'FCT_02_044_10_GRADE_WEIGHTED_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_045_10_GRADE_WEIGHTED_COMMISSION_RATIO_MEAN_1.0',
+    #                                         'FCT_02_017_RISING_FALLING_AMOUNT_RATIO_1.0',
+    #                                         'FCT_02_007_SPREAD_1.0'
+    #                                         ])

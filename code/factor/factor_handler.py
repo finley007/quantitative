@@ -14,7 +14,11 @@ from common.constants import STOCK_INDEX_PRODUCTS, FACTOR_PATH, FACTOR_STANDARD_
 from common.localio import save_compress, read_decompress
 from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRatioFactor, TenGradeCommissionRatioFactor, \
     SpreadFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, FiveGradeCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
-    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor,\
+    TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, \
+    TenGradeWeightedCommissionRatioFactor, TenGradeWeightedCommissionRatioDifferenceFactor, TenGradeWeightedCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioStdFactor,\
+    TenGradeWeightedCommissionRatioStdFactor,FiveGradeWeightedCommissionRatioFactor, FiveGradeWeightedCommissionRatioMeanFactor, FiveGradeWeightedCommissionRatioStdFactor,\
+    AmountBid10GradeCommissionRatioFactor, AmountAsk10GradeCommissionRatioFactor, AmountBid5GradeCommissionRatioFactor
 from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from common.log import get_logger
 from common.timeutils import get_current_time
@@ -357,7 +361,16 @@ if __name__ == '__main__':
     # factor_list = [TotalCommissionRatioDifferenceFactor([20,50,100,200])]
     # factor_list = [WilliamFactor([100,200,500,1000,2000,5000])]
     # factor_list = [CloseMinusMovingAverageFactor([200,500,1000,1500])]
-    factor_list = [TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor()]
+    # factor_list = [TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor(), TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),
+    #                RisingFallingAmountRatioFactor(), SpreadFactor(), TenGradeCommissionRatioMeanFactor([20,50,100,300,500]), TenGradeCommissionRatioStdFactor([50,100,300,500]), FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]),
+    #                FiveGradeCommissionRatioStdFactor([20, 50,100,300,500])
+    #                , TenGradeWeightedCommissionRatioFactor()]
+    # factor_list = [TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]),
+    #                TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500])]
+    factor_list = [FiveGradeWeightedCommissionRatioFactor(),
+                   FiveGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]),
+                   FiveGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500]),
+                   TenGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500])]
     handle_factor(factor_list)
 
     # factor = TotalCommissionRatioFactor()

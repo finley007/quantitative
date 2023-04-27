@@ -137,7 +137,7 @@ def add_milliseconds_suffix(time):
     else:
         return time
 
-def get_last_or_next_trading_date(stock, date, range_num = 1, backword=True, date_list=[]):
+def get_last_or_next_trading_date_by_stock(stock, date, range_num = 1, backword=True, date_list=[]):
     """
     获取下一个或者上一个交易日，考虑停盘
 

@@ -13,7 +13,10 @@ from common.localio import read_decompress
 from mlearn.xgboost.xgboost import XGBoostTrainer, XGBoostConfig
 from mlearn.model import ModelTrainer
 from mlearn.model_evaluation import BackTestEvaluator
-from factor.spot_goods_factor import TenGradeCommissionRatioFactor, FiveGradeCommissionRatioFactor, FiveGradeCommissionRatioDifferenceFactor, TenGradeCommissionRatioDifferenceFactor
+from factor.spot_goods_factor import TenGradeCommissionRatioFactor, FiveGradeCommissionRatioFactor, FiveGradeCommissionRatioDifferenceFactor, TenGradeCommissionRatioDifferenceFactor, TotalCommissionRatioDifferenceFactor, \
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor,\
+    TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioFactor, TenGradeWeightedCommissionRatioDifferenceFactor, TenGradeWeightedCommissionRatioMeanFactor,\
+    RisingFallingAmountRatioFactor, SpreadFactor
 from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from framework.localconcurrent import ProcessExcecutor
 from common.exception.exception import InvalidStatus
@@ -242,19 +245,26 @@ if __name__ == '__main__':
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys()
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys() \
     #          + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()
-    labels = FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys()\
+    labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
+             + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
              + TenGradeCommissionRatioFactor().get_keys() \
+             + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + TenGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
              + FiveGradeCommissionRatioFactor().get_keys() \
-             + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys()
+             + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
+             + TenGradeWeightedCommissionRatioFactor().get_keys() \
+             + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+             + RisingFallingAmountRatioFactor().get_keys() \
+             + SpreadFactor().get_keys()
     target = 'ret.10'
     train_partition = '2020-09-10' #训练：测试 3：1
     max_depth = 3
-    n_estimators = 30
-    learning_rate = 0.15
-    config = XGBoostConfig(labels, target, train_partition, 'data_20230408', max_depth, n_estimators, learning_rate=learning_rate)
-    train_model('INITIAL_MODEL', '0.6.3', 'data_20230408', XGBoostTrainer(), config)
+    n_estimators = 110
+    learning_rate = 0.08
+    config = XGBoostConfig(labels, target, train_partition, 'data_20230425', max_depth, n_estimators, learning_rate=learning_rate)
+    train_model('INITIAL_MODEL', '0.7', 'data_20230425', XGBoostTrainer(), config)
 
     # 收益率分析
     # return_analysis('INITIAL_MODEL', '0.5', 'IC', '2022-06-13', '2022-06-17')

@@ -880,7 +880,7 @@ if __name__ == '__main__':
     # validate_stock_data_integrity_check(False)
 
     # 生成股指k线
-    # create_k_line_for_future_tick('20230421-finley')
+    create_k_line_for_future_tick('20230421-finley')
     # 拼接股指k线
     combine_k_line_for_future_tick('20230421-finley')
 

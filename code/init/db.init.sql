@@ -197,11 +197,16 @@ PRIMARY KEY(id)
 
 insert into factor_config values ('FCT_01_001_WILLIAM','01','量价类','001','威廉因子','1000','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE','01','量价类','002','收盘价均值差','200|500|1000|1500','1.0','TSSB',SYSDATE(),SYSDATE());
+
+insert into factor_config values ('FCT_AUXILIARY_FILE_GENERATION','02','现货类','002','辅助因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_002_10_GRADE_COMMISSION_RATIO','02','现货类','002','10档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_003_10_GRADE_WEIGHTED_COMMISSION_RATIO','02','现货类','003','10档加权委比因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_004_5_GRADE_COMMISSION_RATIO','02','现货类','004','5档委比因子','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_005_5_GRADE_WEIGHTED_COMMISSION_RATIO','02','现货类','004','5档加权委比因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_007_SPREAD','02','现货类','007','价差因子','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE','02','现货类','008','集合竞价二阶段涨幅','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_013_BID_LARGE_AMOUNT_BILL','02','现货类','013','5档大挂单委买因子','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_014_ASK_LARGE_AMOUNT_BILL','02','现货类','015','5档大挂单委卖因子','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_016_AMOUNT_AND_COMMISSION_RATIO','02','现货类','016','成交额和委买委卖相结合','','2.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_017_RISING_FALLING_AMOUNT_RATIO','02','现货类','017','涨跌成交额对比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_018_UNTRADED_STOCK_RATIO','02','现货类','018','未成交股票占比','','1.0','OWN',SYSDATE(),SYSDATE());
@@ -212,10 +217,15 @@ insert into factor_config values ('FCT_02_022_OVER_NIGHT_YIELD','02','现货类'
 insert into factor_config values ('FCT_02_023_AMOUNT_AND_1ST_COMMISSION_RATIO','02','现货类','023','成交额和1档委买委卖相结合','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_024_RISING_LIMIT_STOCK_PROPORTION','02','现货类','024','涨停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_025_FALLING_LIMIT_STOCK_PROPORTION','02','现货类','025','跌停股占比','','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_028_AMOUNT_BID_10_GRADE_COMMISSION_RATIO','02','现货类','028','成交额10档委买比','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_029_AMOUNT_ASK_10_GRADE_COMMISSION_RATIO','02','现货类','029','成交额10档委卖比','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_030_AMOUNT_BID_5_GRADE_COMMISSION_RATIO','02','现货类','030','成交额5档委买比','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_031_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO','02','现货类','031','成交额5档委卖比','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_033_10_GRADE_COMMISSION_VOLATILITY_RATIO','02','现货类','033','10档委买委卖波动率比例因子','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_034_5_GRADE_COMMISSION_VOLATILITY_RATIO','02','现货类','034','5档委买委卖波动率比例因子','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_035_TOTAL_COMMISSION_RATIO_DIFFERENCE','02','现货类','035','总委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','036','10档委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_037_5_GRADE_COMMISSION_RATIO_DIFFERENCE','02','现货类','037','5档委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_008_CALL_AUCTION_SECOND_STAGE_INCREASE','02','现货类','008','集合竞价二阶段涨幅','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_038_DAILY_RISING_STOCK_RATIO','02','现货类','038','当日上涨股票比例','','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN','02','现货类','040','10档委比均值','20|50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_041_10_GRADE_COMMISSION_RATIO_STD','02','现货类','041','10档委比标准差','50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
@@ -227,3 +237,14 @@ insert into factor_config values ('FCT_02_046_10_GRADE_WEIGHTED_COMMISSION_RATIO
 insert into factor_config values ('FCT_02_047_5_GRADE_WEIGHTED_COMMISSION_RATIO_DIFFERENCE','02','现货类','047','5档加权委比差分','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_048_5_GRADE_WEIGHTED_COMMISSION_RATIO_MEAN','02','现货类','048','5档加权委比均值','20|50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_049_5_GRADE_WEIGHTED_COMMISSION_RATIO_STD','02','现货类','049','5档加权委比标准差','50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_050_AMOUNT_BID_TOTAL_COMMISSION_RATIO_STD','02','现货类','050','成交额总委买比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_051_AMOUNT_BID_10_GRADE_COMMISSION_RATIO_STD','02','现货类','051','成交额10档委买比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_052_AMOUNT_BID_5_GRADE_COMMISSION_RATIO_STD','02','现货类','052','成交额5档委买比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_053_AMOUNT_ASK_TOTAL_COMMISSION_RATIO_STD','02','现货类','053','成交额总委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_054_AMOUNT_ASK_10_GRADE_COMMISSION_RATIO_STD','02','现货类','054','成交额10档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+
+
+
+
+

@@ -21,7 +21,8 @@ from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFac
 from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommissionRatioFactor, AmountAndCommissionRatioFactor, FiveGradeCommissionRatioFactor, \
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
-    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor
+    TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor,\
+    TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioFactor
 from common.exception.exception import ValidationFailed
 from data.access import StockDataAccess
 from common.timeutils import add_milliseconds_suffix
@@ -601,12 +602,12 @@ def check_factor_value_trend(factor, product, param):
 
 if __name__ == '__main__':
     #测试因子检测基类
-    # factor_validator = FactorValidator([
-    #     BasicValidator(),
-    #     StatisticsAnalysis(),
-    #     StabilityValidator(),
-    #     SingleFactorBackTestValidator()
-    # ])
+    factor_validator = FactorValidator([
+        BasicValidator(),
+        StatisticsAnalysis(),
+        StabilityValidator(),
+        SingleFactorBackTestValidator()
+    ])
     # factor_validator.validate([TotalCommissionRatioFactor()])
     # factor_validator.validate([SpreadFactor()])
     # factor_validator.validate([RisingStockRatioFactor()])
@@ -620,13 +621,16 @@ if __name__ == '__main__':
     # factor_validator.validate([WilliamFactor([100,200,500,1000,2000,5000])])
     # factor_validator.validate([CloseMinusMovingAverageFactor([200,500,1000,1500])])
     # factor_validator.validate([DailyRisingStockRatioFactor()])
+    factor_validator.validate([TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor(), TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),
+                   RisingFallingAmountRatioFactor(), SpreadFactor(), TenGradeCommissionRatioMeanFactor([20,50,100,300,500]), TenGradeCommissionRatioStdFactor([50,100,300,500]), FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]), FiveGradeCommissionRatioStdFactor([50,100,300,500])
+                   , TenGradeWeightedCommissionRatioFactor()])
 
     #检查片段
     # parse_factor_file('IC', [TenGradeCommissionRatioFactor()], '2022-02-14', is_organized=False)
     # parse_factor_file('IH', [RisingStockRatioFactor()], '2022-03-09')
 
     #检查现货相关股票文件
-    parse_spot_goods_stock_data('IC', '2022-02-14', '14:02:45')
+    # parse_spot_goods_stock_data('IC', '2022-02-14', '14:02:45')
 
     #分析因子极值
     # print(analyze_stability_extreme_value(RisingFallingAmountRatioFactor(), 'IC', RisingFallingAmountRatioFactor().get_key(), 5))
