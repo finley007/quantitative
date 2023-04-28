@@ -854,12 +854,12 @@ class AskLargeAmountBillFactor(TimewindowStockTickFactor):
                 cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
                 temp_cache[result[0]] = cur_date_data
             for date in date_list:
-                cur_date_data = temp_cache[date]
-                auxiliary_data = self.get_auxiliary_data(product)
-                three_days_before_list = future_instrument_config_dao.get_last_n_transaction_date_list(date, 3)
-                five_grade_ask_amount_3days_mean = auxiliary_data[three_days_before_list].mean()
-                cur_date_data[self.get_key()] = 0
                 try:
+                    cur_date_data = temp_cache[date]
+                    auxiliary_data = self.get_auxiliary_data(product)
+                    three_days_before_list = future_instrument_config_dao.get_last_n_transaction_date_list(date, 3)
+                    five_grade_ask_amount_3days_mean = auxiliary_data[three_days_before_list].mean()
+                    cur_date_data[self.get_key()] = 0
                     cur_date_data.loc[cur_date_data['5_grade_ask_amount_mean'] > five_grade_ask_amount_3days_mean * 1.5, self.get_key()] = 1
                 except Exception as e:
                     get_logger().warning('The data is missing for date: {0}'.format(date))

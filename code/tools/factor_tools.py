@@ -215,7 +215,7 @@ def to_params(str):
 
 if __name__ == '__main__':
     # create_factor_files(['FCT_01_003_LINEAR_PER_ATR_1.0','FCT_01_004_LINEAR_DEVIATION_1.0','FCT_01_005_QUADRATIC_DEVIATION_1.0','FCT_01_006_CUBIC_DEVIATION_1.0 ','FCT_01_007_PRICE_MOMENTUM_1.0'])
-    create_factor_files(['FCT_02_013_BID_LARGE_AMOUNT_BILL_1.0'])
+    # create_factor_files(['FCT_02_013_BID_LARGE_AMOUNT_BILL_1.0'])
 
     # init_factor_list()
 
@@ -237,6 +237,7 @@ if __name__ == '__main__':
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0'])
+    create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_019_DAILY_ACCUMULATED_LARGE_ORDER_RATIO_1.0'])
 
     # prepare_training_data('data_20230425', ['FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0',
     #                                         'FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_041_10_GRADE_COMMISSION_RATIO_STD_1.0', 'FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0',

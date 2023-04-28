@@ -243,6 +243,9 @@ insert into factor_config values ('FCT_02_052_AMOUNT_BID_5_GRADE_COMMISSION_RATI
 insert into factor_config values ('FCT_02_053_AMOUNT_ASK_TOTAL_COMMISSION_RATIO_STD','02','现货类','053','成交额总委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_054_AMOUNT_ASK_10_GRADE_COMMISSION_RATIO_STD','02','现货类','054','成交额10档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 
 
 
