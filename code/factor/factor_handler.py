@@ -18,7 +18,8 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, RisingStockRati
     TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, \
     TenGradeWeightedCommissionRatioFactor, TenGradeWeightedCommissionRatioDifferenceFactor, TenGradeWeightedCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioStdFactor,\
     TenGradeWeightedCommissionRatioStdFactor,FiveGradeWeightedCommissionRatioFactor, FiveGradeWeightedCommissionRatioMeanFactor, FiveGradeWeightedCommissionRatioStdFactor,\
-    AmountBid10GradeCommissionRatioFactor, AmountAsk10GradeCommissionRatioFactor, AmountBid5GradeCommissionRatioFactor
+    AmountBid10GradeCommissionRatioFactor, AmountAsk10GradeCommissionRatioFactor, AmountBid5GradeCommissionRatioFactor, AmountAsk5GradeCommissionRatioFactor,\
+    Commission10GradeVolatilityRatioFactor, Commission5GradeVolatilityRatioFactor, DailyAccumulatedLargeOrderRatioFactor
 from factor.volume_price_factor import WilliamFactor, CloseMinusMovingAverageFactor
 from common.log import get_logger
 from common.timeutils import get_current_time
@@ -367,10 +368,17 @@ if __name__ == '__main__':
     #                , TenGradeWeightedCommissionRatioFactor()]
     # factor_list = [TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]),
     #                TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500])]
-    factor_list = [FiveGradeWeightedCommissionRatioFactor(),
-                   FiveGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]),
-                   FiveGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500]),
-                   TenGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500])]
+    # factor_list = [FiveGradeWeightedCommissionRatioFactor(),
+    #                FiveGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]),
+    #                FiveGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500]),
+    #                TenGradeWeightedCommissionRatioStdFactor([50, 100, 300, 500])]
+    # factor_list = [AmountBid10GradeCommissionRatioFactor([20, 50, 100, 200]),
+    #                AmountBid5GradeCommissionRatioFactor([20, 50, 100, 200]),
+    #                AmountAsk10GradeCommissionRatioFactor([20, 50, 100, 200]),
+    #                AmountAsk5GradeCommissionRatioFactor([20, 50, 100, 200])]
+    factor_list = [Commission10GradeVolatilityRatioFactor([20, 50, 100, 200]),
+                   Commission5GradeVolatilityRatioFactor([20, 50, 100, 200]),
+                   DailyAccumulatedLargeOrderRatioFactor()]
     handle_factor(factor_list)
 
     # factor = TotalCommissionRatioFactor()

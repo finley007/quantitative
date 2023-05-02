@@ -151,7 +151,7 @@ class FactorCaculator():
         return instrument, data
 
     @timing
-    def caculate_manually_check(self, factor, stock_count = 2, manually_check_file_count = 2, is_accumulated = False, product_list = [], instrument_list=[]):
+    def caculate_manually_check(self, factor, stock_count = 2, manually_check_file_count = 1, is_accumulated = False):
         '''
         生成用于检测的因子文件
 
@@ -167,25 +167,25 @@ class FactorCaculator():
         window_size = 100
         session = create_session()
         future_instrument_config_dao = FutureInstrumentConfigDao()
-        if len(product_list) == 0:
-            product_list = STOCK_INDEX_PRODUCTS
+        product_list = STOCK_INDEX_PRODUCTS
+        # 每一个品种生成一个检测文件
         for product in product_list:
             get_logger().info('Handle product {0}'.format(product))
-            if len(instrument_list) == 0:
-                instrument_list = session.execute(
-                    'select distinct instrument from future_instrument_config where product = :product order by instrument',
-                    {'product': product}).fetchall()
+            instrument_list = session.execute('select distinct instrument from future_instrument_config where product = :product order by instrument', {'product': product}).fetchall()
             for i in range(manually_check_file_count):
                 rdm_number = random.randint(0, len(instrument_list) - 1)
-                instrument = instrument_list[rdm_number]
-                date_list = session.execute('select date from future_instrument_config where instrument = :instrument and is_main = 0 order by date', {'instrument' : instrument[0]}).fetchall()
+                # 随机选择一个合约
+                instrument = instrument_list[rdm_number][0]
+                date_list = session.execute('select date from future_instrument_config where instrument = :instrument and is_main = 0 order by date', {'instrument' : instrument}).fetchall()
                 rdm_number = random.randint(0, len(date_list) - 1)
+                #随机选择一天
                 date = date_list[rdm_number][0]
-                data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument[0] + '.pkl')
-                get_logger().info('Handle instrument {0}'.format(instrument[0]))
+                data = read_decompress(FUTURE_TICK_ORGANIZED_DATA_PATH + product + os.path.sep + instrument + '.pkl')
+                get_logger().info('Handle instrument {0}'.format(instrument))
                 data['date'] = data['datetime'].str[0:10]
                 data['product'] = product
-                data['instrument'] = instrument[0]
+                data['instrument'] = instrument
+                # 股票过滤
                 filter_stocks = []
                 if isinstance(factor, StockTickFactor):
                     stock_list = factor.get_stock_list_by_date(product, date)
@@ -202,6 +202,7 @@ class FactorCaculator():
                 if len(daily_data) > 0:
                     daily_data = daily_data.reset_index(drop=True)
                     rdm_index = random.randint(0, len(daily_data) - window_size)
+                    # 截取时间片段
                     daily_data = daily_data.loc[rdm_index: rdm_index + window_size]
                     get_logger().info('Prepare the stock data for {0}'.format(str(i)))
                     if len(filter_stocks) > 0: #如果加了股票过滤，截取相应股票数据并且移动到当前目录，便于检查
@@ -314,8 +315,9 @@ if __name__ == '__main__':
     # factor = AmountAsk10GradeCommissionRatioStdFactor([20,50,100,300,500])
     # factor = Commission10GradeVolatilityRatioFactor([20, 50 ,100 ,200])
     # factor = AmountAndCommissionRatioMeanFactor([20, 50 ,100 ,300, 500])
-    factor = AmountAndCommissionRatioStdFactor([50 ,100 ,300, 500])
-    FactorCaculator().caculate_manually_check(factor)
+    # factor = AmountAndCommissionRatioStdFactor([50 ,100 ,300, 500])
+    factor = LargeOrderBidAskVolumeRatioFactor()
+    FactorCaculator().caculate_manually_check(factor, is_accumulated = True)
 
     # session = create_session()
     # config = FutureInstrumentConfig('IF', 'TEST', '20221204', 0)

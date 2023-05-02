@@ -74,7 +74,7 @@ class BackTestEvaluator(ModelEvaluator):
     def do_evaluate(self, data_path, fig_path):
         all_sum_result, long_all_sum_result, short_all_sum_result, report_df, total_product_statistics = self.caculate_backtest_result()
         if data_path == '':
-            data_path = XGBOOST_MODEL_PATH + os.path.sep + 'simulation' + os.path.sep + self._model_name + '_' + self._version + '_simulation.pkl'
+            data_path = XGBOOST_MODEL_PATH + os.path.sep + 'simulation' + os.path.sep + self._model_name + '_' + self._version + '_simulation.csv'
         if fig_path == '':
             fig_path = XGBOOST_MODEL_PATH + os.path.sep + 'simulation' + os.path.sep + self._model_name + '_' + self._version + '_simulation.png'
         self.create_diagram(all_sum_result, long_all_sum_result, report_df, short_all_sum_result, total_product_statistics, data_path, fig_path)
@@ -82,7 +82,8 @@ class BackTestEvaluator(ModelEvaluator):
 
     def create_diagram(self, all_sum_result, long_all_sum_result, report_df, short_all_sum_result, total_product_statistics, data_path, fig_path):
         # 保存文件并画图
-        save_compress(report_df, data_path)
+        # save_compress(report_df, data_path)
+        report_df.to_csv(data_path)
 
         # 展示的文字
         show_content = '实验名: ' + self._model_name + '_' + self._version + '\n'

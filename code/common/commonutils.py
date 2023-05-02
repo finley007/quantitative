@@ -18,6 +18,13 @@ def local_round(num, n=0):
     else:
         return round(num)
 
+def local_divide(a, b):
+    if b == 0:
+        return 0
+    else:
+        result = a/b
+        return result
+
 
 if __name__ == '__main__':
     print(local_round(23.12, 0))

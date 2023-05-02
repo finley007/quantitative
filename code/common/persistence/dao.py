@@ -11,6 +11,9 @@ class BaseDao():
     def __init__(self):
         self._session = create_session()
 
+    def close(self):
+        self._session.close()
+
 
 class IndexConstituentConfigDao(BaseDao):
 

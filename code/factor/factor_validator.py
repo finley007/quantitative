@@ -22,7 +22,8 @@ from factor.spot_goods_factor import TotalCommissionRatioFactor, TenGradeCommiss
     TenGradeWeightedCommissionRatioFactor, FiveGradeCommissionRatioFactor, RisingFallingAmountRatioFactor, UntradedStockRatioFactor, DailyAccumulatedLargeOrderRatioFactor, \
     RollingAccumulatedLargeOrderRatioFactor, RisingStockRatioFactor, SpreadFactor, OverNightYieldFactor, DeltaTotalCommissionRatioFactor, TotalCommissionRatioDifferenceFactor, \
     TenGradeCommissionRatioDifferenceFactor, FiveGradeCommissionRatioDifferenceFactor, DailyRisingStockRatioFactor, FiveGradeCommissionRatioMeanFactor, FiveGradeCommissionRatioStdFactor,\
-    TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioFactor
+    TenGradeCommissionRatioStdFactor, TenGradeCommissionRatioMeanFactor, TenGradeWeightedCommissionRatioFactor,\
+    AmountBid10GradeCommissionRatioFactor, AmountAsk10GradeCommissionRatioFactor, AmountBid5GradeCommissionRatioFactor, AmountAsk5GradeCommissionRatioFactor
 from common.exception.exception import ValidationFailed
 from data.access import StockDataAccess
 from common.timeutils import add_milliseconds_suffix
@@ -621,9 +622,13 @@ if __name__ == '__main__':
     # factor_validator.validate([WilliamFactor([100,200,500,1000,2000,5000])])
     # factor_validator.validate([CloseMinusMovingAverageFactor([200,500,1000,1500])])
     # factor_validator.validate([DailyRisingStockRatioFactor()])
-    factor_validator.validate([TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor(), TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),
-                   RisingFallingAmountRatioFactor(), SpreadFactor(), TenGradeCommissionRatioMeanFactor([20,50,100,300,500]), TenGradeCommissionRatioStdFactor([50,100,300,500]), FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]), FiveGradeCommissionRatioStdFactor([50,100,300,500])
-                   , TenGradeWeightedCommissionRatioFactor()])
+    # factor_validator.validate([TenGradeCommissionRatioFactor(), FiveGradeCommissionRatioFactor(), TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]),
+    #                RisingFallingAmountRatioFactor(), SpreadFactor(), TenGradeCommissionRatioMeanFactor([20,50,100,300,500]), TenGradeCommissionRatioStdFactor([50,100,300,500]), FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]), FiveGradeCommissionRatioStdFactor([50,100,300,500])
+    #                , TenGradeWeightedCommissionRatioFactor()])
+    factor_validator.validate([AmountBid10GradeCommissionRatioFactor([20, 50, 100, 200]),
+                   AmountBid5GradeCommissionRatioFactor([20, 50, 100, 200]),
+                   AmountAsk10GradeCommissionRatioFactor([20, 50, 100, 200]),
+                   AmountAsk5GradeCommissionRatioFactor([20, 50, 100, 200])])
 
     #检查片段
     # parse_factor_file('IC', [TenGradeCommissionRatioFactor()], '2022-02-14', is_organized=False)

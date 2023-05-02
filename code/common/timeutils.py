@@ -2,9 +2,11 @@
 # -*- coding:utf8 -*-
 from datetime import datetime, timedelta, time
 import time as tm
+
 from common.constants import OFF_TIME_IN_SECOND, OFF_TIME_IN_MORNING
 from common.persistence.dao import IndexConstituentConfigDao
 from common.exception.exception import InvalidValue
+
 
 def time_difference(str_start_time, str_end_time):
     """
@@ -169,8 +171,45 @@ def get_last_or_next_trading_date_by_stock(stock, date, range_num = 1, backword=
     else:
         return ''
 
+def get_last_or_next_trading_date_list_by_stock(stock, date, range_num = 1, backword=True, date_list=[]):
+    """
+    获取下一个或者上一个交易日，考虑停盘
+
+    Parameters
+    ----------
+    date：string 当前日
+    range：int 时间区间
+    foward：
+
+    Returns
+    -------
+
+    """
+    if len(date_list) == 0:
+        index_constituent_config_dao = IndexConstituentConfigDao()
+        date_list = index_constituent_config_dao.query_trading_date_by_tscode(stock)
+        index_constituent_config_dao.close()
+    if len(date_list) > 0 and date in date_list:
+        index = date_list.index(date)
+        for i in range(range_num):
+            if backword:
+                index = index - 1
+                if index < 0:
+                    return date_list[0 : date_list.index(date)]
+            else:
+                index = index + 1
+                if index == len(date_list):
+                    return date_list[date_list.index(date) + 1 : len(date_list)]
+        if backword:
+            return date_list[index : date_list.index(date)]
+        else:
+            return date_list[date_list.index(date) + 1 : index + 1]
+    else:
+        return []
+
 def get_current_time():
     return tm.strftime("%Y%m%d%H%M%S", tm.localtime())
+
 
 if __name__ == '__main__':
     # print(date_format_transform('20221121'))
@@ -181,4 +220,6 @@ if __name__ == '__main__':
     # print(get_last_or_next_trading_date('20221212', range_num=2, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
     # print(get_last_or_next_trading_date('20221212', range_num=3, backword=False, date_list=['20221210','20221211','20221212','20221213','20221214']))
     # print(time_difference('11:29:57', '11:30:00'))
-    print(get_current_time())
+    # print(get_current_time())
+    print(get_last_or_next_trading_date_list_by_stock('000001', '2020-03-03', 3))
+    print(get_last_or_next_trading_date_list_by_stock('000001', '2020-03-03', 3, False))

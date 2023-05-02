@@ -243,9 +243,13 @@ insert into factor_config values ('FCT_02_052_AMOUNT_BID_5_GRADE_COMMISSION_RATI
 insert into factor_config values ('FCT_02_053_AMOUNT_ASK_TOTAL_COMMISSION_RATIO_STD','02','现货类','053','成交额总委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_054_AMOUNT_ASK_10_GRADE_COMMISSION_RATIO_STD','02','现货类','054','成交额10档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
 insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
-insert into factor_config values ('FCT_02_055_AMOUNT_ASK_5_GRADE_COMMISSION_RATIO_STD','02','现货类','055','成交额5档委卖比标准差','20|50|100|200','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_056_AMOUNT_AND_COMMISSION_RATIO_MEAN','02','现货类','056','成交额5档委卖比标准差','20|50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_057_AMOUNT_AND_COMMISSION_RATIO_STD','02','现货类','057','上涨下跌成交量比例均值','50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_058_RISING_FALLING_AMOUNT_RATIO_MEAN','02','现货类','058','成交额5档委卖比标准差','20|50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_059_RISING_FALLING_AMOUNT_RATIO_STD','02','现货类','059','上涨下跌成交量比例标准差','50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_060_AMOUNT_AND_1ST_COMMISSION_RATIO_MEAN','02','现货类','060','1档委比加成交额均值','20|50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_061_AMOUNT_AND_1ST_COMMISSION_RATIO_STD','02','现货类','061','1档委比加成交额标准差','50|100|300|500','1.0','OWN',SYSDATE(),SYSDATE());
+insert into factor_config values ('FCT_02_062_LARGE_ORDER_BUYING_RATIO','02','现货类','062','大单买入比例','','1.0','OWN',SYSDATE(),SYSDATE());
 
 
 

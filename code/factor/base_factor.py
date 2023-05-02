@@ -5,7 +5,6 @@ from abc import ABCMeta, abstractmethod
 import pandas as pd
 import numpy as np
 from datetime import datetime
-
 from scipy.stats import pearsonr
 
 from common.constants import CONFIG_PATH, STOCK_TICK_ORGANIZED_DATA_PATH, FACTOR_PATH, TEMP_PATH, FACTOR_STANDARD_FIELD_TYPE
@@ -403,53 +402,32 @@ class TimewindowStockTickFactor(StockTickFactor):
 
     def __init__(self):
         StockTickFactor.__init__(self)
-        self._instrument_stock_data = {}
+        self._stock_date_cache = StockDateCache()
 
     @timing
-    def prepare_timewindow_data(self, instrument):
+    def prepare_timewindow_data(self, stock, data_list):
         """
-        按合约生成数据，用于需要时间窗计算的因子
+        按合约生成股票连续数据数据，用于需要时间窗计算的因子
         TODO 这部分可以预处理
         Parameters
         ----------
         instrument ： 合约
         """
-        # 一级内存缓存 多进程手写缓存会溢出，考虑用框架
-        # if instrument in self._instrument_stock_data:
-        #     return self._instrument_stock_data[instrument]
-        session = create_session()
+        return self._stock_date_cache.get_stock_data_list(data_list, stock)
+
+    def get_stock_date_map(self, instrument, session):
         result_list = session.execute(
             'select t2.tscode, t2.date from future_instrument_config t1, index_constituent_config t2 '
             'where t1.date = t2.date and t1.product = t2.product and t2.status = 0 and t1.instrument = :instrument '
             'order by t2.product, t2.tscode, t2.date', {'instrument': instrument}).fetchall()
-        # stock -> datelist
-
+        # 根据stock得到对应的date列表 stock -> datelist
         stock_date_map = {}
         for item in result_list:
             if item[0] in stock_date_map:
                 stock_date_map[item[0]].append(item[1])
             else:
                 stock_date_map[item[0]] = [item[1]]
-        stock_data = {}
-        for stock in stock_date_map.keys():
-            #二级磁盘缓存
-            file_path = TEMP_PATH + os.path.sep + 'stock' + os.path.sep + instrument + '_' + stock + '.pkl'
-            if os.path.exists(file_path):
-                data = read_decompress(file_path)
-            else:
-                instrument_stock_data = pd.DataFrame()
-                for date in stock_date_map[stock]:
-                    try:
-                        temp_data = self._data_access.access(date, stock)
-                    except Exception as e:
-                        get_logger().error('Access date: {0} and stock: {1} error'.format(date, stock)) #对于有些缺失的数据先忽略，比如2017.12.01，在计算日期跨度也会忽略这天的数据
-                        continue
-                    instrument_stock_data = pd.concat([instrument_stock_data, temp_data])
-                data = instrument_stock_data
-                save_compress(data, file_path)
-            stock_data[stock] = data
-        # self._instrument_stock_data[instrument] = stock_data
-        return stock_data
+        return stock_date_map
 
     def enrich_stock_data(self, instrument, date, stock, data):
         """
@@ -473,6 +451,94 @@ class TimewindowStockTickFactor(StockTickFactor):
 
         """
         return 3
+
+class StockDateCache():
+    """
+    股票数据缓存
+    """
+
+    def __init__(self):
+        self._stock_data_cache = {}
+        self._data_access = StockDataAccess(check_original=False)
+
+    def add_stock_data(self, date, stock, data):
+        """
+        将给定数据添加到缓存中
+        Parameters
+        ----------
+        date
+        stock
+        data
+
+        Returns
+        -------
+
+        """
+        if not (stock in self._stock_data_cache and date in self._stock_data_cache[stock]):
+            self._stock_data_cache[stock] = {date:data}
+
+    def get_stock_data(self, date, stock):
+        """
+        获取数据，如果不存在则添加
+        Parameters
+        ----------
+        date
+        stock
+
+        Returns
+        -------
+
+        """
+        try:
+            if not (stock in self._stock_data_cache and date in self._stock_data_cache[stock]):
+                self.add_stock_data(date, stock, self._data_access.access(date, stock))
+            return self._stock_data_cache[stock][date]
+        except Exception as e:
+            get_logger().error('The data for date {0} and stock {1} is missing'.format(date, stock))
+            return pd.DataFrame()
+
+    def get_stock_data_cache(self):
+        return self._stock_data_cache
+
+    def get_stock_data_list(self, date_list, stock):
+        """
+        获取一组数据，如果当中有数据不存在，置为空
+        Parameters
+        ----------
+        date_list
+        stock
+
+        Returns
+        -------
+
+        """
+        if len(date_list) > 0:
+            date_data_list = []
+            date_list.sort()
+            for date in date_list:
+                data = self.get_stock_data(date, stock)
+                if len(data) > 0:
+                    date_data_list.append(data)
+            if len(date_data_list) > 0:
+                return pd.concat(date_data_list)
+        return pd.DataFrame()
+
+
+    def remove_stock_data(self, date, stock):
+        """
+        移除指定数据
+        Parameters
+        ----------
+        date
+        stock
+
+        Returns
+        -------
+
+        """
+        if stock in self._stock_data_cache and date in self._stock_data_cache[stock]:
+            del self._stock_data_cache[stock][date]
+
 
 class StockTickDifferenceFactor(StockTickFactor, DifferenceFactor):
     """
@@ -607,3 +673,10 @@ class StockTickStdFactor(StockTickFactor, StdFactor):
                     temp_data.loc[np.isnan(temp_data[self.get_key(param)]), self.get_key(param)] = filled_data_arr
                 new_data = pd.concat([new_data, temp_data])
         return new_data
+
+if __name__ == '__main__':
+    stock_date_cache = StockDateCache()
+    print(stock_date_cache.get_stock_data('20200303', '000001'))
+    stock_date_cache.remove_stock_data('20200303', '000001')
+    print(stock_date_cache.get_stock_data_cache())
+    print(stock_date_cache.get_stock_data_list(['20200303','20200304','20200305'], '000001'))

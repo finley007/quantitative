@@ -173,14 +173,16 @@ def parameter_test(test_case):
         os.makedirs(case_path)
     else:
         raise InvalidStatus('The test case: {} has existed'.format(case_code))
+    test_count = 0
     for label in test_case.get_labels():
         for target in test_case.get_targets():
             for partition in test_case.get_train_partitions():
                 param_list = test_case.create_xgboost_params_list()
                 param_list = list(map(lambda param: (case_code, dataset, label, target, partition, param[0], param[1], param[2]), param_list))
-                # for param in param_list:
-                #     test_model([param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7]])
-                result = ProcessExcecutor(2).execute(test_model, param_list)
+                for param in param_list:
+                    test_count = test_count + 1
+                    get_logger().info('Test model for param combination: {0}'.format(param))
+                    test_model([param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], test_count])
 
 @profile
 def test_model(*args):
@@ -192,10 +194,10 @@ def test_model(*args):
     max_depth = args[0][5]
     n_estimators = args[0][6]
     learning_rate = args[0][7]
+    version = args[0][8]
     config = XGBoostConfig(labels, target, partition, data_identification, max_depth, n_estimators, learning_rate = learning_rate)
     data = get_data(data_identification)
     # 随机生成版本号
-    version = round(random.uniform(0,10),2)
     data_train_x, data_train_y, data_test_x, data_test_y = prepare_training_data(data, config)
     model = xgboost.XGBRegressor(max_depth=config.get_max_depth(),
                                  base_score=0,
@@ -208,14 +210,11 @@ def test_model(*args):
     predict_test_y = model.predict(data_test_x)
     data_train, data_test = prepare_data_partition(data, config)
     data_test['predict_y'] = predict_test_y
-    data_path = XGBOOST_MODEL_PATH + os.path.sep + 'test' + os.path.sep + case_code + os.path.sep + 'data'
-    if not os.path.exists(data_path):
-        os.makedirs(data_path)
-    fig_path = XGBOOST_MODEL_PATH + os.path.sep + 'test' + os.path.sep + case_code + os.path.sep + 'fig'
-    if not os.path.exists(fig_path):
-        os.makedirs(fig_path)
-    data_file = data_path + os.path.sep + case_code + '_' + str(version) + '.pkl'
-    fig_file = fig_path + os.path.sep + case_code + '_' + str(version) + '.png'
+    case_path = XGBOOST_MODEL_PATH + os.path.sep + 'test' + os.path.sep + case_code
+    if not os.path.exists(case_path):
+        os.makedirs(case_path)
+    data_file = case_path + os.path.sep + case_code + '_' + str(version) + '.csv'
+    fig_file = case_path + os.path.sep + case_code + '_' + str(version) + '.png'
     BackTestEvaluator(case_code, str(version), data_test, config, model).evaluate(data_file, fig_file)
     # 清理内存
     del data, data_train_x, data_train_y, data_test_x, data_test_y, data_train, data_test
@@ -245,39 +244,43 @@ if __name__ == '__main__':
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys()
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys() \
     #          + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()
-    labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
-             + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
-             + TenGradeCommissionRatioFactor().get_keys() \
-             + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + TenGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
-             + FiveGradeCommissionRatioFactor().get_keys() \
-             + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
-             + TenGradeWeightedCommissionRatioFactor().get_keys() \
-             + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
-             + RisingFallingAmountRatioFactor().get_keys() \
-             + SpreadFactor().get_keys()
-    target = 'ret.10'
-    train_partition = '2020-09-10' #训练：测试 3：1
-    max_depth = 3
-    n_estimators = 110
-    learning_rate = 0.08
-    config = XGBoostConfig(labels, target, train_partition, 'data_20230425', max_depth, n_estimators, learning_rate=learning_rate)
-    train_model('INITIAL_MODEL', '0.7', 'data_20230425', XGBoostTrainer(), config)
+    # labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
+    #          + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
+    #          + TenGradeCommissionRatioFactor().get_keys() \
+    #          + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + TenGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
+    #          + FiveGradeCommissionRatioFactor().get_keys() \
+    #          + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
+    #          + TenGradeWeightedCommissionRatioFactor().get_keys() \
+    #          + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+    #          + RisingFallingAmountRatioFactor().get_keys() \
+    #          + SpreadFactor().get_keys()
+    # target = 'ret.10'
+    # train_partition = '2020-09-10' #训练：测试 3：1
+    # max_depth = 3
+    # n_estimators = 110
+    # learning_rate = 0.08
+    # config = XGBoostConfig(labels, target, train_partition, 'data_20230425', max_depth, n_estimators, learning_rate=learning_rate)
+    # train_model('INITIAL_MODEL', '0.7', 'data_20230425', XGBoostTrainer(), config)
 
     # 收益率分析
     # return_analysis('INITIAL_MODEL', '0.5', 'IC', '2022-06-13', '2022-06-17')
 
     # 超参测试
-    # labels = [TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys() + WilliamFactor([100, 200, 500, 1000]).get_keys() + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()]
-    # targets = ['ret.10']
-    # train_partitions = ['2021-03-10']
-    # max_depths = list(range(1, 9, 1))
-    # n_estimators = list(range(5, 31, 5))
-    # learning_rates = list(np.arange(0.1, 0.4, 0.1))
-    # # 测试用例描述
-    # # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).get_description())
-    # # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).create_xgboost_params_list())
-    # # 生成测试报告
-    # parameter_test(ParameterTestCase('param_test_20230408_2', 'data_20230404', labels, targets, train_partitions, max_depths, n_estimators, learning_rates))
+    labels = [TenGradeCommissionRatioFactor().get_keys() +
+              FiveGradeCommissionRatioFactor().get_keys() +
+              WilliamFactor([100, 200, 500, 1000]).get_keys() +
+              TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() +
+              FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()]
+    targets = ['ret.10']
+    train_partitions = ['2021-03-10']
+    max_depths = list(range(1, 9, 1))
+    n_estimators = list(range(5, 31, 5))
+    learning_rates = list(np.arange(0.1, 0.4, 0.1))
+    # 测试用例描述
+    # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).get_description())
+    # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).create_xgboost_params_list())
+    # 生成测试报告
+    parameter_test(ParameterTestCase('param_test_20230408_2', 'data_20230404', labels, targets, train_partitions, max_depths, n_estimators, learning_rates))

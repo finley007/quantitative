@@ -237,7 +237,7 @@ if __name__ == '__main__':
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0'])
     # create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_004_5_GRADE_COMMISSION_RATIO_2.0'])
-    create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_019_DAILY_ACCUMULATED_LARGE_ORDER_RATIO_1.0'])
+    create_factor_single_instrument_performance_report('IF1712', factor_list=['FCT_02_062_LARGE_ORDER_BUYING_RATIO_1.0'])
 
     # prepare_training_data('data_20230425', ['FCT_01_001_WILLIAM_1.0', 'FCT_01_002_CLOSE_MINUS_MOVING_AVERAGE_1.0',
     #                                         'FCT_02_002_10_GRADE_COMMISSION_RATIO_2.0', 'FCT_02_036_10_GRADE_COMMISSION_RATIO_DIFFERENCE_1.0', 'FCT_02_041_10_GRADE_COMMISSION_RATIO_STD_1.0', 'FCT_02_040_10_GRADE_COMMISSION_RATIO_MEAN_1.0',

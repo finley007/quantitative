@@ -11,13 +11,14 @@ from common.constants import TEST_PATH, STOCK_TRANSACTION_START_TIME, STOCK_OPEN
 from common.localio import read_decompress, save_compress
 from common.aop import timing
 from common.visualization import draw_analysis_curve
-from common.timeutils import add_milliseconds_suffix
+from common.timeutils import add_milliseconds_suffix, get_last_or_next_trading_date_list_by_stock
 from framework.pagination import Pagination
 from data.access import StockDataAccess
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 from common.log import get_logger
 from common.stockutils import approximately_equal_to, get_rising_falling_limit
 from common.persistence.dao import FutureInstrumentConfigDao
+from common.commonutils import local_divide
 
 """现货类因子
 分类编号：02
@@ -1114,7 +1115,7 @@ class DailyAccumulatedLargeOrderRatioFactor(StockTickFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['amount','transaction_number','price','delta_price','total_rising_amount_per_transaction','total_falling_amount_per_transaction','total_amount_per_transaction']
+        columns = columns + ['amount','transaction_number','price']
         return columns
 
     def get_key(self):
@@ -1126,43 +1127,38 @@ class DailyAccumulatedLargeOrderRatioFactor(StockTickFactor):
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
-        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')[
-            'total_rising_amount_per_transaction', 'total_amount_per_transaction'].sum()
-        stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_amount_per_transaction'] == 0 else x['total_rising_amount_per_transaction'] / x[
-                'total_amount_per_transaction'], axis=1)
-        df_stock_data_per_date = pd.DataFrame(
-            {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['total_rising_amount_per_transaction', 'total_amount_per_transaction'].sum()
+        stock_data_per_date_group_by[self.get_key()] = np.apply_along_axis(lambda item: local_divide(item[0], item[1]), axis=1, arr=stock_data_per_date_group_by.values)
+        df_stock_data_per_date = pd.DataFrame({self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
-    def get_stock_data(self, date, stock):
-        """
-        所有日内要rolling计算都必须在这里实现
-        Parameters
-        ----------
-        date
-        stock
 
-        Returns
-        -------
-
-        """
-        temp_data = self._data_access.access(date, stock)
-        temp_data = temp_data.reset_index()
-        temp_data['delta_transaction_number'] = temp_data['transaction_number'] - temp_data['transaction_number'].shift(1)
-        temp_data.loc[temp_data[np.isnan(temp_data['delta_transaction_number'])].index, 'delta_transaction_number'] = 0
-        temp_data['amount_per_transaction'] = temp_data.apply(lambda x: 0 if x['delta_transaction_number'] == 0 else x['amount'] / x['delta_transaction_number'], axis=1)
-        temp_data['delta_price'] = temp_data['price'] - temp_data['price'].shift(1)
-        temp_data.loc[temp_data[np.isnan(temp_data['delta_price'])].index, 'delta_price'] = 0
-        temp_data['rising_amount_per_transaction'] = 0
-        temp_data['falling_amount_per_transaction'] = 0
-        temp_data.loc[temp_data['delta_price'] > 0, 'rising_amount_per_transaction'] = temp_data['amount_per_transaction']
-        temp_data.loc[temp_data['delta_price'] < 0, 'falling_amount_per_transaction'] = temp_data['amount_per_transaction']
+    def enrich_stock_data(self, instrument, date, stock, data):
+        data = data.reset_index()
+        data['delta_transaction_number'] = data['transaction_number'] - data['transaction_number'].shift(1)
+        data.loc[data[pd.isnull(data['delta_transaction_number'])].index, 'delta_transaction_number'] = 0
+        data['amount_per_transaction'] = np.apply_along_axis(lambda item: local_divide(item[4], item[7]), axis=1, arr=data.values)
+        data['delta_price'] = data['price'] - data['price'].shift(1)
+        data.loc[data[pd.isnull(data['delta_price'])].index, 'delta_price'] = 0
+        data['rising_amount_per_transaction'] = 0
+        data['falling_amount_per_transaction'] = 0
+        data.loc[data['delta_price'] > 0, 'rising_amount_per_transaction'] = data['amount_per_transaction']
+        data.loc[data['delta_price'] < 0, 'falling_amount_per_transaction'] = data['amount_per_transaction']
         # 日累加
-        temp_data['total_rising_amount_per_transaction'] = temp_data['rising_amount_per_transaction'].cumsum()
-        temp_data['total_falling_amount_per_transaction'] = temp_data['falling_amount_per_transaction'].cumsum()
-        temp_data['total_amount_per_transaction'] = temp_data['total_rising_amount_per_transaction'] + temp_data['total_falling_amount_per_transaction']
-        return temp_data
+        data['total_rising_amount_per_transaction'] = data['rising_amount_per_transaction'].cumsum()
+        data['total_falling_amount_per_transaction'] = data['falling_amount_per_transaction'].cumsum()
+        data['total_amount_per_transaction'] = data['total_rising_amount_per_transaction'] + data['total_falling_amount_per_transaction']
+        data.to_csv('E:\\data\\temp\\' + stock + '.csv')
+        print(data[data['time'] == '14:02:12.000'][['total_rising_amount_per_transaction','total_amount_per_transaction']])
+        return data
+
+    def test(self, a, b):
+        c = 748880
+        d = 50
+        e = c/d
+        print(type(e))
+        print(e)
+        return e
 
 class RollingAccumulatedLargeOrderRatioFactor(StockTickFactor):
     """时间窗大单占比占比因子
@@ -2359,6 +2355,113 @@ class AmountAnd1stCommissionRatioStdFactor(StockTickStdFactor):
     def get_target_factor(self):
         return self._amount_and_1st_grade_commission_ratio_factor
 
+class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
+    """
+    大单买入比例因子
+    计算单个股票三天总成交额除以三天总成交笔数，得到平均每笔成交额，大于平均值2倍以上为大单，均值-2倍之间为中单，0.5-均值之间为小单，小于0.5倍为小小单
+    如果当前tick上涨且每笔成交额是大单，则算买入大单，如果下跌则卖出大单，分别计算当前tick点所有股票的买入大单卖出大单，最后计算（买入大单/买入大单+卖出大单）
+    """
+    factor_code = 'FCT_02_062_LARGE_ORDER_BUYING_RATIO'
+    version = '1.0'
+
+    def __init__(self):
+        TimewindowStockTickFactor.__init__(self)
+
+    def get_columns(self):
+        columns = StockTickFactor.get_columns(self)
+        columns = columns + ['amount', 'daily_amount', 'transaction_number', 'price']
+        return columns
+
+    def get_factor_columns(self, data):
+        columns = data.columns.tolist() + [self.get_key()]
+        return columns
+
+    def get_key(self):
+        return self.factor_code
+
+    def get_keys(self):
+        return [self.get_key()]
+
+    # @profile
+    def caculate(self, data):
+        columns = self.get_factor_columns(data)
+        new_data = pd.DataFrame(columns=columns)
+        product = data.iloc[0]['product']
+        instrument = data.iloc[0]['instrument']
+        date_list = list(set(data['date'].tolist()))
+        date_list.sort()
+        pagination = Pagination(date_list, page_size=20)
+        while pagination.has_next():
+            date_list = pagination.next()
+            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
+            temp_cache = {}
+            for result in results:
+                cur_date_data = self.merge_with_stock_data(data, result[0], result[1])
+                temp_cache[result[0]] = cur_date_data
+            for date in date_list:
+                cur_date_data = temp_cache[date]
+                new_data = pd.concat([new_data, cur_date_data])
+        return new_data
+
+    def caculate_by_date(self, *args):
+        date = args[0][0]
+        instrument = args[0][1]
+        product = args[0][2]
+        get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        if len(stock_data_per_date) == 0:
+            get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
+            return date, stock_data_per_date
+        stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
+        # 求每个时刻上涨大单额和下跌大单额在股票维度的累加
+        stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['rising_large_amount', 'falling_large_amount'].sum()
+        stock_data_per_date_group_by['total_large_amount'] = stock_data_per_date_group_by['falling_large_amount'] + stock_data_per_date_group_by['rising_large_amount']
+        stock_data_per_date_group_by[self.get_key()] = np.apply_along_axis(lambda item: local_divide(item[0], item[2]), axis=1, arr=stock_data_per_date_group_by.values)
+        df_stock_data_per_date = pd.DataFrame(
+            {self.get_key(): stock_data_per_date_group_by[self.get_key()],
+             'time': stock_data_per_date_group_by.index})
+        return date, df_stock_data_per_date
+
+    def enrich_stock_data(self, instrument, date, stock, data):
+        """
+        时间维度上处理股票数据
+        对于每个股票维护一个小的滑动时间窗，大小为get_timewindow_size()，每向后处理一天，加载新的数据，删除老的数据
+
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
+        get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
+        data = data.reset_index(drop=True)
+        days_list = get_last_or_next_trading_date_list_by_stock(stock, date, self.get_timewindow_size())
+        instrument_stock_data = self.prepare_timewindow_data(stock, days_list)
+        if len(instrument_stock_data) > 0:
+            total_amount = 0
+            total_transaction = 0
+            for dt in days_list:
+                if len(instrument_stock_data[instrument_stock_data['date'] == dt]) > 0:
+                    total_amount = total_amount + instrument_stock_data[instrument_stock_data['date'] == dt].iloc[-1]['daily_amount']
+                    total_transaction = total_transaction + instrument_stock_data[instrument_stock_data['date'] == dt].iloc[-1]['transaction_number']
+            amount_per_transaction = total_amount/total_transaction
+            data['amount_per_transaction'] = amount_per_transaction
+        else: # 没有之前的股票现货数据，取当天当前时刻之前的平均成交额
+            data['amount_per_transaction'] = np.apply_along_axis(lambda item: local_divide(item[4], item[5]),  axis=1, arr=data.values)
+        data['delta_price'] = data['price'] - data['price'].shift(1)
+        data.loc[data[pd.isnull(data['delta_price'])].index, 'delta_price'] = 0
+        data['delta_transaction_number'] = data['transaction_number'] - data['transaction_number'].shift(1)
+        data.loc[data[pd.isnull(data['delta_transaction_number'])].index, 'delta_transaction_number'] = 0
+        data['rising_large_amount'] = 0
+        data['falling_large_amount'] = 0
+        data['cur_amount_per_transaction'] = np.apply_along_axis(lambda item: local_divide(item[3], item[9]), axis=1, arr=data.values)
+        data.loc[(data['delta_price'] > 0) & (data['cur_amount_per_transaction'] > 2 * data['amount_per_transaction']), 'rising_large_amount'] = data['amount']
+        data.loc[(data['delta_price'] < 0) & (data['cur_amount_per_transaction'] > 2 * data['amount_per_transaction']), 'falling_large_amount'] = data['amount']
+        return data
+
 
 if __name__ == '__main__':
     data = read_decompress(TEST_PATH + 'IF1810.pkl')
@@ -2553,17 +2656,17 @@ if __name__ == '__main__':
     #                     signal_keys=ask_large_amount_bill_factor.get_keys())
 
     # 委卖大额挂单因子
-    bid_large_amount_bill_factor = BidLargeAmountBillFactor()
-    print(bid_large_amount_bill_factor.factor_code)
-    print(bid_large_amount_bill_factor.version)
-    print(bid_large_amount_bill_factor.get_params())
-    print(bid_large_amount_bill_factor.get_category())
-    print(bid_large_amount_bill_factor.get_full_name())
-
-    data = BidLargeAmountBillFactor().caculate(data)
-    data.index = pd.DatetimeIndex(data['datetime'])
-    data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
-    draw_analysis_curve(data, show_signal=True, signal_keys=bid_large_amount_bill_factor.get_keys())
+    # bid_large_amount_bill_factor = BidLargeAmountBillFactor()
+    # print(bid_large_amount_bill_factor.factor_code)
+    # print(bid_large_amount_bill_factor.version)
+    # print(bid_large_amount_bill_factor.get_params())
+    # print(bid_large_amount_bill_factor.get_category())
+    # print(bid_large_amount_bill_factor.get_full_name())
+    #
+    # data = BidLargeAmountBillFactor().caculate(data)
+    # data.index = pd.DatetimeIndex(data['datetime'])
+    # data = data[(data['datetime'] >= '2020-09-28 10:00:00') & (data['datetime'] <= '2020-09-28 10:30:00')]
+    # draw_analysis_curve(data, show_signal=True, signal_keys=bid_large_amount_bill_factor.get_keys())
 
     # 总委比因子变化率，今天和昨天同一时间的总委比因子比值
     # total_commission_ratio_change_rate_factor = TotalCommissionRatioChangeRateFactor()
@@ -2586,9 +2689,10 @@ if __name__ == '__main__':
     # end_price = temp_data.iloc[0]['ask_price1']
     # print(end_price)
 
-    # factor = RisingStockRatioFactor()
-    # data = factor.caculate_by_date(['2017-07-17','IC1707','IC'])
-    # data[1].to_csv('E:\\data\\temp\\IC1707_20170717.csv')
+    factor = DailyAccumulatedLargeOrderRatioFactor()
+    factor.set_stock_filter(['601678','002194'])
+    data = factor.caculate_by_date(['2017-09-13','IC1709','IC'])
+    data[1].to_csv('E:\\data\\temp\\IC1709_20170913.csv')
 
 
 
