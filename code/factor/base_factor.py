@@ -474,8 +474,10 @@ class StockDateCache():
         -------
 
         """
-        if not (stock in self._stock_data_cache and date in self._stock_data_cache[stock]):
+        if not (stock in self._stock_data_cache):
             self._stock_data_cache[stock] = {date:data}
+        elif not (date in self._stock_data_cache[stock]):
+            self._stock_data_cache[stock][date] = data
 
     def get_stock_data(self, date, stock):
         """

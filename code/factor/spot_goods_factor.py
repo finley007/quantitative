@@ -17,7 +17,7 @@ from data.access import StockDataAccess
 from framework.localconcurrent import ProcessRunner, ProcessExcecutor
 from common.log import get_logger
 from common.stockutils import approximately_equal_to, get_rising_falling_limit
-from common.persistence.dao import FutureInstrumentConfigDao
+from common.persistence.dao import FutureInstrumentConfigDao, IndexConstituentConfigDao
 from common.commonutils import local_divide
 
 """现货类因子
@@ -965,18 +965,15 @@ class AmountAndCommissionRatioFactor(StockTickFactor):
 
     def execute_caculation(self, date, stock_data_per_date):
         stock_data_per_date = stock_data_per_date[stock_data_per_date['time'] > add_milliseconds_suffix(STOCK_TRANSACTION_START_TIME)]
-        stock_data_per_date['amount_and_ask_commission_amount'] = stock_data_per_date[self.get_key_by_type('ask')]
-        stock_data_per_date['amount_and_bid_commission_amount'] = stock_data_per_date[self.get_key_by_type('bid')]
+        stock_data_per_date[['amount_and_ask_commission_amount', 'amount_and_bid_commission_amount']] = np.apply_along_axis(lambda item: self.amount_sum(item), axis=1, arr=stock_data_per_date.values)
         stock_data_per_date.loc[stock_data_per_date['delta_price'] > 0, 'amount_and_bid_commission_amount'] = stock_data_per_date['amount_and_bid_commission_amount'] + stock_data_per_date['amount']
         stock_data_per_date.loc[stock_data_per_date['delta_price'] < 0, 'amount_and_ask_commission_amount'] = stock_data_per_date['amount_and_ask_commission_amount'] + stock_data_per_date['amount']
         stock_data_per_date['total_amount_and_commission_amount'] = stock_data_per_date['amount_and_ask_commission_amount'] + stock_data_per_date['amount_and_bid_commission_amount']
         stock_data_per_date = stock_data_per_date.rename(columns={'time': 'cur_time'})
         stock_data_per_date_group_by = stock_data_per_date.groupby('cur_time')['amount_and_bid_commission_amount', 'total_amount_and_commission_amount'].sum()
         stock_data_per_date_group_by[self.get_key()] = stock_data_per_date_group_by.apply(
-            lambda x: 0 if x['total_amount_and_commission_amount'] == 0 else x['amount_and_bid_commission_amount'] / x[
-                'total_amount_and_commission_amount'], axis=1)
-        df_stock_data_per_date = pd.DataFrame(
-            {self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
+            lambda x: 0 if x['total_amount_and_commission_amount'] == 0 else x['amount_and_bid_commission_amount'] / x['total_amount_and_commission_amount'], axis=1)
+        df_stock_data_per_date = pd.DataFrame({self.get_key(): stock_data_per_date_group_by[self.get_key()], 'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
     def get_stock_data(self, date, stock):
@@ -996,8 +993,8 @@ class AmountAndCommissionRatioFactor(StockTickFactor):
         temp_data.loc[temp_data[np.isnan(temp_data['delta_price'])].index, 'delta_price'] = 0
         return temp_data
 
-    def get_key_by_type(self, type):
-        return '10_grade_' + type + '_amount'
+    def amount_sum(self, item):
+        return item[4], item[3]
 
 
 class RisingFallingAmountRatioFactor(StockTickFactor):
@@ -1319,12 +1316,11 @@ class AmountAnd1stGradeCommissionRatioFactor(AmountAndCommissionRatioFactor):
 
     def get_columns(self):
         columns = StockTickFactor.get_columns(self)
-        columns = columns + ['bid_price1', 'bid_volume1',
-                             'ask_price1', 'ask_volume1', 'amount', 'price', 'delta_price']
+        columns = columns + ['bid_price1', 'bid_volume1', 'ask_price1', 'ask_volume1', 'amount', 'price', 'delta_price']
         return columns
 
-    def amount_sum(self, item, type):
-        return item[type + '_price1'] * item[type + '_volume1']
+    def amount_sum(self, item):
+        return item[5] * item[6], item[3] * item[4]
 
 class RisingLimitStockProportionFactor(StockTickFactor):
     """涨停比例因子
@@ -2390,10 +2386,15 @@ class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
         instrument = data.iloc[0]['instrument']
         date_list = list(set(data['date'].tolist()))
         date_list.sort()
+        # 这里最小天数还需要往前扩展一个timewindow_size
+        min_date = date_list[0]
+        future_instrument_config_dao = FutureInstrumentConfigDao()
+        min_date = future_instrument_config_dao.get_last_n_transaction_date(min_date, self.get_timewindow_size())
+        max_date = date_list[-1]
         pagination = Pagination(date_list, page_size=20)
         while pagination.has_next():
             date_list = pagination.next()
-            params_list = list(map(lambda date: [date, instrument, product], date_list))
+            params_list = list(map(lambda date: [date, instrument, product, min_date, max_date], date_list))
             results = ProcessExcecutor(10).execute(self.caculate_by_date, params_list)
             temp_cache = {}
             for result in results:
@@ -2404,12 +2405,20 @@ class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
                 new_data = pd.concat([new_data, cur_date_data])
         return new_data
 
+    def get_stock_date_list_cache_by_stock_list(self, stock_list, start_date, end_date):
+        index_constituent_config_dao = IndexConstituentConfigDao()
+        result = index_constituent_config_dao.query_trading_date_by_tscode_list(stock_list, start_date, end_date)
+        index_constituent_config_dao.close()
+        return result
+
     def caculate_by_date(self, *args):
         date = args[0][0]
         instrument = args[0][1]
         product = args[0][2]
+        min_date = args[0][3]
+        max_date = args[0][4]
         get_logger().debug(f'Caculate by date params {date}, {instrument}, {product}')
-        stock_data_per_date = self.get_stock_tick_data(product, instrument, date)
+        stock_data_per_date = self.get_stock_tick_data(product, instrument, date, min_date, max_date)
         if len(stock_data_per_date) == 0:
             get_logger().warning('The data on date: {0} and instrument: {1} is missing'.format(date, instrument))
             return date, stock_data_per_date
@@ -2423,7 +2432,55 @@ class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
              'time': stock_data_per_date_group_by.index})
         return date, df_stock_data_per_date
 
-    def enrich_stock_data(self, instrument, date, stock, data):
+    @timing
+    def get_stock_tick_data(self, product, instrument, date, min_date, max_date):
+        """按天获取相关的股票tick数据，
+        因为一次处理一个股指合约文件，所包含的信息：
+        日期，品种
+        TODO 这部分可以预处理
+        Parameters
+        ----------
+        product ： 品种
+        instrument ： 合约
+        date ： 日期
+        """
+        stock_list = self.get_stock_list_by_date(product, date)
+        if len(self._stock_filter) > 0:  # 用于生成人工检测文件
+            stock_list = self._stock_filter
+        columns = self.get_columns()
+        data = pd.DataFrame(columns=columns)
+        temp_data_cache = []
+        if stock_list and len(stock_list) > 0:
+            stock_date_list_cache = self.get_stock_date_list_cache_by_stock_list(stock_list, min_date, max_date)
+            # 过滤异常数据
+            stock_list = list(filter(lambda stock: (date + stock) not in self._invalid_set, stock_list))
+            for stock in stock_list:
+                # get_logger().debug('Handle stock {0}'.format(stock))
+                try:
+                    daily_stock_data = self.get_stock_data(date, stock)
+                    self._stock_date_cache.add_stock_data(date, stock, daily_stock_data)
+                except Exception as e:
+                    get_logger().warning('Stock data is missing for date: {0} and stock: {1}'.format(date, stock))
+                    # session = create_session()
+                    # stock_missing_data = StockMissingData(date, stock)
+                    # session.add(stock_missing_data)
+                    # session.commit()
+                    continue
+                if len(daily_stock_data) == 0:
+                    get_logger().warning('Stock data is empty for date: {0} and stock: {1}'.format(date, stock))
+                    continue
+                daily_stock_data = daily_stock_data.loc[:, columns]
+                daily_stock_data = self.enrich_stock_data(instrument, date, stock, daily_stock_data, stock_date_list_cache)
+                temp_data_cache.append(daily_stock_data)
+        else:
+            get_logger().warning(
+                'Stock data configuration is missing for product: {0} and date: {1}'.format(product, date))
+        if len(temp_data_cache) > 0:
+            data = pd.concat(temp_data_cache)
+            data = data.reset_index(drop=True)
+        return data
+
+    def enrich_stock_data(self, instrument, date, stock, data, stock_date_list_cache):
         """
         时间维度上处理股票数据
         对于每个股票维护一个小的滑动时间窗，大小为get_timewindow_size()，每向后处理一天，加载新的数据，删除老的数据
@@ -2438,8 +2495,11 @@ class LargeOrderBidAskVolumeRatioFactor(TimewindowStockTickFactor):
         """
         get_logger().debug('Current date: {} and stock: {}'.format(date, stock))
         data = data.reset_index(drop=True)
-        days_list = get_last_or_next_trading_date_list_by_stock(stock, date, self.get_timewindow_size())
+        days_list = get_last_or_next_trading_date_list_by_stock(stock, date, self.get_timewindow_size(), date_list = stock_date_list_cache[stock])
         instrument_stock_data = self.prepare_timewindow_data(stock, days_list)
+        # 删除时间窗口外的数据
+        if len(days_list) > 0:
+            self._stock_date_cache.remove_stock_data(days_list[0], stock)
         if len(instrument_stock_data) > 0:
             total_amount = 0
             total_transaction = 0

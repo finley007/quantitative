@@ -8,7 +8,7 @@ from scipy.stats import pearsonr
 from mlearn.model import ModelTrainer, ModelConfig
 from mlearn.model_evaluation import WinningRateEvaluator, CorrelationEvaluator, LossFunctionEvaluator, BackTestEvaluator
 from common.constants import CPU_CORE_NUMBER, XGBOOST_MODEL_PATH
-from common.localio import save_compress, read_decompress, FileWriter, read_txt
+from common.localio import save_compress, read_decompress, FileWriter, read_txt, write_txt
 from common.aop import timing
 from common.visualization import draw_line
 from common.log import get_logger
@@ -58,9 +58,7 @@ class XGBoostTrainer(ModelTrainer):
         # 保存模型
         save_compress(self._model, XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.pkl')
         # 保存配置
-        file_writer = FileWriter(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.cfg')
-        file_writer.write_file_line(str(config.get_config()))
-        file_writer.close_file()
+        write_txt(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.cfg', str(config.get_config()))
 
     def load(self, model_name, version):
         return read_decompress(XGBOOST_MODEL_PATH + os.path.sep + model_name + '_' + version + '.pkl')

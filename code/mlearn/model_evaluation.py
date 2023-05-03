@@ -66,7 +66,7 @@ class BackTestEvaluator(ModelEvaluator):
         self._model = model
         self.PREDICT_Y_ROLLING_LENGTH = 4800
         self.PREDICT_Y_WIDTH = 2
-        self.RET_PERIOD = 'ret.10'
+        self.RET_PERIOD = config.get_target()
 
     def evaluate(self, data_path = '', fig_path = ''):
         self.do_evaluate(data_path, fig_path)

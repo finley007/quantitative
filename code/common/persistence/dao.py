@@ -2,6 +2,7 @@
 # -*- coding:utf8 -*-
 
 from sqlalchemy import and_
+import numpy as np
 
 from common.persistence.dbutils import create_session
 from common.persistence.po import Test, FactorConfig, StockReversionConfig, IndexConstituentConfig
@@ -32,6 +33,31 @@ class IndexConstituentConfigDao(BaseDao):
         result_list = self._session.execute('select distinct date from index_constituent_config where tscode = :tscode and status = 0 order by date', {'tscode' : tscode}).fetchall()
         result_list = list(map(lambda date: date[0], result_list))
         return result_list
+
+    def query_trading_date_by_tscode_list(self, tscode_list, min_date, max_date):
+        """
+        批量查询一段时间范围内股票交易日
+        Parameters
+        ----------
+        tscode_list
+        min_date
+        max_date
+
+        Returns
+        -------
+
+        """
+        result_list = self._session.execute(
+            'select distinct tscode, date from index_constituent_config where tscode in :tscode_list and status = 0 and date >= :min_date and date <= :max_date order by tscode, date',
+            {'tscode_list' : tscode_list, 'min_date' : min_date, 'max_date' : max_date}).fetchall()
+        result_list = list(map(lambda item: [item[0], item[1]], result_list))
+        result_list = np.array(result_list)
+        result = {}
+        for key in set(result_list[:, 0]):
+            filter = result_list[:, 0] == key
+            temp_arr = result_list[filter]
+            result[key] = temp_arr[:, 1].tolist()
+        return result
 
     def get_invalid_list(self, invalid_status=[1, 2]):
         """
@@ -163,8 +189,9 @@ class StockReversionConfigDao(BaseDao):
         self._session.query(StockReversionConfig).filter(StockReversionConfig.tscode.in_(stocks)).delete()
 
 if __name__ == '__main__':
-    # constituent_config_dao = IndexConstituentConfigDao()
+    constituent_config_dao = IndexConstituentConfigDao()
     # # print(constituent_config_dao.query_trading_date_by_tscode('600519'))
+    print(constituent_config_dao.query_trading_date_by_tscode_list(['600519', '000001'], '2022-01-01', '2022-08-09'))
     # # constituent_config_dao.update_status('2018-11-02', '601200', 0)
     # print(constituent_config_dao.get_invalid_list([1,2]))
     # print(constituent_config_dao.get_invalid_date_list([2]))
@@ -197,8 +224,8 @@ if __name__ == '__main__':
     # print(future_instrument_config_dao.get_last_n_transaction_date_list('2017-01-03', 5))
 
     # 因子配置表查询
-    facto_config_dao = FactorConfigDao()
-    for factor in facto_config_dao.get_all_factors():
-        print(factor.code)
+    # facto_config_dao = FactorConfigDao()
+    # for factor in facto_config_dao.get_all_factors():
+    #     print(factor.code)
 
 

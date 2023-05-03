@@ -114,6 +114,22 @@ def read_txt(file_name, splits=''):
     else:
         return ''.join(buf_lis)
 
+def write_txt(file_full_path, content):
+    """
+    写txt文件
+    Parameters
+    ----------
+    file_full_path
+    content
+
+    Returns
+    -------
+
+    """
+    file_writer = FileWriter(file_full_path)
+    file_writer.write_file_line(content)
+    file_writer.close_file()
+
 if __name__ == '__main__':
     # print(list_files_in_path(constants.DATA_PATH + 'future/tick/IF/'))
     # data = pd.read_csv('/Users/finley/Projects/stock-index-future/data/original/future/tick/IF/CFFEX.IF2212.csv')
