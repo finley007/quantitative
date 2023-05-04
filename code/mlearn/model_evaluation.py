@@ -117,7 +117,7 @@ class BackTestEvaluator(ModelEvaluator):
         plt.plot(long_all_sum_result, color='darkred')
         plt.plot(short_all_sum_result, color='darkgreen')
         plt.savefig(fig_path)
-        plt.show()
+        # plt.show()
 
 
     def caculate_backtest_result(self):

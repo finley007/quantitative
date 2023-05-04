@@ -182,10 +182,10 @@ def parameter_test(test_case):
                 for param in param_list:
                     test_count = test_count + 1
                     get_logger().info('Test model for param combination: {0}'.format(param))
-                    test_model([param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], test_count])
+                    run_test_model([param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], test_count])
 
 # @profile
-def test_model(*args):
+def run_test_model(*args):
     case_code = args[0][0]
     data_identification = args[0][1]
     labels = args[0][2]
@@ -252,26 +252,29 @@ if __name__ == '__main__':
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys()
     # labels = TenGradeCommissionRatioFactor().get_keys() + FiveGradeCommissionRatioFactor().get_keys() \
     #          + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()
-    labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
-             + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
-             + TenGradeCommissionRatioFactor().get_keys() \
-             + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + TenGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
-             + FiveGradeCommissionRatioFactor().get_keys() \
-             + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
-             + TenGradeWeightedCommissionRatioFactor().get_keys() \
-             + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
-             + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
-             + RisingFallingAmountRatioFactor().get_keys() \
-             + SpreadFactor().get_keys()
-    target = 'ret.20'
-    train_partition = '2020-09-10' #训练：测试 3：1
-    max_depth = 3
-    n_estimators = 160
-    learning_rate = 0.1
-    config = XGBoostConfig(labels, target, train_partition, 'data_20230425', max_depth, n_estimators, learning_rate=learning_rate)
-    train_model('INITIAL_MODEL', '0.7', 'data_20230425', XGBoostTrainer(), config)
+    # labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
+    #          + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
+    #          + TenGradeCommissionRatioFactor().get_keys() \
+    #          + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + TenGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
+    #          + FiveGradeCommissionRatioFactor().get_keys() \
+    #          + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + FiveGradeCommissionRatioMeanFactor([20,50,100,300,500]).get_keys() \
+    #          + TenGradeWeightedCommissionRatioFactor().get_keys() \
+    #          + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+    #          + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+    #          + RisingFallingAmountRatioFactor().get_keys() \
+    #          + SpreadFactor().get_keys()
+    # target = 'ret.20'
+    # train_partition = '2020-09-10' #训练：测试 3：1
+    # max_depth = 3
+    # n_estimators = 160
+    # learning_rate = 0.1
+    # # max_depth = 2
+    # # n_estimators = 20
+    # # learning_rate = 0.2
+    # config = XGBoostConfig(labels, target, train_partition, 'data_20230425', max_depth, n_estimators, learning_rate=learning_rate)
+    # train_model('INITIAL_MODEL', '0.7', 'data_20230425', XGBoostTrainer(), config)
 
     # 收益率分析
     # return_analysis('INITIAL_MODEL', '0.5', 'IC', '2022-06-13', '2022-06-17')
@@ -282,13 +285,26 @@ if __name__ == '__main__':
     #           WilliamFactor([100, 200, 500, 1000]).get_keys() +
     #           TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() +
     #           FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys()]
-    # targets = ['ret.10']
-    # train_partitions = ['2021-03-10']
-    # max_depths = list(range(1, 3, 1))
-    # n_estimators = [30]
-    # learning_rates = [0.2]
-    # # 测试用例描述
-    # # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).get_description())
-    # # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).create_xgboost_params_list())
-    # # 生成测试报告
-    # parameter_test(ParameterTestCase('param_test_20230502', 'data_20230404', labels, targets, train_partitions, max_depths, n_estimators, learning_rates))
+    labels = WilliamFactor([100, 200, 500, 1000, 2000, 5000]).get_keys() \
+             + CloseMinusMovingAverageFactor([200, 500, 1000, 1500]).get_keys() \
+             + TenGradeCommissionRatioFactor().get_keys() \
+             + TenGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + TenGradeCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+             + FiveGradeCommissionRatioFactor().get_keys() \
+             + FiveGradeCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + FiveGradeCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+             + TenGradeWeightedCommissionRatioFactor().get_keys() \
+             + TenGradeWeightedCommissionRatioDifferenceFactor([20, 50, 100, 200]).get_keys() \
+             + TenGradeWeightedCommissionRatioMeanFactor([20, 50, 100, 300, 500]).get_keys() \
+             + RisingFallingAmountRatioFactor().get_keys() \
+             + SpreadFactor().get_keys()
+    targets = ['ret.10']
+    train_partitions = ['2021-03-10']
+    max_depths = list(range(2, 5, 1))
+    n_estimators = list(range(20, 35, 5))
+    learning_rates = list(np.arange(0.2, 0.4, 0.1))
+    # 测试用例描述
+    # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).get_description())
+    # # print(ParameterTestCase('test1', labels, targets, train_partitions, max_depths, n_estimators, learning_rates).create_xgboost_params_list())
+    # 生成测试报告
+    parameter_test(ParameterTestCase('param_test_data_20230425', 'data_20230425', [labels], targets, train_partitions, max_depths, n_estimators, learning_rates))
